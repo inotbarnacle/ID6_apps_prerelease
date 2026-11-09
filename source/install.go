@@ -141,6 +141,12 @@ var profiles = map[string]frameworkPair{
 		"ef2488b007d592301d8f21d9aa60771ad552d06b5e97c29e7813e3946644d820",
 		"cb0e488d1ebe2e30de87bb56f0e93d6a2d76b44309b0b47fef5b0b7cec048973",
 	},
+	// F31 340i (B58): static ABI checks match sdk/bmw_list.h, and all three apps
+	// loaded and showed live data on a parked car.
+	"NBTevo_Y21432J": {
+		"75aff211cfe29e904cdc8545bf8f4e9174c132dc0469e0a7ef84296391ada69f",
+		"235d275fbf7eeebaa955641202f971c260be2e49d9addda1227f5eb0316a2156",
+	},
 }
 
 type remoteRunner interface {

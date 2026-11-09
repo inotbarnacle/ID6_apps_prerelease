@@ -46,7 +46,7 @@ Park your car, connect it to your computer with ENET, and hand this repository t
 
 ## What the agent checks
 
-The published installer has profiles for `NBTevo_N18092I`, `NBTevo_V20153I`, and `NBTevo_Y24073J`. The agent checks the exact firmware and both framework hashes before writing files. An unlisted build needs compatibility work and parked validation before it can be treated as supported. [Unlisted firmware workflow](AgentReadMe.md#bring-up-an-unlisted-firmware)
+The published installer has profiles for `NBTevo_N18092I`, `NBTevo_V20153I`, `NBTevo_Y21432J`, and `NBTevo_Y24073J`. The agent checks the exact firmware and both framework hashes before writing files. An unlisted build needs compatibility work and parked validation before it can be treated as supported. [Unlisted firmware workflow](AgentReadMe.md#bring-up-an-unlisted-firmware)
 
 BoostDeck's BMW-specific gauge definitions come from a 2016 340i and may vary by ECU. ShiftDeck uses standard OBD RPM and speed. MHD Maps requires a compatible MHD+ multi-map tune. Check the active slot in MHD separately if you test map switching. [Signal and map details](source/README.md)
 
