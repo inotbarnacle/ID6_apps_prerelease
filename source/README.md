@@ -24,7 +24,7 @@ The source and layouts are MIT licensed. ShiftDeck draws inspiration from Redlin
 
 The source installer prompts for the head unit’s SSH password locally. Each builder supplies their own QNX SDK and reference-car frameworks. Car captures, credentials, vendor logos, framework binaries, and PSdZData belong outside the public tree.
 
-Parked preview for `NBTevo_N18092I`, `NBTevo_V20153I`, and `NBTevo_Y24073J`. The installer puts **BoostDeck**, **ShiftDeck**, and **MHD Maps** under My Vehicle. It checks both on-car HMI framework fingerprints before uploading. The preview has passed static framework checks and desktop installer tests. It still needs an on-car test on each of these builds.
+Parked preview for `NBTevo_N18092I`, `NBTevo_V20153I`, `NBTevo_Y21432J`, and `NBTevo_Y24073J`. The installer puts **BoostDeck**, **ShiftDeck**, and **MHD Maps** under My Vehicle. It checks both on-car HMI framework fingerprints before uploading. The preview has passed static framework checks and desktop installer tests. It still needs an on-car test on each of these builds.
 
 BoostDeck shows boost, AFR, timing, intake air, transmission, rail pressure, oil pressure, and coolant. Its BMW-specific signal definitions come from the reference 2016 340i. Some cars will return fewer signals or use different definitions. Compare the values with a known-good logger before relying on them. ShiftDeck reads standard OBD RPM and speed and starts with a 6,500 RPM shift-light target.
 
