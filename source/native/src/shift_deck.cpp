@@ -126,6 +126,7 @@ class ShiftDeck : public bmw::PluginApp {
         bool show;
         if (!event.readBool(show) || show==visible_) return true;
         visible_=show;
+        ++generation_;
         frame_.sampled_ms=0;
 #ifdef NATIVE_SHIFT_SMOOTH
         rpm_started_=0;
@@ -133,6 +134,7 @@ class ShiftDeck : public bmw::PluginApp {
         if (show) retry_at_=0;
         else stopChild();
         draw(bd_mono_ms());
+        if (socket_>=0 && (visible_ || child_>0)) postPoll();
         return true;
     }
     template <unsigned Index> bool setTarget(const bmw::Parcel&) {
@@ -218,7 +220,6 @@ public:
         updateModel(57u,bmw::ImageID(kShiftOff));
         showTarget();
         draw(bd_mono_ms());
-        if (socket_>=0) postPoll();
         return true;
     }
     virtual bool invokeDataUpdate(unsigned key,const bmw::Parcel& data) {
@@ -227,6 +228,10 @@ public:
         if (!data.readUInt32(generation)) return false;
         if (generation!=generation_ || socket_<0) return true;
         reap();
+        if (!visible_) {
+            if (child_>0) postPoll();
+            return true;
+        }
         uint64_t now=bd_mono_ms();
         if (visible_ && child_<=0 && now>=retry_at_) {
             const DiagnosticGateway gateway("/var/opt/hmi/data/ID5/Plugins/" "ShiftDeck" "/gateway-ip.txt");

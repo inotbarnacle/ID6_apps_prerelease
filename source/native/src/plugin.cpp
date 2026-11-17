@@ -164,10 +164,7 @@ bool BoostDeck::onInit() {
     bmw::Parcel visible(true);
     for (unsigned i=0;i<kBarCount;++i) setProperty(200u+i,3u,visible);
     refresh();
-    if (fd_>=0) {
-        ++poll_generation_;
-        postPoll();
-    }
+    ++poll_generation_;
     return true;
 }
 
@@ -175,6 +172,7 @@ bool BoostDeck::gaugeVisibility(const bmw::Parcel& event) {
     bool visible;
     if (!event.readBool(visible) || gauges_visible_==visible) return true;
     gauges_visible_=visible;
+    ++poll_generation_;
     if (visible) {
         retry_at_=0;
         startVisibleCollector();
@@ -184,6 +182,7 @@ bool BoostDeck::gaugeVisibility(const bmw::Parcel& event) {
         memset(&frame_,0,sizeof frame_);
         refresh();
     }
+    if (fd_>=0 && (gauges_visible_ || collector_>0)) postPoll();
     return true;
 }
 
@@ -215,7 +214,7 @@ void BoostDeck::postPoll() {
     data.writeUInt32(kPollKey);
     data.writeUInt32(poll_generation_);
     bmw::Message message(kDataUpdateMessage, data);
-    post(message, collector_ > 0 ? kActivePollIntervalMs : kIdlePollIntervalMs);
+    post(message, gauges_visible_ && collector_ > 0 ? kActivePollIntervalMs : kIdlePollIntervalMs);
 }
 
 bool BoostDeck::invokeDataUpdate(unsigned key, const bmw::Parcel& data) {
@@ -223,8 +222,9 @@ bool BoostDeck::invokeDataUpdate(unsigned key, const bmw::Parcel& data) {
     unsigned generation;
     if (!data.readUInt32(generation)) return false;
     if (fd_<0 || generation!=poll_generation_) return true;
-    poll();
-    if (fd_>=0 && generation==poll_generation_) postPoll();
+    if (gauges_visible_) poll();
+    else reapCollector();
+    if (fd_>=0 && generation==poll_generation_ && (gauges_visible_ || collector_>0)) postPoll();
     return true;
 }
 
