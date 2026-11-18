@@ -24,7 +24,7 @@ Choose **MHD+ Suite** or **Bootmod3 Suite**. [Download the dashboard package](pa
 - **ShiftDeck** displays live speed, an RPM bar, and shift lights with a selectable RPM threshold. Press **OPTIONS** to switch between mph and km/h. This update includes performance improvements.
 - **MHD+ Suite** offers four map slots and puts **Exhaust Flap** and **Max Cooling** under **Options**.
 - **Bootmod3 Suite** is a new beta control menu for compatible CustomROM tunes. It offers four map slots, exhaust flap control, Active Sound, and burble presets.
-- **xDrive Control (experimental)** temporarily selects rear-wheel drive on supported DSC versions. **The engine must be off before switching from AWD to RWD or from RWD to AWD.**
+- **xDrive Control (experimental)** temporarily selects rear-wheel drive on supported DSC versions. **The engine must be off before switching from AWD to RWD or from RWD to AWD.** On F-series DSC_25 (0F1860), switch to RWD with the engine running in Park instead; see the [compatibility notes](source/docs/COMPATIBILITY.md#xdrive-control-experimental).
 - **Engine Fault Codes** reads engine/DME fault codes and shows descriptions when available. It can read codes even when the DME refuses to clear them.
 - **Road Jet**. A simple game that makes a jet move based on throttle input and steering angle. [Road Jet package](packages/road-jet.zip)
 - **BEAMer** offers Front, Rear, Both, and Insane lighting patterns in Park at zero speed. Tested on an F3x car. Other Fxx cars may work if they have the supported lighting module. Gxx has not been tested. [BEAMer package](packages/beamer.zip)

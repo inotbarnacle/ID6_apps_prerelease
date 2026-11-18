@@ -106,15 +106,20 @@ static int read_mode(int fd) {
     return -1;
 }
 
-// DSC LMV_FUNKTION (0xDBE1): 1 = xDrive active, 0 = rear-wheel drive until ignition off.
-static int dsc_mode(int fd) {
-    const unsigned char req[]={0x22,0xdb,0xe1}, ack[]={0x62,0xdb,0xe1};
+// F-series LMV 0F1480 (lmv_01.prg STATUS_SOLLMOMENT, 0x4002): byte 3 is the target qualifier.
+// 0x20 applies the DSC target (AWD); 0x28 opens the clutch and 0x70 is rear-wheel drive.
+// With the engine off it reports 0x60 (fallback), so the mode is only readable while running.
+static int lmv_mode(int fd) {
+    const unsigned char req[]={0x22,0x40,0x02}, ack[]={0x62,0x40,0x02};
     unsigned char reply[64];
     unsigned negative;
-    return exchange(fd,0x29,req,3,ack,3,reply,sizeof reply,800,&negative)>=4 && reply[3]<=1 ? reply[3] : -1;
+    if (exchange(fd,0x19,req,3,ack,3,reply,sizeof reply,800,&negative)<6) return -1;
+    if (reply[5]==0x20) return 1;
+    if (reply[5]==0x28 || reply[5]==0x70) return 0;
+    return -1;
 }
 
-static int parked(int fd) {
+static int parked(int fd, int running) {
     const unsigned char speed[]={1,0x0d}, speed_ack[]={0x41,0x0d};
     const unsigned char gear[]={0x22,0xda,0x2e}, gear_ack[]={0x62,0xda,0x2e};
     const unsigned char rpm[]={1,0x0c}, rpm_ack[]={0x41,0x0c};
@@ -122,7 +127,7 @@ static int parked(int fd) {
     unsigned negative;
     // Same Park read as the 340i parked probe. Missing or different replies block the write.
     return exchange(fd,0x18,gear,3,gear_ack,3,reply,sizeof reply,350,&negative)==5 && reply[3]==0 &&
-           exchange(fd,0x12,rpm,2,rpm_ack,2,reply,sizeof reply,350,&negative)==4 && !(reply[2]|reply[3]) &&
+           exchange(fd,0x12,rpm,2,rpm_ack,2,reply,sizeof reply,350,&negative)==4 && ((reply[2]|reply[3])!=0)==running &&
            exchange(fd,0x12,speed,2,speed_ack,2,reply,sizeof reply,350,&negative)==3 && !reply[2];
 }
 
@@ -133,8 +138,7 @@ static void control(int fd, const char *mode, unsigned value) {
     unsigned negative;
     int n=exchange(fd,0x29,id,3,id_ack,3,reply,sizeof reply,800,&negative);
     unsigned index=0, i;
-    int current;
-    int dsc=0;
+    int current, fseries;
     if (n>=6 && n<=10) {
         for (i=3;i<(unsigned)n-3;++i) if (reply[i]) break;
         if (i==(unsigned)n-3) index=(reply[i]<<16)|(reply[i+1]<<8)|reply[i+2];
@@ -152,26 +156,33 @@ static void control(int fd, const char *mode, unsigned value) {
         else puts("DSC mode read unavailable.");
         return;
     }
-    current=read_mode(fd);
-    // ponytail: DSC_25's LMV (0F1480) lacks DB32, so its readback is the DSC flag, not the clutch.
-    if (current<0 && index==0x0f1860) { current=dsc_mode(fd); dsc=1; }
+    // DSC_25 (F-series) drops LMV control with the engine off, so it switches with the engine running.
+    fseries=index==0x0f1860;
+    current=fseries ? lmv_mode(fd) : read_mode(fd);
     if (!strcmp(mode,"--status")) {
-        if (current<0) puts("Transfer case mode unavailable.");
-        else printf("%s reports %s.\n",dsc?"DSC":"Transfer case",current?"AWD":"RWD");
+        puts(current<0 ? (fseries?"Start the engine to read the transfer case.":"Transfer case mode unavailable.") :
+             current?"Transfer case reports AWD.":"Transfer case reports RWD.");
         return;
     }
     if (value && index!=0x0f2850) { puts("Cycle the ignition to restore AWD on this DSC."); return; }
-    if (current<0) { puts("Transfer case mode unavailable."); return; }
-    if (!parked(fd)) { puts("Needs ignition on, engine off, stationary, and confirmed Park."); return; }
+    if (current<0) { puts(fseries?"Start the engine to read the transfer case.":"Transfer case mode unavailable."); return; }
+    if (!parked(fd,fseries)) {
+        puts(fseries?"Needs engine running, stationary, and confirmed Park.":"Needs ignition on, engine off, stationary, and confirmed Park.");
+        return;
+    }
     {
         const unsigned char request[]={0x2e,0xdb,0xe1,(unsigned char)value}, ack[]={0x6e,0xdb,0xe1};
+        const struct timespec pause={0,250000000};
         n=exchange(fd,0x29,request,4,ack,3,reply,sizeof reply,2400,&negative);
-        if (n>=3) {
-            current=dsc ? dsc_mode(fd) : read_mode(fd);
-            if (current==(int)value) printf("%s confirms %s.\n",dsc?"DSC":"Transfer case",value?"AWD":"RWD");
-            else puts("DSC accepted. Transfer case mode is unconfirmed.");
-        } else if (n==-2) printf("DSC refused this request (NRC %02X).\n",negative);
-        else puts("DSC request could not be confirmed.");
+        if (n==-2) { printf("DSC refused this request (NRC %02X).\n",negative); return; }
+        // DSC_25 acknowledged after more than 2 s on the car, so read back even without an ack.
+        for (i=0;i<8;++i) {
+            current=fseries ? lmv_mode(fd) : read_mode(fd);
+            if (current==(int)value) break;
+            nanosleep(&pause,0);
+        }
+        if (current==(int)value) puts(value?"Transfer case confirms AWD.":"Transfer case confirms RWD.");
+        else puts(n>=3?"DSC accepted. Transfer case mode is unconfirmed.":"DSC request could not be confirmed.");
     }
 }
 #endif
