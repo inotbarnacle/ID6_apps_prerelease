@@ -106,6 +106,14 @@ static int read_mode(int fd) {
     return -1;
 }
 
+// DSC LMV_FUNKTION (0xDBE1): 1 = xDrive active, 0 = rear-wheel drive until ignition off.
+static int dsc_mode(int fd) {
+    const unsigned char req[]={0x22,0xdb,0xe1}, ack[]={0x62,0xdb,0xe1};
+    unsigned char reply[64];
+    unsigned negative;
+    return exchange(fd,0x29,req,3,ack,3,reply,sizeof reply,800,&negative)>=4 && reply[3]<=1 ? reply[3] : -1;
+}
+
 static int parked(int fd) {
     const unsigned char speed[]={1,0x0d}, speed_ack[]={0x41,0x0d};
     const unsigned char gear[]={0x22,0xda,0x2e}, gear_ack[]={0x62,0xda,0x2e};
@@ -126,6 +134,7 @@ static void control(int fd, const char *mode, unsigned value) {
     int n=exchange(fd,0x29,id,3,id_ack,3,reply,sizeof reply,800,&negative);
     unsigned index=0, i;
     int current;
+    int dsc=0;
     if (n>=6 && n<=10) {
         for (i=3;i<(unsigned)n-3;++i) if (reply[i]) break;
         if (i==(unsigned)n-3) index=(reply[i]<<16)|(reply[i+1]<<8)|reply[i+2];
@@ -133,7 +142,7 @@ static void control(int fd, const char *mode, unsigned value) {
     if (n == -2) { printf("DSC identification refused (NRC %02X).\n",negative); return; }
     if (n < 0) { puts("No DSC reply at 0x29. Check the diagnostic gateway."); return; }
     if (!index) { puts("DSC replied with an unrecognized identification format."); return; }
-    if (index!=0x0f2510 && index!=0x0f2850) {
+    if (index!=0x0f2510 && index!=0x0f2850 && index!=0x0f1860) {
         printf("DSC %06X is outside the supported control list.\n",index);
         return;
     }
@@ -144,8 +153,11 @@ static void control(int fd, const char *mode, unsigned value) {
         return;
     }
     current=read_mode(fd);
+    // ponytail: DSC_25's LMV (0F1480) lacks DB32, so its readback is the DSC flag, not the clutch.
+    if (current<0 && index==0x0f1860) { current=dsc_mode(fd); dsc=1; }
     if (!strcmp(mode,"--status")) {
-        puts(current<0?"Transfer case mode unavailable.":current?"Transfer case reports AWD.":"Transfer case reports RWD.");
+        if (current<0) puts("Transfer case mode unavailable.");
+        else printf("%s reports %s.\n",dsc?"DSC":"Transfer case",current?"AWD":"RWD");
         return;
     }
     if (value && index!=0x0f2850) { puts("Cycle the ignition to restore AWD on this DSC."); return; }
@@ -155,8 +167,8 @@ static void control(int fd, const char *mode, unsigned value) {
         const unsigned char request[]={0x2e,0xdb,0xe1,(unsigned char)value}, ack[]={0x6e,0xdb,0xe1};
         n=exchange(fd,0x29,request,4,ack,3,reply,sizeof reply,2400,&negative);
         if (n>=3) {
-            current=read_mode(fd);
-            if (current==(int)value) puts(value?"Transfer case confirms AWD.":"Transfer case confirms RWD.");
+            current=dsc ? dsc_mode(fd) : read_mode(fd);
+            if (current==(int)value) printf("%s confirms %s.\n",dsc?"DSC":"Transfer case",value?"AWD":"RWD");
             else puts("DSC accepted. Transfer case mode is unconfirmed.");
         } else if (n==-2) printf("DSC refused this request (NRC %02X).\n",negative);
         else puts("DSC request could not be confirmed.");
