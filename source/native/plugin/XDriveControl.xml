@@ -28,7 +28,7 @@
       </hmiState>
       <hmiState id="101" parentId="100" text="Confirm rear-wheel drive">
         <components>
-          <label id="204" text="Ignition on, engine off, in Park. Set the parking brake." />
+          <label id="204" text="In Park, parking brake set. Engine off, or running on F-series DSC_25." />
           <button id="205" action="22" text="Confirm rear-wheel drive" />
           <label id="206" model="50" />
         </components>
