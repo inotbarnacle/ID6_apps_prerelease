@@ -10,7 +10,8 @@
 
 static inline pid_t launch(const char *const *args,int output) {
     pid_t child=-1;
-    char library_path[] = "LD_LIBRARY_PATH=/lib:/usr/lib:/boot/lib";
+    // /opt/sys/lib holds the DSI libraries the workers' MOST fallback opens.
+    char library_path[] = "LD_LIBRARY_PATH=/lib:/usr/lib:/boot/lib:/opt/sys/lib";
     char *environment[] = {library_path, 0};
     int error;
 #ifdef __QNX__

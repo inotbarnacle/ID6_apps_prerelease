@@ -1,3 +1,4 @@
+#include "gateway_host.h"
 #include "plugin_factory.h"
 #include "diagnostic_worker.h"
 #include "dme_descriptions.h"
@@ -8,7 +9,7 @@
 namespace {
 const unsigned kCodesPollKey = 0x4543504cu;
 const unsigned kCodePageSize = 4;
-const char kCodesGateway[] = "169.254.21.3";
+const char kCodesGateway[] = GATEWAY_HOST;
 const char kEngineWorker[] = "/var/opt/hmi/data/ID5/Plugins/EngineCodes/engine-codes-qnx";
 
 void format_code_line(char* text, size_t size, const char* line, int length, char* detail, size_t detail_size) {

@@ -5,7 +5,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-enum { BD_BOOST, BD_AFR, BD_TIMING, BD_IAT, BD_TRANS, BD_RAIL, BD_OIL, BD_COOLANT,
+enum { BD_BOOST, BD_OIL_TEMP, BD_TIMING, BD_IAT, BD_TRANS, BD_RAIL, BD_OIL, BD_COOLANT,
 #ifdef PERF_LAB
        BD_ETHANOL,
 #endif
@@ -16,7 +16,7 @@ typedef struct {
     uint32_t seq;
     unsigned demo, valid;
     uint64_t sent_ms; /* sender CLOCK_MONOTONIC, shared by processes on the same QNX node */
-    double value[BD_COUNT]; /* psi, gasoline-equivalent AFR, degrees, C, C, bar, bar, C */
+    double value[BD_COUNT]; /* psi, C, degrees, C, C, bar, bar, C */
     unsigned age_ms[BD_COUNT];
 } bd_frame;
 uint64_t bd_mono_ms(void);

@@ -5,11 +5,11 @@ These are the reference Gen 1 B58/340i candidates in the current source. They ar
 | Display | ECU | DID or PID | Reference conversion |
 | --- | --- | --- | --- |
 | Boost | DME `12` | `4205` and `4201` | Two big-endian bytes each. Absolute kPa is raw ÷ 128, ambient kPa is raw ÷ 256. The collector subtracts ambient and converts to psi. |
-| AFR | DME `12` | `5889` | Two bytes. Lambda is raw × 16 ÷ 65535, then converted to gasoline-equivalent AFR. |
+| Oil temperature | DME `12` | `4402` | Two bytes. Temperature after the oil filter is raw × 0.75 − 48 °C. Compare it with the car's oil-temperature display before trusting the scale. |
 | Ignition timing | DME `12` | `4A49` | Two signed big-endian bytes ÷ 10. The reference `FFFF` was ambiguous and stays blank. |
 | Intake air | DME `12` | `580F` | One byte, raw × 0.75 − 48 °C. `FF` is rejected. |
 | Transmission temperature | EGS `18` | `DA12` | Two big-endian bytes, raw − 48 °C. |
-| Rail pressure | DME `12` | `56D7` | Two big-endian bytes, raw ÷ 50 bar. |
+| Fuel pressure | DME `12` | `56D7` | Two big-endian bytes, raw ÷ 50 bar. Shown as fuel pressure. |
 | Oil pressure | DME `12` | `586F` | Two big-endian bytes, raw ÷ 1000 bar. |
 | Coolant temperature | DME `12` | `4300` | Two big-endian bytes, raw ÷ 10 − 273.15 °C. |
 | ShiftDeck RPM | DME `12` | OBD `01 0C` | Two big-endian bytes ÷ 4. |

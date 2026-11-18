@@ -1,3 +1,4 @@
+#include "gateway_host.h"
 #include "plugin_factory.h"
 #include "diagnostic_worker.h"
 #include "drive_frame.h"
@@ -228,7 +229,7 @@ public:
         reap();
         uint64_t now=bd_mono_ms();
         if (visible_ && child_<=0 && now>=retry_at_) {
-            const char* args[]={kShiftWorker,"--host","169.254.21.3",0};
+            const char* args[]={kShiftWorker,"--host",GATEWAY_HOST,0};
             child_=launch(args,-1);
             retry_at_=now+1000;
         }

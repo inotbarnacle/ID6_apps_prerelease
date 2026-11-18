@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include "gauge_core.h"
+#include "dial_scales.h"
 #include <ctype.h>
 #include <errno.h>
 #include <math.h>
@@ -24,6 +25,7 @@ int bd_decode_did(unsigned did, const unsigned char *p, size_t n, double *out) {
     switch (did) {
     case 0x4201: x = r / 256.0; lo = 40; hi = 115; break; /* ambient kPa */
     case 0x4205: x = r / 128.0; lo = 20; hi = 450; break; /* absolute kPa */
+    case 0x4402: x = r * 0.75 - 48; lo = -48; hi = 160; break; /* oil temp after filter, C */
     case 0x5889: x = r * 16.0 / 65535.0; lo = .5; hi = 2; break; /* lambda */
     case 0x4a49:
         /* This car returned FFFF. It can represent signed -0.1 or an unavailable
@@ -126,7 +128,7 @@ int bd_parse(const char *data, size_t len, bd_frame *out) {
 }
 
 int bd_is_fresh(const bd_frame *f, unsigned i, uint64_t elapsed) {
-    unsigned limit = i==BD_IAT || i==BD_TRANS || i==BD_COOLANT ? BD_TEMP_STALE_MS
+    unsigned limit = i==BD_OIL_TEMP || i==BD_IAT || i==BD_TRANS || i==BD_COOLANT ? BD_TEMP_STALE_MS
                    : BD_STALE_MS;
     #ifdef PERF_LAB
     if (i == BD_ETHANOL) limit = 6500;
@@ -137,13 +139,13 @@ int bd_is_fresh(const bd_frame *f, unsigned i, uint64_t elapsed) {
 
 double bd_display_value(unsigned i, double x, int metric) {
     if (i == BD_BOOST && metric) return x / 14.5037738;
-    if ((i == BD_IAT || i == BD_TRANS || i == BD_COOLANT) && !metric) return x * 1.8 + 32;
+    if ((i == BD_OIL_TEMP || i == BD_IAT || i == BD_TRANS || i == BD_COOLANT) && !metric) return x * 1.8 + 32;
     if ((i == BD_RAIL || i == BD_OIL) && !metric) return x * 14.5037738;
     return x;
 }
 const char *bd_unit(unsigned i, int metric) {
     if (i == BD_BOOST || i == BD_RAIL || i == BD_OIL) return metric ? "bar" : "psi";
-    if (i == BD_AFR) return "AFR (gas eq.)";
+    if (i == BD_OIL_TEMP) return metric ? "C" : "F";
     if (i == BD_TIMING) return "deg BTDC (cyl 1)";
 #ifdef PERF_LAB
     if (i == BD_ETHANOL) return "%";
@@ -151,14 +153,12 @@ const char *bd_unit(unsigned i, int metric) {
     return metric ? "C" : "F";
 }
 int bd_bar(unsigned i, double x) {
-    static const double lo[BD_COUNT] = {0, 7, -30, -20, -20, 0, 0, -20};
-    static const double hi[BD_COUNT] = {45, 25, 50, 100, 160, 300, 8, 130};
     double y;
     if (i >= BD_COUNT || !isfinite(x)) return 0;
 #ifdef PERF_LAB
     if (i == BD_ETHANOL) return x < 0 ? 0 : x >= 100 ? 1000 : (int)(x * 10 + .5);
 #endif
-    y = (x - lo[i]) * 1000 / (hi[i] - lo[i]);
+    y = (x - kDialScales[i].minimum) * 1000 / (kDialScales[i].maximum - kDialScales[i].minimum);
     if (y < 0) y = 0;
     if (y > 1000) y = 1000;
     return (int)(y + .5);

@@ -1,3 +1,4 @@
+#include "gateway_host.h"
 #include "plugin_factory.h"
 #include "diagnostic_worker.h"
 #include <stdio.h>
@@ -76,7 +77,7 @@ class MhdMaps : public bmw::PluginApp {
         resultModel_=49u+Function;
 #endif
 #endif
-        const char* args[]={kMapWorker,"--host","169.254.21.3",mode,argument,0};
+        const char* args[]={kMapWorker,"--host",GATEWAY_HOST,mode,argument,0};
         if (fcntl(channel[0],F_SETFL,O_NONBLOCK)>=0 &&
             fcntl(channel[0],F_SETFD,FD_CLOEXEC)>=0 && fcntl(channel[1],F_SETFD,FD_CLOEXEC)>=0)
             child_=launch(args,channel[1]);

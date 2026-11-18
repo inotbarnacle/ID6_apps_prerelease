@@ -54,7 +54,7 @@ static void test_parser_boundaries(void) {
 int main(void) {
     /* Actual payload examples in OBDb's 2016 3-Series captures (CC BY-SA 4.0). */
     const unsigned char baro[]={0x63,0xca}, pressure[]={0x31,0xe5}, timing[]={0,0x4e};
-    const unsigned char iat[]={0x82}, lambda[]={0x10,0x4e}, trans[]={0,0x8e};
+    const unsigned char iat[]={0x82}, oil[]={0x00,0xba}, trans[]={0,0x8e}, lambda[]={0x10,0x4e};
     const unsigned char negative_timing[]={0xff,0xce}, invalid[]={0xff,0xff};
     double x;
     bd_frame f, g;
@@ -66,12 +66,13 @@ int main(void) {
       check(0x4a49,near_zero,2,-.2);
       assert(!bd_decode_did(0x4a49,invalid,2,&x));
       assert(!bd_decode_did(0x4a49,signed_min,2,&x)); }
-    check(0x580f,iat,1,49.5); check(0x5889,lambda,2,4174*16.0/65535);
+    check(0x580f,iat,1,49.5); check(0x4402,oil,2,91.5);
+    check(0x5889,lambda,2,4174*16.0/65535);
     check(0xda12,trans,2,94);
     assert(!bd_decode_did(0x4205,baro,1,&x)); assert(!bd_decode_did(0xda12,invalid,2,&x));
-    assert(!bd_decode_did(0x5889,invalid,2,&x)); assert(!bd_decode_did(0xffff,baro,2,&x));
-    { const unsigned dids[]={0x4201,0x4205,0x5889,0x4a49,0x580f,0xda12};
-      const unsigned char *payloads[]={baro,pressure,lambda,timing,iat,trans};
+    assert(!bd_decode_did(0x4402,invalid,2,&x)); assert(!bd_decode_did(0xffff,baro,2,&x));
+    { const unsigned dids[]={0x4201,0x4205,0x4402,0x4a49,0x580f,0xda12};
+      const unsigned char *payloads[]={baro,pressure,oil,timing,iat,trans};
       unsigned i;
       for (i=0;i<sizeof dids / sizeof dids[0];++i) {
           unsigned char extra[3]={0,0,0xaa};

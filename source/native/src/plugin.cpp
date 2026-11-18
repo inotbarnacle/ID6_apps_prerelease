@@ -1,5 +1,6 @@
 // Native NBT EVO RA plugin. Models are touched only on the HMI dispatcher.
 // Network diagnostics run in the separate collector process, never in HmiMain3D.
+#include "gateway_host.h"
 #include "plugin_factory.h"
 #include "gauge_core.h"
 #include "dial_scales.h"
@@ -31,9 +32,43 @@ const unsigned kDataUpdateMessage = 0x40000003u;
 const unsigned kPollKey = 0x4244504cu; // BDPL, private to this app
 const unsigned kActivePollIntervalMs = 25u;
 const unsigned kIdlePollIntervalMs = 250u;
-const char kGateway[] = "169.254.21.3";
+const char kGateway[] = GATEWAY_HOST;
 const char kCollector[] = "/var/opt/hmi/data/ID5/Plugins/BoostDeck/boostdeck-collector-qnx";
 const unsigned kBarCount = sizeof(kDialScales)/sizeof(kDialScales[0]);
+
+/* QNX softfp mangles a double passed through snprintf, so the reading is
+   turned into integers first. The name keeps the string from being drawn as
+   a text id. A degree sign stays attached to the number. */
+static void write_gauge(char *label, size_t n, const char *name, const char *unit,
+                        double shown, int decimals, int signed_plus) {
+    int whole, frac, neg;
+    double mag;
+    const char *gap;
+    char value[32];
+    if (!name) name = "";
+    if (!unit || shown!=shown || shown<=-1000 || shown>=100000) {
+        snprintf(label, n, "%s   --", name);
+        return;
+    }
+    neg = shown < 0;
+    mag = neg ? -shown : shown;
+    gap = (!unit[0] || unit[0]=='\260') ? "" : " ";
+    if (!decimals) {
+        whole = (int)(mag + 0.5);
+        if (neg) snprintf(value, sizeof value, "-%d", whole);
+        else if (signed_plus) snprintf(value, sizeof value, "+%d", whole);
+        else snprintf(value, sizeof value, "%d", whole);
+    } else {
+        whole = (int)mag;
+        frac = (int)((mag - (double)whole) * 10.0 + 0.5);
+        if (frac >= 10) { frac = 0; ++whole; }
+        if (neg) snprintf(value, sizeof value, "-%d.%d", whole, frac);
+        else if (signed_plus) snprintf(value, sizeof value, "+%d.%d", whole, frac);
+        else snprintf(value, sizeof value, "%d.%d", whole, frac);
+    }
+    if (unit[0]) snprintf(label, n, "%s   %s%s%s", name, value, gap, unit);
+    else snprintf(label, n, "%s   %s", name, value);
+}
 #ifdef PERF_LAB
 typedef char dial_count_check[kBarCount + 1 == BD_COUNT ? 1 : -1];
 const unsigned kEthanolFirst = 56100u;
@@ -202,7 +237,8 @@ void BoostDeck::startVisibleCollector() {
 void BoostDeck::selectColor(unsigned color) {
     color_=color;
     char label[48];
-    snprintf(label,sizeof label,"Selected: %s",kColorNames[color_]);
+    (void)color_;
+    snprintf(label,sizeof label,"Heat: green, yellow, red");
     updateModel(110u,bmw::BasicString<char>(label));
     refresh();
 }
@@ -253,16 +289,20 @@ void BoostDeck::refresh() {
         unsigned image = kBarFirst;
         if (received_ && bd_is_fresh(&frame_,i,elapsed)) {
             double x=frame_.value[i];
-            const char *unit_space = *scale.unit ? " " : "";
             double reading = bd_display_value(i,x,0);
             if (i==BD_BOOST && fabs(reading)<0.05) reading=0;
 #ifdef PERF_LAB
+            const char *unit = scale.unit;
+            double shown = reading;
+            if (i==BD_TIMING) unit = "\260";
             if (metric_) {
-                const char* units=i==BD_AFR ? "" : i==BD_TIMING ? "deg" :
-                    i==BD_IAT || i==BD_TRANS || i==BD_COOLANT ? "\260C" : "bar";
-                snprintf(label,sizeof label,"%.1f%s%s",bd_display_value(i,x,1),*units ? " " : "",units);
-            } else snprintf(label,sizeof label,i==BD_RAIL ? "%.0f%s%s" : "%.1f%s%s",reading,unit_space,scale.unit);
+                shown = bd_display_value(i,x,1);
+                if (i==BD_OIL_TEMP || i==BD_IAT || i==BD_TRANS || i==BD_COOLANT) unit = "\260C";
+                else if (i!=BD_TIMING) unit = "bar";
+            }
+            write_gauge(label, sizeof label, scale.name, unit, shown, i==BD_RAIL ? 0 : 1, i==BD_BOOST);
 #else
+            const char *unit_space = *scale.unit ? " " : "";
             const char *prefix = frame_.demo && i==BD_BOOST ? "Demo " : "";
             const char *format = i==BD_BOOST ? "%s%s   %+.1f%s%s"
                                 : i==BD_RAIL ? "%s%s   %.0f%s%s"
@@ -273,16 +313,10 @@ void BoostDeck::refresh() {
             if (fraction<0) fraction=0;
             if (fraction>1) fraction=1;
             unsigned step=static_cast<unsigned>(fraction*kDialSteps+.5);
-            if (step) {
-                const unsigned palette = color_ == kMulticolor ? kMulticolor + i : color_;
-                image += palette*kDialSteps+step;
-            }
+            if (!step) step=1;
+            image += kHeatPalette*kDialSteps+step;
         } else {
-#ifdef PERF_LAB
-            strcpy(label,"--");
-#else
             snprintf(label,sizeof label,"%s   --",scale.name);
-#endif
         }
         if (image!=images_[i]) {
             updateModel(60u+i,bmw::ImageID(image));
@@ -297,7 +331,12 @@ void BoostDeck::refresh() {
     const bool valid = received_ && bd_is_fresh(&frame_,BD_ETHANOL,elapsed) &&
         frame_.value[BD_ETHANOL]>=0 && frame_.value[BD_ETHANOL]<=100;
     char ethanol[128];
-    if (valid) snprintf(ethanol,sizeof ethanol,"%.0f%%",frame_.value[BD_ETHANOL]);
+    if (valid) {
+        int pct = (int)(frame_.value[BD_ETHANOL] + 0.5);
+        if (pct < 0) pct = 0;
+        if (pct > 100) pct = 100;
+        snprintf(ethanol,sizeof ethanol,"+%d%%",pct);
+    }
     else strcpy(ethanol,"--");
     const unsigned step=valid ? static_cast<unsigned>(frame_.value[BD_ETHANOL]*kEthanolSteps/100.+.5) : 0;
     const unsigned ethanolImage=kEthanolFirst+(step ? color_*kEthanolSteps+step : 0);
