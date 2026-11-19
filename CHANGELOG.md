@@ -1,5 +1,7 @@
 # Change notes
 
+- **BoostDeck** adds Oil temperature and Battery voltage tiles in a fifth column, read from the standard OBD-II PIDs `01 5C` and `01 42`. Validated on an F22 M240i (`NBTevo_S19322I`). Layout and background come from `tools/make_boostdeck_extended.py`.
+
 - **Desktop installers v0.7.3 beta** add eleven firmware and framework profiles and manual firmware and display selection when automatic detection cannot read them.
 - **BoostDeck** saves color and units across iDrive restarts. **ShiftDeck** saves units and shift-light RPM.
 

@@ -37,9 +37,18 @@ const char kCollector[] = "/var/opt/hmi/data/ID5/Plugins/BoostDeck/boostdeck-col
 const char kPreferences[] = "/var/opt/hmi/data/ID5/BoostDeck.prefs";
 const unsigned kBarCount = sizeof(kDialScales)/sizeof(kDialScales[0]);
 #ifdef PERF_LAB
-typedef char dial_count_check[kBarCount + 1 == BD_COUNT ? 1 : -1];
+// Generated dial scales, then ethanol, then the extended tiles below.
+typedef char dial_count_check[kBarCount + 3 == BD_COUNT ? 1 : -1];
 const unsigned kEthanolFirst = 56100u;
 const unsigned kEthanolSteps = 20u;
+// Fifth column, laid out by tools/make_boostdeck_extended.py. Bar ranges are in
+// collector units (C and V) and do not change with the display units.
+struct ExtraTile { unsigned index, label_model, image_model, component; double minimum, maximum; };
+const ExtraTile kExtraTiles[] = {
+    {BD_OIL_TEMP, 70u, 72u, 210u, 40, 150},
+    {BD_BATTERY, 71u, 73u, 211u, 11, 15.5},
+};
+const unsigned kExtraCount = sizeof(kExtraTiles)/sizeof(kExtraTiles[0]);
 #else
 typedef char dial_count_check[kBarCount == BD_COUNT ? 1 : -1];
 #endif
@@ -164,6 +173,9 @@ bool BoostDeck::onInit() {
     selectColor(color_);
     bmw::Parcel visible(true);
     for (unsigned i=0;i<kBarCount;++i) setProperty(200u+i,3u,visible);
+#ifdef PERF_LAB
+    for (unsigned t=0;t<kExtraCount;++t) setProperty(kExtraTiles[t].component,3u,visible);
+#endif
     refresh();
     if (fd_>=0) {
         ++poll_generation_;
@@ -194,7 +206,7 @@ void BoostDeck::startVisibleCollector() {
     const DiagnosticGateway gateway("/var/opt/hmi/data/ID5/Plugins/" "BoostDeck" "/gateway-ip.txt");
     const char *args[]={kCollector,"--host",gateway.host(),"--session",
 #ifdef PERF_LAB
-                       "--ethanol",
+                       "--ethanol","--extended",
 #endif
                        0};
     collector_=launch(args,-1);
@@ -310,6 +322,35 @@ void BoostDeck::refresh() {
     if (strcmp(labels_[BD_ETHANOL],ethanol)) {
         updateModel(58u,bmw::BasicString<char>(ethanol));
         strcpy(labels_[BD_ETHANOL],ethanol);
+    }
+    for (unsigned t=0;t<kExtraCount;++t) {
+        const ExtraTile& tile=kExtraTiles[t];
+        const unsigned i=tile.index;
+        char label[128];
+        unsigned image=kBarFirst;
+        if (received_ && bd_is_fresh(&frame_,i,elapsed)) {
+            const double x=frame_.value[i];
+            if (i==BD_BATTERY) snprintf(label,sizeof label,"%.1f V",x);
+            else snprintf(label,sizeof label,"%.1f %s",bd_display_value(i,x,metric_),
+                          metric_ ? "\260C" : "\260F");
+            double fraction=(x-tile.minimum)/(tile.maximum-tile.minimum);
+            if (fraction<0) fraction=0;
+            if (fraction>1) fraction=1;
+            const unsigned step=static_cast<unsigned>(fraction*kDialSteps+.5);
+            if (step) {
+                // Multicolor reuses the first two per-gauge tints.
+                const unsigned palette = color_ == kMulticolor ? kMulticolor + t : color_;
+                image += palette*kDialSteps+step;
+            }
+        } else strcpy(label,"--");
+        if (image!=images_[i]) {
+            updateModel(tile.image_model,bmw::ImageID(image));
+            images_[i]=image;
+        }
+        if (strcmp(label,labels_[i])) {
+            updateModel(tile.label_model,bmw::BasicString<char>(label));
+            strcpy(labels_[i],label);
+        }
     }
 #endif
 }

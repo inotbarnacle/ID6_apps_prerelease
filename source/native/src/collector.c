@@ -386,6 +386,37 @@ static int read_did(struct diag_link *link, unsigned ecu, unsigned did, double *
     return decode_reply(ecu,did,reply,n,value);
 }
 
+#ifdef PERF_LAB
+/* Standard OBD-II PIDs read only with --extended. Each has its own slow
+ * deadline, staggered after the DID temperatures. */
+static const struct { unsigned char pid; unsigned slot, period, first_delay; } obd_pids[] = {
+    {0x5c, BD_OIL_TEMP, 2000, 1400}, /* engine oil temperature */
+    {0x42, BD_BATTERY, 2000, 1900}   /* control module (battery) voltage */
+};
+
+/* Same contract as read_did: 1 decoded, 0 unavailable or refused, -1 link lost, -3 kept. */
+static int read_pid(struct diag_link *link, unsigned char pid, double *value) {
+    unsigned char request[]={0x01,pid}, prefix[]={0x41,pid}, reply[16];
+    unsigned negative;
+    int decoded, j;
+    int n=diag_link_request(link,0x12,request,2,prefix,2,reply,sizeof reply,500,&negative);
+    if (n==-2) {
+        fprintf(stderr,"ECU 12 PID %02X NRC %02X\n",pid,negative);
+        return 0;
+    }
+    if (n==-3) return -3;
+    if (n<0) return -1;
+    decoded=n>=2 && bd_decode_obd(pid,reply+2,(size_t)n-2,value);
+    if (trace_reads) {
+        fprintf(stderr,"RAW mono_ms=%llu ecu=12 pid=%02X payload=",(unsigned long long)bd_mono_ms(),pid);
+        for (j=2;j<n;++j) fprintf(stderr,"%02X",reply[j]);
+        if (decoded) fprintf(stderr," decoded=%.6f\n",*value);
+        else fprintf(stderr," unavailable reason=invalid-or-out-of-range\n");
+    }
+    return decoded;
+}
+#endif
+
 static int send_frame(int sock, struct sockaddr_in *dest, bd_frame *f, uint64_t *observed) {
     char packet[BD_MAX_PACKET];
     uint64_t now = bd_mono_ms();
@@ -428,13 +459,16 @@ int main(int argc, char **argv) {
     uint64_t due[sizeof dids/sizeof dids[0]] = {0};
     uint64_t failed_until[sizeof dids/sizeof dids[0]] = {0};
 #ifdef PERF_LAB
-    int ethanol=0;
+    int ethanol=0, extended=0;
     uint64_t next_ethanol=0;
+    uint64_t obd_due[sizeof obd_pids/sizeof obd_pids[0]] = {0};
+    uint64_t obd_failed_until[sizeof obd_pids/sizeof obd_pids[0]] = {0};
 #endif
     for (i = 1; i < (unsigned)argc; ++i) {
         if (!strcmp(argv[i], "--demo")) demo = 1;
 #ifdef PERF_LAB
         else if (!strcmp(argv[i], "--ethanol")) ethanol = 1;
+        else if (!strcmp(argv[i], "--extended")) extended = 1;
 #endif
         else if (!strcmp(argv[i], "--session")) session = 1;
         else if (!strcmp(argv[i], "--trace")) trace_reads = 1;
@@ -476,12 +510,13 @@ int main(int argc, char **argv) {
             f.value[BD_COOLANT]=86+3*sin(t);
 #ifdef PERF_LAB
             f.value[BD_ETHANOL]=38;
+            f.value[BD_OIL_TEMP]=98+4*sin(t); f.value[BD_BATTERY]=14.2;
 #endif
             f.valid=(1u<<BD_COUNT)-1;
             for (i=0;i<BD_COUNT;++i) observed[i]=bd_mono_ms();
         } else {
             int full_scan = session ? !scanned : link.fd < 0 && !diag_link_on_most(&link);
-            int up;
+            int up, stopped = 0; /* the DID scan ended early on a failed read */
             diag_link_tick(&link);
             up = diag_link_up(&link);
             if (diag_link_on_most(&link)) f.valid &= ~(1u << BD_TRANS); /* no EGS reads on MOST */
@@ -509,6 +544,7 @@ int main(int argc, char **argv) {
                         f.valid |= kept;
                         if (!bd_is_fresh(&f, i-1, 0)) f.valid &= ~kept;
                     }
+                    stopped = 1;
                     break;
                 }
                 if (rc < 0) {
@@ -519,6 +555,7 @@ int main(int argc, char **argv) {
                         f.valid=0;
                         have_ambient=0;
                     }
+                    stopped = 1;
                     break;
                 }
                 if (i == 0) {
@@ -536,7 +573,36 @@ int main(int argc, char **argv) {
                 /* A tunnel read is slow, so each new value goes out at once. */
                 if (diag_link_on_most(&link) && !send_frame(sock,&dest,&f,observed)) { perror("send frame"); diag_running=0; }
             }
+            (void)stopped; /* only the PERF_LAB build reads after the DID scan */
 #ifdef PERF_LAB
+            for (i=0; extended && up && !stopped && diag_running &&
+                      i < sizeof obd_pids / sizeof obd_pids[0]; ++i) {
+                const unsigned k = obd_pids[i].slot;
+                double v = 0;
+                int rc;
+                if ((session || diag_link_on_most(&link)) && start < obd_failed_until[i]) continue;
+                if (!full_scan && start < obd_due[i]) continue;
+                if (full_scan) obd_due[i]=start+obd_pids[i].first_delay;
+                else {
+                    obd_due[i]+=obd_pids[i].period;
+                    if (obd_due[i]<=start) obd_due[i]=start+obd_pids[i].period;
+                }
+                rc = read_pid(&link, obd_pids[i].pid, &v);
+                if (rc == -3) { obd_failed_until[i]=bd_mono_ms()+2000; break; }
+                if (rc < 0) {
+                    diag_link_drop(&link);
+                    if (diag_link_lost(&link)) { most_lost = 1; diag_running = 0; }
+                    else if (session) obd_failed_until[i]=bd_mono_ms()+2000;
+                    else {
+                        f.valid=0;
+                        have_ambient=0;
+                    }
+                    break;
+                }
+                if (!rc) continue;
+                f.value[k]=v; observed[k]=bd_mono_ms(); f.valid |= 1u << k;
+                if (diag_link_on_most(&link) && !send_frame(sock,&dest,&f,observed)) { perror("send frame"); diag_running=0; }
+            }
             /* Not over MOST: the tunnel's echo check and 2 s wait do not suit this read. */
             if (up && link.fd>=0 && ethanol && start>=next_ethanol && diag_running) {
                 /* Published MHD+ MG1 monitor layout. This is the tune's active
