@@ -62,7 +62,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--local", required=True, type=enet_address, help="computer's wired ENET IPv4")
     parser.add_argument("--gateway", required=True, type=enet_address, help="diagnostic gateway IPv4")
-    parser.add_argument("--ecu", choices=("12", "18"), default="12", help="12 for DME or 18 for EGS")
+    parser.add_argument("--ecu", choices=("12", "18", "19", "29"), default="12", help="12 DME, 18 EGS, 19 transfer case, 29 DSC")
     parser.add_argument("requests", nargs="+", type=read_request)
     args = parser.parse_args()
     if args.local == args.gateway or len(args.requests) > 12:
