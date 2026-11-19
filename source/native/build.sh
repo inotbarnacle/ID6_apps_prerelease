@@ -61,3 +61,8 @@ cxx -Isrc -Isdk -O2 -fno-exceptions -fPIC -shared src/road_jet.cpp out/core.o \
     "$frameworks/libAppFramework.A.so" "$frameworks/libCoreFramework.A.so" -Lout -lm -lsocket \
     -Wl,--allow-shlib-undefined -Wl,-soname,libRoadJet.so -o out/libRoadJet.so
 worker src/road_jet_worker.c out/core.o -o out/road-jet-qnx
+# LaunchDeck reuses out/shift-deck-qnx as its speed worker on its own UDP port.
+c -Isrc -O2 -fPIC -c src/launch_timer.c -o out/launch_timer.o
+cxx -DPERF_LAB -Isrc -Isdk -O2 -fno-exceptions -fPIC -shared src/launch_deck.cpp out/core.o out/launch_timer.o \
+    "$frameworks/libAppFramework.A.so" "$frameworks/libCoreFramework.A.so" -Lout -lm -lsocket \
+    -Wl,--allow-shlib-undefined -Wl,-soname,libLaunchDeck.so -o out/libLaunchDeck.so
