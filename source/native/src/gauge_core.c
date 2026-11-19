@@ -44,13 +44,33 @@ int bd_decode_did(unsigned did, const unsigned char *p, size_t n, double *out) {
     return 1;
 }
 
+/* Mode 01 data bytes only, after the 41 <pid> prefix. SAE J1979 formulas.
+   Read at idle on an F22 M240i (B58 Gen 1, NBTevo_S19322I): 5C 94 -> 108 C,
+   42 39 F8 -> 14.840 V, both agreeing with the car. */
+int bd_decode_obd(unsigned pid, const unsigned char *p, size_t n, double *out) {
+    double x, lo, hi;
+    if (!p || !out) return 0;
+    switch (pid) {
+    case 0x5c: /* engine oil temperature, A - 40 C; the top of the raw range is implausible */
+        if (n != 1) return 0;
+        x = (double)p[0] - 40; lo = -40; hi = 170; break;
+    case 0x42: /* control module voltage, (256 A + B) / 1000 V */
+        if (n != 2) return 0;
+        x = (((unsigned)p[0] << 8) | p[1]) / 1000.0; lo = 6; hi = 18; break;
+    default: return 0;
+    }
+    if (!isfinite(x) || x < lo || x > hi) return 0;
+    *out = x;
+    return 1;
+}
+
 int bd_encode(const bd_frame *f, char *out, size_t len) {
     int n;
     size_t used;
     unsigned i;
     if (!f || !out || !len) return -1;
     #ifdef PERF_LAB
-    const char *version = "NBG4";
+    const char *version = "NBG5"; /* NBG4 plus oil temperature and battery voltage */
 #else
     const char *version = "NBG3";
 #endif
@@ -101,7 +121,9 @@ int bd_parse(const char *data, size_t len, bd_frame *out) {
     memset(&f, 0, sizeof f);
     if (len<5 || !isspace((unsigned char)b[4])) return 0;
     #ifdef PERF_LAB
-    if (!memcmp(b,"NBG4",4)) fields=BD_COUNT;
+    /* NBG4 (nine fields) is not accepted: its layout predates the extended tiles,
+       and the plugin and collector ship together. */
+    if (!memcmp(b,"NBG5",4)) fields=BD_COUNT;
     else
 #endif
     if (!memcmp(b,"NBG3",4)) fields=8;
@@ -130,6 +152,7 @@ int bd_is_fresh(const bd_frame *f, unsigned i, uint64_t elapsed) {
                    : BD_STALE_MS;
     #ifdef PERF_LAB
     if (i == BD_ETHANOL) limit = 6500;
+    if (i == BD_OIL_TEMP || i == BD_BATTERY) limit = BD_TEMP_STALE_MS; /* read every 2 s */
 #endif
     return i < BD_COUNT && (f->valid & (1u << i)) &&
         elapsed < limit && f->age_ms[i] < limit - elapsed;
@@ -138,6 +161,9 @@ int bd_is_fresh(const bd_frame *f, unsigned i, uint64_t elapsed) {
 double bd_display_value(unsigned i, double x, int metric) {
     if (i == BD_BOOST && metric) return x / 14.5037738;
     if ((i == BD_IAT || i == BD_TRANS || i == BD_COOLANT) && !metric) return x * 1.8 + 32;
+#ifdef PERF_LAB
+    if (i == BD_OIL_TEMP && !metric) return x * 1.8 + 32;
+#endif
     if ((i == BD_RAIL || i == BD_OIL) && !metric) return x * 14.5037738;
     return x;
 }
@@ -147,12 +173,22 @@ const char *bd_unit(unsigned i, int metric) {
     if (i == BD_TIMING) return "deg BTDC (cyl 1)";
 #ifdef PERF_LAB
     if (i == BD_ETHANOL) return "%";
+    if (i == BD_BATTERY) return "V";
 #endif
     return metric ? "C" : "F";
 }
 int bd_bar(unsigned i, double x) {
-    static const double lo[BD_COUNT] = {0, 7, -30, -20, -20, 0, 0, -20};
-    static const double hi[BD_COUNT] = {45, 25, 50, 100, 160, 300, 8, 130};
+    /* PERF_LAB entries: ethanol (handled below), oil temperature C, battery V. */
+    static const double lo[BD_COUNT] = {0, 7, -30, -20, -20, 0, 0, -20
+#ifdef PERF_LAB
+                                        , 0, 40, 11
+#endif
+    };
+    static const double hi[BD_COUNT] = {45, 25, 50, 100, 160, 300, 8, 130
+#ifdef PERF_LAB
+                                        , 100, 150, 15.5
+#endif
+    };
     double y;
     if (i >= BD_COUNT || !isfinite(x)) return 0;
 #ifdef PERF_LAB
