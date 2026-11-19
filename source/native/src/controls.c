@@ -164,7 +164,8 @@ static void control(int fd, const char *mode, unsigned value) {
              current?"Transfer case reports AWD.":"Transfer case reports RWD.");
         return;
     }
-    if (value && index!=0x0f2850) { puts("Cycle the ignition to restore AWD on this DSC."); return; }
+    // dsc_25.prg documents DBE1 as writable with 1 = active; restore on 0F1860 is not yet measured.
+    if (value && index!=0x0f2850 && !fseries) { puts("Cycle the ignition to restore AWD on this DSC."); return; }
     if (current<0) { puts(fseries?"Start the engine to read the transfer case.":"Transfer case mode unavailable."); return; }
     if (!parked(fd,fseries)) {
         puts(fseries?"Needs engine running, stationary, and confirmed Park.":"Needs ignition on, engine off, stationary, and confirmed Park.");
