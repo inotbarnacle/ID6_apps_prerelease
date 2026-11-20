@@ -147,12 +147,15 @@ class DriveAppsTest(unittest.TestCase):
 
         current = ident + [("22f150", ["62f1500f1480"]), ("224002", ["62400209c4200f"])]
         targets = ["29", "29", "19", "19", "18"]
-        result = self.run_worker("xdrive-control", ["--drive-mode", "0"],
-            current + [("22da2e", ["62da2e0005"])], targets=targets)
-        self.assertIn("confirmed Park", result)
+        # Measured on a DSC_25 car: DA2E byte 2 is 01 in Park with the engine running, 0a in R/N/D,
+        # and 06 only in Park with the engine off.
+        for gear in ("0005", "000a", "0006"):
+            result = self.run_worker("xdrive-control", ["--drive-mode", "0"],
+                current + [("22da2e", ["62da2e" + gear])], targets=targets)
+            self.assertIn("confirmed Park", result)
 
         result = self.run_worker("xdrive-control", ["--drive-mode", "0"],
-            current + [("22da2e", ["62da2e0006"]), ("010c", ["410c0c80"]), ("010d", ["410d00"]),
+            current + [("22da2e", ["62da2e0001"]), ("010c", ["410c0c80"]), ("010d", ["410d00"]),
                        ("2edbe100", ["6edbe1"]), ("224002", ["62400209c4280f"])],
             targets=targets + ["12", "12", "29", "19"])
         self.assertEqual(result, "Transfer case confirms RWD.\n")

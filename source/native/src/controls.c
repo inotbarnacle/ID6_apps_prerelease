@@ -204,8 +204,10 @@ static int parked(int fd, int running) {
     const unsigned char rpm[]={1,0x0c}, rpm_ack[]={0x41,0x0c};
     unsigned char reply[8];
     unsigned negative;
-    // Same Park read as the 340i parked probe. Missing or different replies block the write.
-    return exchange(fd,0x18,gear,3,gear_ack,3,reply,sizeof reply,350,&negative)==5 && reply[3]==0 && reply[4]==6 &&
+    // EGS DA2E byte 2 is the Park state: 06 in Park with the engine off, 01 in Park with it running
+    // (DSC_25 car, 0a in R/N/D). Missing or different replies block the write.
+    return exchange(fd,0x18,gear,3,gear_ack,3,reply,sizeof reply,350,&negative)==5 && reply[3]==0 &&
+           reply[4]==(running ? 1 : 6) &&
            exchange(fd,0x12,rpm,2,rpm_ack,2,reply,sizeof reply,350,&negative)==4 && ((reply[2]|reply[3])!=0)==running &&
            exchange(fd,0x12,speed,2,speed_ack,2,reply,sizeof reply,350,&negative)==3 && !reply[2];
 }
