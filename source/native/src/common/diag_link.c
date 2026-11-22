@@ -116,11 +116,12 @@ int diag_hsfz_connect(const char *host, unsigned port) {
     return connect_ipv4(candidate,port);
 }
 
-/* Callers supply the UDS service, target, and response prefix. */
-int diag_hsfz_exchange(int fd, unsigned ecu, const unsigned char *uds, unsigned uds_size,
-                       const unsigned char *prefix, unsigned prefix_size,
-                       unsigned char *reply, unsigned reply_size, unsigned timeout_ms,
-                       unsigned *negative) {
+/* Callers supply the UDS service, target, and response prefix. Returns diag_hsfz_exchange's values, plus
+ * -4 when the deadline passed between frames: no reply arrived, but the stream is still in step. */
+static int hsfz_exchange(int fd, unsigned ecu, const unsigned char *uds, unsigned uds_size,
+                         const unsigned char *prefix, unsigned prefix_size,
+                         unsigned char *reply, unsigned reply_size, unsigned timeout_ms,
+                         unsigned *negative) {
     unsigned char request[48] = {0,0,0,0,0,1,0xf4,0};
     unsigned char header[6], body[4096];
     uint64_t deadline = bd_mono_ms() + timeout_ms;
@@ -133,6 +134,8 @@ int diag_hsfz_exchange(int fd, unsigned ecu, const unsigned char *uds, unsigned 
     while (diag_running) {
         uint32_t len;
         unsigned ctrl;
+        /* At a frame boundary: a plain deadline here is a missed reply, not a broken stream. */
+        if (!ready(fd,POLLIN,deadline)) return diag_running && bd_mono_ms() >= deadline ? -4 : -1;
         if (!transfer(fd,header,6,0,deadline)) return -1;
         len=((uint32_t)header[0]<<24)|((uint32_t)header[1]<<16)|((uint32_t)header[2]<<8)|header[3];
         ctrl=((unsigned)header[4]<<8)|header[5];
@@ -154,6 +157,23 @@ int diag_hsfz_exchange(int fd, unsigned ecu, const unsigned char *uds, unsigned 
         return (int)(len-2);
     }
     return -1;
+}
+
+int diag_hsfz_exchange(int fd, unsigned ecu, const unsigned char *uds, unsigned uds_size,
+                       const unsigned char *prefix, unsigned prefix_size,
+                       unsigned char *reply, unsigned reply_size, unsigned timeout_ms,
+                       unsigned *negative) {
+    int n = hsfz_exchange(fd, ecu, uds, uds_size, prefix, prefix_size, reply, reply_size, timeout_ms, negative);
+    return n == -4 ? -1 : n;   /* plain HSFZ callers keep the documented values */
+}
+
+int diag_nrc_busy(unsigned negative) { return negative == 0x21 || negative == 0x25; }
+
+unsigned diag_busy_backoff(uint64_t *until, unsigned *backoff) {
+    *backoff = !*backoff ? DIAG_BUSY_MIN_MS
+             : *backoff >= DIAG_BUSY_MAX_MS / 2 ? DIAG_BUSY_MAX_MS : *backoff * 2;
+    *until = bd_mono_ms() + *backoff;
+    return *backoff;
 }
 
 /* A DSI send has no timeout, so once MOST is in use SIGALRM's default action bounds every loop and the
@@ -265,6 +285,7 @@ int diag_link_up(struct diag_link *l) {
         if (!session || l->lock >= 0) {
             l->fd = diag_hsfz_connect(l->cfg.host, l->cfg.port);
             l->hsfz_fails = l->fd < 0 ? l->hsfz_fails+1 : 0;
+            l->hsfz_timeouts = 0;
             if (l->fd >= 0) l->hsfz_seen = 1;
             if (l->fd < 0 && session) {
                 release_gateway(&l->fd, &l->lock);
@@ -325,7 +346,18 @@ int diag_link_request(struct diag_link *l, unsigned ecu, const unsigned char *ud
     *negative = 0;
     if (l->on_most) return most_request_link(l, ecu, uds, n, prefix, pn, reply, cap, timeout_ms, negative);
     if (l->fd < 0) return -1;
-    return diag_hsfz_exchange(l->fd, ecu, uds, n, prefix, pn, reply, cap, timeout_ms, negative);
+    {
+        int rc = hsfz_exchange(l->fd, ecu, uds, n, prefix, pn, reply, cap, timeout_ms, negative);
+        if (rc != -4) {
+            if (rc != -1) l->hsfz_timeouts = 0;   /* the gateway answered */
+            return rc;
+        }
+        /* A busy DME can miss a deadline while the TCP stream stays in step; reconnecting each time only
+         * adds load. A loop link keeps the connection until several replies are missed in a row. */
+        if (l->cfg.kind == DIAG_LOOP && ++l->hsfz_timeouts < DIAG_HSFZ_TIMEOUTS_TO_DROP) return -3;
+        l->hsfz_timeouts = 0;
+        return -1;
+    }
 }
 
 /* A one-shot worker keeps its lease for the run. */

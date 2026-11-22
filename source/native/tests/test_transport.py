@@ -89,6 +89,14 @@ class TransportTest(unittest.TestCase):
                         if mode == "timeout":
                             time.sleep(.8)
                             return
+                        if mode == "busy":
+                            # Another tester holds the gateway (issues #88, #130).
+                            conn.sendall(frame(2, req))
+                            conn.sendall(frame(1, bytes([ecu, 0xF4, 0x7F, 0x22, 0x21])))
+                            continue
+                        if mode == "slow_first" and len(requests) == 1:
+                            time.sleep(.6)  # one missed reply; the connection stays usable
+                            continue
                         if mode == "oversized":
                             conn.sendall(struct.pack(">IH", 500000, 1))
                             return
@@ -241,6 +249,20 @@ class TransportTest(unittest.TestCase):
         p, _, _ = self.run_collector("timeout")
         self.assertEqual(int(p[3]), 0)
         self.assertLess(time.monotonic()-start, 2)
+
+    def test_busy_gateway_backs_off_instead_of_polling_every_signal(self):
+        packet, requests, trace = self.run_collector("busy", ("--trace",), cycles=12)
+        self.assertEqual(int(packet[3]), 0)
+        # Without the back-off the first scan alone sends all nine DID requests.
+        self.assertLessEqual(len(requests), 3)
+        self.assertIn("BUSY NRC 21 backoff_ms=250", trace)
+
+    def test_one_missed_reply_keeps_the_connection(self):
+        start = time.monotonic()
+        p, requests, _ = self.run_collector("slow_first")
+        self.assertEqual(len(requests), 9)   # the scan continues on the same connection
+        self.assertEqual(int(p[3]), 254)     # boost needs the ambient reference that timed out
+        self.assertLess(time.monotonic()-start, 3)
 
     def test_oversized_frame_is_rejected(self):
         p, _, _ = self.run_collector("oversized")

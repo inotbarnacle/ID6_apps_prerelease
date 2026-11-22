@@ -31,6 +31,7 @@ int boost_alert_tone(void);
 #endif
 
 static int trace_reads = 0;
+static unsigned last_negative = 0;   /* NRC of the last read_did/read_pid, 0 when there was none */
 static void pause_ms(int ms) { while (diag_running && poll(0, 0, ms) < 0 && errno == EINTR) {} }
 
 static int decode_reply(unsigned ecu, unsigned did, const unsigned char *reply, int n, double *value) {
@@ -56,6 +57,7 @@ static int read_did(struct diag_link *link, unsigned ecu, unsigned did, double *
     unsigned negative;
     int n=diag_link_request(link,ecu,request,3,prefix,3,reply,
                             diag_link_on_most(link) ? 64 : sizeof reply,500,&negative);
+    last_negative = n==-2 ? negative : 0;
     if (n==-2) {
         fprintf(stderr,"ECU %02X DID %04X NRC %02X\n",ecu,did,negative);
         return 0;
@@ -91,6 +93,7 @@ static int read_pid(struct diag_link *link, unsigned char pid, double *value) {
     unsigned negative;
     int decoded, j;
     int n=diag_link_request(link,0x12,request,2,prefix,2,reply,sizeof reply,500,&negative);
+    last_negative = n==-2 ? negative : 0;
     if (n==-2) {
         fprintf(stderr,"ECU 12 PID %02X NRC %02X\n",pid,negative);
         return 0;
@@ -171,6 +174,8 @@ int main(int argc, char **argv) {
     uint64_t next_ethanol=0;
     uint64_t obd_due[sizeof obd_pids/sizeof obd_pids[0]] = {0};
     uint64_t obd_failed_until[sizeof obd_pids/sizeof obd_pids[0]] = {0};
+    uint64_t busy_until = 0;   /* another tester holds the gateway: no requests before then */
+    unsigned busy_backoff = 0;
     for (i = 1; i < (unsigned)argc; ++i) {
         if (!strcmp(argv[i], "--demo")) demo = 1;
         else if (!strcmp(argv[i], "--ethanol")) ethanol = 1;
@@ -243,8 +248,10 @@ int main(int argc, char **argv) {
             int up, stopped = 0; /* the DID scan ended early on a failed read */
             diag_link_tick(&link);
             up = diag_link_up(&link);
+            /* Backing off: values already read stay until they age out, nothing new is requested. */
+            if (start < busy_until) stopped = 1;
             if (diag_link_on_most(&link)) f.valid &= ~(1u << BD_TRANS); /* no EGS reads on MOST */
-            for (i=0; up && i < sizeof dids / sizeof dids[0] && diag_running; ++i) {
+            for (i=0; up && !stopped && i < sizeof dids / sizeof dids[0] && diag_running; ++i) {
                 double v = 0;
                 int rc;
                 unsigned kept;
@@ -284,6 +291,20 @@ int main(int argc, char **argv) {
                     stopped = 1;
                     break;
                 }
+                if (!rc && diag_nrc_busy(last_negative)) {
+                    /* The signal is fine; the gateway is taken. Keep what is still fresh and back off. */
+                    unsigned delay = diag_busy_backoff(&busy_until, &busy_backoff);
+                    if (trace_reads) fprintf(stderr,"BUSY NRC %02X backoff_ms=%u\n",last_negative,delay);
+                    if (kept) {   /* as for -3 above */
+                        uint64_t age = bd_mono_ms()-observed[i-1];
+                        f.age_ms[i-1] = age > 999999 ? 999999 : (unsigned)age;
+                        f.valid |= kept;
+                        if (!bd_is_fresh(&f, i-1, 0)) f.valid &= ~kept;
+                    }
+                    stopped = 1;
+                    break;
+                }
+                if (rc > 0) busy_backoff = 0;
                 if (!rc) failed_until[i]=bd_mono_ms()+read_retry_ms;
                 if (i == 0) {
                     have_ambient=rc != 0;
@@ -331,7 +352,14 @@ int main(int argc, char **argv) {
                     }
                     break;
                 }
+                if (!rc && diag_nrc_busy(last_negative)) {
+                    unsigned delay = diag_busy_backoff(&busy_until, &busy_backoff);
+                    if (trace_reads) fprintf(stderr,"BUSY NRC %02X backoff_ms=%u\n",last_negative,delay);
+                    obd_due[i] = 0;   /* not refused: retry when the back-off ends */
+                    break;            /* keep the reading until it ages out */
+                }
                 if (!rc) { f.valid &= ~(1u<<k); continue; }
+                busy_backoff = 0;
                 did_values &= ~(1u << k);
                 if (k == BD_BOOST) {
                     if (!(f.valid & (1u<<BD_BARO)) || bd_mono_ms()-observed[BD_BARO]>=BD_TEMP_STALE_MS)
@@ -343,7 +371,7 @@ int main(int argc, char **argv) {
             }
             // Supply RPM over the existing HSFZ connection only while HUD needs it.
             // Boost is shared from the dashboard's selected signals, with the same freshness rule.
-            if (active >= 0 && start >= next_hud) {
+            if (active >= 0 && start >= next_hud && bd_mono_ms() >= busy_until) {
                 next_hud = bd_mono_ms() + 150;
                 if (link.fd >= 0 && diag_running && gauge_active(HUD_TELEMETRY_PORT)) {
                     double rpm;
@@ -361,7 +389,8 @@ int main(int argc, char **argv) {
                 }
             }
             /* Not over MOST: the tunnel's echo check and 2 s wait do not suit this read. */
-            if (up && link.fd>=0 && ethanol && !diesel && start>=next_ethanol && diag_running) {
+            if (up && link.fd>=0 && ethanol && !diesel && start>=next_ethanol && diag_running &&
+                bd_mono_ms() >= busy_until) {
                 /* Published MHD+ MG1 monitor layout. This is the tune's active
                  * ethanol percentage, distinct from the raw ECA sensor. */
                 const unsigned char query[]={0x2c,0x88,0x01}, prefix[]={0x6c,0x88};
