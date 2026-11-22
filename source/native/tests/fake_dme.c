@@ -34,6 +34,7 @@ static struct {
     size_t slot_n;
     int slot_seq, slot_full, seq, overlaps;
     char seen[FAKE_MAX_REQS][HEX_MAX];
+    uint8_t seen_ecu[FAKE_MAX_REQS];
     int n_seen;
     int stop;
 } g;
@@ -271,7 +272,7 @@ static void on_send(const fake_req_t *r)
     g.slot_n = n;
     g.slot_seq = ++g.seq;
     g.slot_full = 1;
-    if (g.n_seen < FAKE_MAX_REQS) to_hex(g.seen[g.n_seen++], g.slot, n);
+    if (g.n_seen < FAKE_MAX_REQS) { g.seen_ecu[g.n_seen] = w->bytes[6]; to_hex(g.seen[g.n_seen++], g.slot, n); }
     pthread_cond_signal(&g_cv);
     pthread_mutex_unlock(&g_mu);
 }
@@ -355,6 +356,15 @@ int fake_dme_count(const char *hex_prefix)
     int i, n = 0;
     pthread_mutex_lock(&g_mu);
     for (i = 0; i < g.n_seen; i++) n += starts_with(g.seen[i], hex_prefix);
+    pthread_mutex_unlock(&g_mu);
+    return n;
+}
+
+int fake_dme_count_ecu(uint8_t ecu, const char *hex_prefix)
+{
+    int i, n = 0;
+    pthread_mutex_lock(&g_mu);
+    for (i = 0; i < g.n_seen; i++) n += g.seen_ecu[i] == ecu && starts_with(g.seen[i], hex_prefix);
     pthread_mutex_unlock(&g_mu);
     return n;
 }

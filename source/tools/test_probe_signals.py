@@ -4,7 +4,7 @@ import struct
 import threading
 import unittest
 
-from probe_signals import exchange, read_request
+from probe_signals import exchange, read_request, sgbd_lookup
 
 
 def frame(control, data):
@@ -37,6 +37,13 @@ class ProbeTest(unittest.TestCase):
         with client, gateway:
             gateway.sendall(frame(1, bytes.fromhex("12f47f2231")))
             self.assertEqual(exchange(client, 0x12, read_request("22586f"))["nrc"], "31")
+
+
+class LookupTest(unittest.TestCase):
+    def test_sgbd_lookup(self):
+        self.assertEqual(sgbd_lookup("12", "0f 10 90"), "MSD85L6")
+        self.assertEqual(sgbd_lookup("12", "00 00 00 0f 10 90"), "MSD85L6")
+        self.assertIsNone(sgbd_lookup("12", "ff ff ff"))
 
 
 if __name__ == "__main__":

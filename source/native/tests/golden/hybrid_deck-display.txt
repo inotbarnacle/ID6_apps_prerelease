@@ -1,0 +1,15 @@
+== init (9 updates)
+  50 text '--'
+  51 text '--'
+  52 text '--'
+  53 text '--'
+  54 text '--'
+  55 text '--'
+  56 text '--'
+  57 text '--'
+  58 text 'Waiting for battery readings'
+== shown (1 updates)
+  58 text 'Reading the hybrid battery...'
+== next tick (0 updates)
+== hidden (0 updates)
+== shown again (0 updates)

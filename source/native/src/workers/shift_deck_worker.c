@@ -58,7 +58,6 @@ int main(int argc, char **argv) {
     }
     if ((!cfg.host && cfg.transport==DIAG_HSFZ) || parent<=1) return 2;
     if (speed_only) cfg.dsi_name = "launchdeck";
-    if (native_android_auto_installed()) cfg.transport = DIAG_HSFZ;
     diag_link_signals();
     diag_link_init(&link,&cfg);
     const unsigned source = speed_only ? LAUNCH_ACTIVE_PORT : SHIFT_ACTIVE_PORT;
@@ -103,7 +102,7 @@ int main(int argc, char **argv) {
         diag_link_tick(&link);
         ++count;
         elapsed=bd_mono_ms()-start;
-        if (diag_running) poll(0,0,!up ? 25 : elapsed<20 ? (int)(20-elapsed) : 2);
+        if (diag_running) poll(0,0,!up ? 25 : elapsed<20 ? (int)(20-elapsed) : 10);
     }
     lost=diag_link_lost(&link);
     diag_link_close(&link);

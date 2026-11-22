@@ -10,7 +10,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 from PIL import Image, ImageDraw, ImageFont
 
 
-WIDTH, HEIGHT = 380, 200
+WIDTH, HEIGHT = 618, 270  # two tiles, 12-unit gutter, 6-unit grid
 ASSETS = {
     56010: ("OFF", False),
     56011: ("OFF", True),
@@ -32,8 +32,8 @@ def tile(text, active, font):
     gradient.putalpha(mask)
     draw.rounded_rectangle((0, 0, WIDTH - 1, HEIGHT - 1), radius=13,
                            outline="#ff4361" if active else "#4b4d56", width=2)
-    draw.text((WIDTH // 2, 92), text, font=font, anchor="mm", fill="#f7eff0")
-    draw.rounded_rectangle((126, 162, 254, 167), radius=3,
+    draw.text((WIDTH // 2, 124), text, font=font, anchor="mm", fill="#f7eff0")
+    draw.rounded_rectangle((WIDTH // 2 - 64, HEIGHT - 38, WIDTH // 2 + 64, HEIGHT - 33), radius=3,
                            fill="#fff2f4" if active else "#e10a35")
     return gradient
 
@@ -59,12 +59,12 @@ def update_page(path):
     page = app.find("hmiStates/hmiState[@id='103']")
     page.remove(page.find("components"))
     group = ET.SubElement(page, "components")
-    for index, x in enumerate((146, 561)):
+    for index, x in enumerate((0, WIDTH + 12)):
         add_position(ET.SubElement(group, "image", id=str(223 + index),
-                                   model=str(63 + index)), x, 130, WIDTH, HEIGHT, artwork=True)
+                                   model=str(63 + index)), x, 108, WIDTH, HEIGHT, artwork=True)
         add_position(ET.SubElement(group, "button", id=str(218 + index),
-                                   action=str(28 + index), imageModel="65"), x, 130, WIDTH, HEIGHT)
-    add_position(ET.SubElement(group, "label", id="322", model="52"), 35, 360, 1020, 50)
+                                   action=str(28 + index), imageModel="65"), x, 108, WIDTH, HEIGHT)
+    add_position(ET.SubElement(group, "label", id="322", model="52"), 0, 390, 1248, 60)
     ET.indent(xml, space="  ")
     xml.write(path, encoding="utf-8", xml_declaration=True)
 

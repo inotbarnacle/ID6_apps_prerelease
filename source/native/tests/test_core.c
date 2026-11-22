@@ -85,6 +85,9 @@ int main(void) {
       const unsigned char oil[]={0x94}, volts[]={0x39,0xf8};
       const unsigned char oil_max[]={0xd2}, oil_hot[]={0xd3}, volts_low[]={0x17,0x67};
       assert(bd_decode_obd(0x5c,oil,1,&x) && fabs(x-108)<.00001);
+      { const unsigned char lambda[]={0x7f,0xff,0x80,0x00}; /* 0.99997, sensor voltage ignored */
+        assert(bd_decode_obd(0x24,lambda,4,&x) && fabs(x-32767/32768.0)<.00001);
+        assert(!bd_decode_obd(0x24,lambda,2,&x)); }
       assert(bd_decode_obd(0x42,volts,2,&x) && fabs(x-14.84)<.00001);
       assert(bd_decode_obd(0x5c,oil_max,1,&x) && fabs(x-170)<.00001);
       x=123;
@@ -103,6 +106,17 @@ int main(void) {
     assert(bd_decode_obd(0x43, (const unsigned char[]){0x01,0xfe}, 2, &x) && x==200);
     assert(bd_decode_obd(0x44, (const unsigned char[]){0x80,0x00}, 2, &x) && x==1);
     assert(!bd_decode_obd(0x44, (const unsigned char[]){0x80}, 1, &x));
+    /* bd_decode_scaled: the same constants as bd_decode_did's 0x4300 coolant case, by another
+       path -- a 22 F150 identification picking a car's own DID and scale. */
+    assert(bd_decode_scaled(2,1,lambda,2,.1,1,-273.14,-48,150,&x) && fabs(x-(4174*.1-273.14))<.00001);
+    assert(!bd_decode_scaled(2,1,invalid,2,.1,1,-273.14,-48,150,&x));      /* all-ones: unavailable */
+    assert(!bd_decode_scaled(2,1,lambda,1,.1,1,-273.14,-48,150,&x));       /* wrong length */
+    assert(!bd_decode_scaled(3,1,lambda,3,.1,1,-273.14,-48,150,&x));       /* no 3-byte width */
+    assert(!bd_decode_scaled(2,1,lambda,2,.1,0,-273.14,-48,150,&x));       /* div 0 */
+    assert(!bd_decode_scaled(2,1,lambda,2,.1,1,-273.14,-48,10,&x));        /* out of bounds */
+    { const unsigned char hot[]={0xff,0xfe};  /* raw 65534: not the all-ones sentinel */
+      assert(bd_decode_scaled(2,0,hot,2,1,1,0,0,70000,&x) && x==65534); }
+    assert(!bd_decode_scaled(2,0,0,2,1,1,0,0,1,&x) && !bd_decode_scaled(2,0,iat,2,1,1,0,0,1,0));
     test_parser_boundaries();
     memset(&f,0,sizeof f); f.seq=123; f.valid=31; f.sent_ms=1234567890123ULL;
     f.value[0]=18.25; f.value[1]=14.7;

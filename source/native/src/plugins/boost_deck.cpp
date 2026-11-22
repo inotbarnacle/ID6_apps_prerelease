@@ -33,6 +33,8 @@ const unsigned kDataUpdateMessage = 0x40000003u;
 const unsigned kPollKey = 0x4244504cu; // BDPL, private to this app
 const unsigned kActivePollIntervalMs = 25u;
 const unsigned kIdlePollIntervalMs = 250u;
+// Without a new packet the display only changes when a reading goes stale (2.5 s or more).
+const unsigned kStaleCheckMs = 250u;
 const char kCollector[] = "/var/opt/hmi/data/ID5/Plugins/BoostDeck/boostdeck-collector-qnx";
 const char kPreferences[] = "/var/opt/hmi/data/ID5/BoostDeck.prefs";
 const unsigned kBarCount = 9;
@@ -77,6 +79,7 @@ class BoostDeck : public bmw::PluginApp {
     unsigned poll_generation_;
     bd_frame frame_;
     uint64_t received_;
+    uint64_t refreshed_;
     pid_t collector_;
     bool stopping_;
     bool gauges_visible_;
@@ -101,12 +104,15 @@ class BoostDeck : public bmw::PluginApp {
     void restartCollector();
     char labels_[kBarCount][128];
     unsigned images_[kBarCount], dials_[kBarCount];
+    // What each gauge was last built from; an unchanged gauge needs no formatting.
+    struct Shown { bool valid, fresh, circular; unsigned signal, units, color; double value; };
+    Shown shown_[kBarCount];
     void postPoll();
 public:
     BoostDeck(bmw::IDispatcher& d, bmw::BasicString<char> name, unsigned maj, unsigned mn,
               bmw::RHMIInterfaceVersion rhmi, const bmw::Bundle& cfg, const bmw::Bundle& res)
         : bmw::PluginApp(d,name,maj,mn,rhmi,cfg,res), fd_(-1), poll_generation_(0),
-          received_(0), collector_(-1), stopping_(false), gauges_visible_(false),
+          received_(0), refreshed_(0), collector_(-1), stopping_(false), gauges_visible_(false),
           tone_(-1), last_tone_(0), alert_mask_(0),
           retry_at_(0), diesel_(false), editing_(kBarCount) {
         resetDisplay();
@@ -184,7 +190,7 @@ public:
     void reapCollector() {
         if (collector_ <= 0) return;
         pid_t ended = waitpid(collector_, 0, WNOHANG);
-        if (ended == collector_ || (ended < 0 && errno == ECHILD)) {
+        if (ended == collector_ || (ended<0 && errno==ECHILD && kill(collector_,0)!=0 && errno==ESRCH)) {
             collector_ = -1;
             stopping_ = false;
         }
@@ -204,8 +210,8 @@ public:
     }
     void resetDisplay() {
         memset(&frame_,0,sizeof frame_); memset(labels_,0,sizeof labels_);
-        memset(images_,0,sizeof images_);
-        memset(dials_,0,sizeof dials_);
+        memset(images_,0,sizeof images_); memset(dials_,0,sizeof dials_);
+        memset(shown_,0,sizeof shown_);
         received_=0;
     }
     void refresh();
@@ -309,6 +315,8 @@ bool BoostDeck::gaugeVisibility(const bmw::Parcel& event) {
     if (visible) {
         retry_at_=0;
         startVisibleCollector();
+        // The poll loop ends while hidden; a new generation retires any tick still queued.
+        if (fd_>=0) { ++poll_generation_; postPoll(); }
     } else {
         stopCollector();
         stopTone();
@@ -361,7 +369,7 @@ void BoostDeck::updateSettings() {
 void BoostDeck::reapTone() {
     if (tone_>0) {
         pid_t ended=waitpid(tone_,0,WNOHANG);
-        if (ended==tone_ || (ended<0 && errno==ECHILD)) tone_=-1;
+        if (ended==tone_ || (ended<0 && errno==ECHILD && kill(tone_,0)!=0 && errno==ESRCH)) tone_=-1;
     }
 }
 
@@ -425,7 +433,7 @@ bool BoostDeck::invokeDataUpdate(unsigned key, const bmw::Parcel& data) {
     if (!data.readUInt32(generation)) return false;
     if (fd_<0 || generation!=poll_generation_) return true;
     poll();
-    if (fd_>=0 && generation==poll_generation_) postPoll();
+    if (fd_>=0 && generation==poll_generation_ && (gauges_visible_ || collector_>0)) postPoll();
     return true;
 }
 
@@ -433,19 +441,43 @@ void BoostDeck::poll() {
     reapCollector();
     reapTone();
     startVisibleCollector();
-    // A bounded non-blocking drain: at most 8 * 512 bytes per UI tick.
-    char data[BD_MAX_PACKET];
-    for (unsigned n=0;fd_>=0 && n<8;++n) {
-        ssize_t k=recv(fd_,data,sizeof data,0);
+    // A bounded non-blocking drain: at most 8 packets per UI tick. Each accepted packet replaces the one
+    // before it, so what remains is the valid packet with the highest sent_ms (the last one on a tie).
+    // Only that one gets the full parse; the others are ranked by a cheap look at their sent_ms.
+    static char packets[8][BD_MAX_PACKET+1];
+    unsigned long long sent[8];
+    ssize_t sizes[8];
+    unsigned count=0;
+    while (fd_>=0 && count<8) {
+        const ssize_t k=recv(fd_,packets[count],BD_MAX_PACKET,0);
         if (k<=0) break;
+        packets[count][k]=0;
+        sizes[count]=k;
+        sent[count]=0;
+        if (sscanf(packets[count],"%*s %*u %*u %*u %llu",&sent[count])!=1) sent[count]=0;
+        ++count;
+    }
+    bool changed=false;
+    while (gauges_visible_ && !stopping_) {
+        unsigned best=count;
+        for (unsigned n=0;n<count;++n)
+            if (sent[n] && (best==count || sent[n]>=sent[best])) best=n;
+        if (best==count) break;
         bd_frame next;
-        if (gauges_visible_ && !stopping_ && bd_parse(data,static_cast<size_t>(k),&next) &&
+        sent[best]=0; // used up, whether it is accepted or not
+        if (bd_parse(packets[best],static_cast<size_t>(sizes[best]),&next) &&
             next.sent_ms && next.sent_ms<=bd_mono_ms() &&
             (!received_ || next.sent_ms>=received_)) {
             frame_=next; received_=next.sent_ms; // queued UDP does not reset sample age
+            changed=true;
+            break;
         }
     }
-    refresh();
+    const uint64_t now=bd_mono_ms();
+    if (changed || now-refreshed_>=kStaleCheckMs) {
+        refreshed_=now;
+        refresh();
+    }
 }
 
 void BoostDeck::loadAssignments() {
@@ -517,14 +549,21 @@ void BoostDeck::refresh() {
     const bool circular=preferences_.choice[BOOST_STYLE]!=0;
     for (unsigned i=0;i<kBarCount;++i) {
         const unsigned signal=signals_[diesel_][i];
+        const bool fresh=received_ && bd_is_fresh(&frame_,signal,elapsed);
+        const double value=fresh ? frame_.value[signal] : 0;
+        const unsigned units=preferences_.units(signal);
+        const unsigned color=preferences_.color;
+        Shown& shown=shown_[i];
+        if (shown.valid && shown.fresh==fresh && shown.circular==circular && shown.signal==signal &&
+            shown.units==units && shown.color==color && shown.value==value) continue;
+        shown.valid=true; shown.fresh=fresh; shown.circular=circular; shown.signal=signal;
+        shown.units=units; shown.color=color; shown.value=value;
         char label[128];
         const bool vertical=i==kVerticalSlot;
         const unsigned steps=vertical ? kVerticalSteps : kDialSteps;
         unsigned image=circular ? kTransparent : vertical ? kVerticalFirst : kBarFirst;
         unsigned dial=circular ? kDialFirst : kTransparent;
-        if (received_ && bd_is_fresh(&frame_,signal,elapsed)) {
-            const double value=frame_.value[signal];
-            const unsigned units=preferences_.units(signal);
+        if (fresh) {
             const char *unit=bd_unit_selected(signal,units);
             double reading=bd_display_selected(signal,value,units);
             if (signal==BD_BOOST && fabs(reading)<0.05) reading=0;
@@ -532,7 +571,6 @@ void BoostDeck::refresh() {
                 signal==BD_RPM || signal==BD_RAIL || signal==BD_ETHANOL ? 0 : 1;
             snprintf(label,sizeof label,"%.*f%s%s",decimals,reading,
                      *unit && *unit!='%' ? " " : "",unit);
-            const unsigned color=preferences_.color;
             const unsigned palette=color==kMulticolor ? kMulticolor+(i%8) : color;
             const int fill=bd_bar(signal,value);
             if (circular) {

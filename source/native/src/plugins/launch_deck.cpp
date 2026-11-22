@@ -51,7 +51,7 @@ class LaunchDeck : public bmw::PluginApp {
     void reap() {
         if (child_ <= 0) return;
         pid_t ended = waitpid(child_, 0, WNOHANG);
-        if (ended == child_ || (ended < 0 && errno == ECHILD)) child_ = -1;
+        if (ended == child_ || (ended<0 && errno==ECHILD && kill(child_,0)!=0 && errno==ESRCH)) child_ = -1;
     }
     void stopChild() {
         reap();
@@ -75,13 +75,21 @@ class LaunchDeck : public bmw::PluginApp {
         shown_big_[0] = shown_speed_[0] = shown_previous_[0] = shown_last_[0] = shown_third_[0] = '\x7f';
     }
 
-    // Right-aligned glyph row, redrawn only when the text or colour changes.
-    void glyphs(unsigned model, unsigned width, unsigned base, const char* text, char* shown, bool force) {
-        if (!force && !strcmp(text, shown)) return;
+    static unsigned glyphImage(const char* text, unsigned width, unsigned base, unsigned i) {
         unsigned length = static_cast<unsigned>(strlen(text));
         unsigned pad = length < width ? width - length : 0;
-        for (unsigned i = 0; i < width; ++i)
-            updateModel(model + i, bmw::ImageID(base + (i < pad ? kBlank : glyphIndex(text[i - pad]))));
+        return base + (i < pad ? kBlank : glyphIndex(text[i - pad]));
+    }
+    // Right-aligned glyph row. Only the glyphs that differ from the last text are sent, all of them after
+    // forgetShown() or when the colour changes.
+    void glyphs(unsigned model, unsigned width, unsigned base, const char* text, char* shown, bool force) {
+        if (!force && !strcmp(text, shown)) return;
+        const bool known = shown[0] != '\x7f';
+        for (unsigned i = 0; i < width; ++i) {
+            const unsigned image = glyphImage(text, width, base, i);
+            if (force || !known || image != glyphImage(shown, width, base, i))
+                updateModel(model + i, bmw::ImageID(image));
+        }
         snprintf(shown, 8, "%s", text);
     }
     void timeText(uint32_t ms, char* out) {
@@ -162,6 +170,8 @@ class LaunchDeck : public bmw::PluginApp {
         if (show) { retry_at_ = 0; opened_=bd_mono_ms(); }
         else stopChild();
         draw(bd_mono_ms());
+        // The poll loop ends while hidden; a new generation retires any tick still queued.
+        if (show && socket_ >= 0) { ++generation_; postPoll(); }
         return true;
     }
     void updateMode() {
@@ -261,7 +271,7 @@ public:
         }
         if (visible_) feed(now);
         draw(now);
-        postPoll();
+        if (visible_ || child_ > 0) postPoll();
         return true;
     }
 };

@@ -1,6 +1,6 @@
 # Reference signal definitions
 
-These are the reference Gen 1 B58/340i candidates in the current source. They are not a compatibility list for other engines. Requests use HSFZ TCP port 6801 and UDS service `22` unless marked OBD. Positive UDS replies start with `62` plus the requested DID. The table describes the data bytes after that prefix.
+These are the reference Gen 1 B58/340i candidates in the current source. They are not a compatibility list for other engines. [F150.md](F150.md) covers how BoostDeck identifies the car's own DME and, for an SGBD it has calibration for, uses that SGBD's DIDs instead of these. Requests use HSFZ TCP port 6801 and UDS service `22` unless marked OBD. Positive UDS replies start with `62` plus the requested DID. The table describes the data bytes after that prefix.
 
 | Display | ECU | DID or PID | Reference conversion |
 | --- | --- | --- | --- |
@@ -25,7 +25,7 @@ The worker enforces data length, plausibility limits, and freshness. BoostDeck k
 
 WarmDeck uses OBD `01 5C` (oil), `01 05` (coolant) and the existing HSFZ EGS
 `22 DA12` decoder (transmission). Each reading expires independently. MOST can
-supply DME temperatures where supported. The transmission tile requires HSFZ.
+supply the DME and EGS temperatures. A test build read `DA12` over MOST on one car (see [MOST.md](MOST.md)), and the workers now send it there when HSFZ is unreachable. This is untested on a car.
 If any required reading is unavailable, WarmDeck waits for it before showing a
 complete warm-up estimate. The display estimates warm-up from measured trends
 and uses 85/75/40 °C as its own thresholds.
@@ -47,6 +47,6 @@ MHD+ returns a matching echo for accepted map and Max Cooling commands. The menu
 
 Gasoline rail pressure prefers DME `22 56 D7` and falls back to standard OBD `01 23` when a fresh BMW reading is unavailable. The two-byte OBD value is in 0.1 bar units. The F87 field reports describe a refused BMW request and a working diesel-profile rail gauge. [Issue 66](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/66) · [Issue 118](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/118)
 
-On the Y22292I M140i in [issue #108](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/108), the transmission temperature returned with the same gateway configuration as soon as ENET was connected. The owner measured unresolved ARP on OMAP with ENET unplugged. The MOST fallback reaches the DME, while this transmission reading and [the reported BEAMer setup](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/111) require a reachable HSFZ gateway. The A90 in [issue #79](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/79) has a reachable EGS that refuses the temperature DID over HSFZ.
+On the Y22292I M140i in [issue #108](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/108), the transmission temperature returned with the same gateway configuration as soon as ENET was connected. The owner measured unresolved ARP on OMAP with ENET unplugged. The MOST fallback can carry the DME and EGS reads, but this has not been tried on that car. [The reported BEAMer setup](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/111) also falls back through MOST now. The A90 in [issue #79](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/79) has a reachable EGS that refuses the temperature DID over HSFZ.
 
 BoostDeck can continue collecting if another process occupies its optional HUD sharing port. It logs that condition and uses the diagnostic lease for the session. [Issue #122](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/122)

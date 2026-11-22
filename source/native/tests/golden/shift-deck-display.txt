@@ -1,0 +1,60 @@
+== shown, no data yet (14 models changed)
+  53 text 'Shift light at 6500 RPM'
+  54 image 56400
+  55 image 55866
+  56 image 55883
+  57 image 55914
+  60 image 55901
+  61 image 55900
+  62 image 55900
+  63 image 55901
+  64 image 55916
+  68 image 55923
+  70 image 55900
+  71 image 55900
+  72 image 55901
+== first frame (7 models changed)
+  54 image 56448
+  60 image 55893
+  61 image 55890
+  62 image 55890
+  63 image 55890
+  70 image 55893
+  71 image 55891
+== same frame again (0 models changed)
+== rpm and speed change (6 models changed)
+  54 image 56483
+  55 image 55870
+  60 image 55895
+  61 image 55892
+  70 image 55895
+  71 image 55896
+== above the shift point (9 models changed)
+  54 image 56644
+  55 image 55879
+  57 image 55915
+  60 image 55909
+  61 image 55904
+  62 image 55902
+  63 image 55902
+  70 image 55898
+  71 image 55891
+== 0.9 s without data (stale) (9 models changed)
+  54 image 56400
+  55 image 55866
+  57 image 55914
+  60 image 55901
+  61 image 55900
+  62 image 55900
+  63 image 55901
+  70 image 55900
+  71 image 55900
+== hidden (0 models changed)
+== shown again with a frame (7 models changed)
+  54 image 56440
+  60 image 55892
+  61 image 55895
+  62 image 55890
+  63 image 55890
+  70 image 55892
+  71 image 55895

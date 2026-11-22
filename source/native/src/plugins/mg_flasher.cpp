@@ -26,7 +26,7 @@ class MgFlasher : public bmw::PluginApp {
     void reap() {
         if (child_<=0) return;
         const pid_t ended=waitpid(child_,0,WNOHANG);
-        if (ended==child_ || (ended<0 && errno==ECHILD)) child_=-1;
+        if (ended==child_ || (ended<0 && errno==ECHILD && kill(child_,0)!=0 && errno==ESRCH)) child_=-1;
     }
 
     void shutdown() {

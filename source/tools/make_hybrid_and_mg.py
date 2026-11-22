@@ -87,8 +87,8 @@ def mg_menu(images):
         result_label = add(options, "label", id=result, model=result)
         if i == 1:
             layout(add(options, "image", id=201, model=logo_model),
-                   622-logo.width//2, 18, logo.width, logo.height)
-            layout(result_label, 90, 346, 1050, 64)
+                   468, 12, 306, 90)  # centred over the five tiles
+            layout(result_label, 0, 372, 1248, 72)
         for action, label in enumerate(labels, first):
             add(actions, "raAction", id=action)
             if i != 1:
@@ -98,12 +98,12 @@ def mg_menu(images):
             image_id = 59100 + slot
             add(models, "imageIdModel", id=60+slot, imageId=image_id)
             layout(add(options, "button", id=action, action=action, imageModel=60+slot),
-                   90+slot*216, 112, 200, 208)
-            tile = Image.new("RGBA", (200, 208))
+                   slot*252, 120, 240, 240)  # five 240-wide tiles, 12-unit gutters
+            tile = Image.new("RGBA", (240, 240))
             draw = ImageDraw.Draw(tile)
-            draw.rounded_rectangle((1,1,198,206), radius=23, fill="#141719", outline="#485057", width=2)
-            draw.text((100,78), str(slot), font=font(69), anchor="mm", fill="#f1f3f6")
-            draw.text((100,164), "SLOT", font=font(22), anchor="mm", fill="#aab3bb")
+            draw.rounded_rectangle((1,1,238,238), radius=23, fill="#141719", outline="#485057", width=2)
+            draw.text((120,90), str(slot), font=font(69), anchor="mm", fill="#f1f3f6")
+            draw.text((120,190), "SLOT", font=font(22), anchor="mm", fill="#aab3bb")
             tiles.append((image_id, tile))
     write_xml(root, MANIFESTS/"MgFlasher.xml")
     with ZipFile(images, "w", ZIP_DEFLATED) as archive:
@@ -121,21 +121,21 @@ def hybrid_deck(images):
     add(options, "button", id=21, action=21, text="Refresh")
     components = add(state, "components")
     add(models, "imageIdModel", id=60, imageId=59000)
-    layout(add(components, "image", id=200, model=60), 28, 16, 1132, 392)
+    layout(add(components, "image", id=200, model=60), 0, 12, 1248, 396)  # 4 x 2 cards of 303 x 192, 12-unit gutters
 
-    image = Image.new("RGBA", (1132, 392), (14, 22, 30, 255))
+    image = Image.new("RGBA", (1248, 396), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
     values = ("HV charge", "Pack voltage", "Pack current", "Battery coolant",
               "Engine coolant", "12 V module voltage", "Battery health", "Battery power")
     for cell, signal in enumerate((0, 7, 6, 1, 2, 3, 4, 5)):
-        x, y = 12+cell%4*278, 20+cell//4*176
-        draw.rounded_rectangle((x,y,x+262,y+154), radius=10, fill="#1b2935", outline="#3a5265", width=2)
-        draw.rectangle((x+16,y+19,x+55,y+22), fill="#59c6b8")
-        layout(add(components, "label", id=220+signal, text=values[signal]), x+44,y+52,232,38)
+        x, y = cell%4*315, cell//4*204
+        draw.rounded_rectangle((x,y,x+302,y+191), radius=10, fill="#1b2935", outline="#3a5265", width=2)
+        draw.rectangle((x+24,y+24,x+63,y+27), fill="#59c6b8")
+        layout(add(components, "label", id=220+signal, text=values[signal]), x+24,y+42,255,42)
         model(models, 50+signal)
-        layout(add(components, "label", id=240+signal, model=50+signal), x+44,y+101,232,45)
+        layout(add(components, "label", id=240+signal, model=50+signal), x+24,y+108,255,48)
     model(models, 58)
-    layout(add(components, "label", id=250, model=58), 40,417,1110,46)
+    layout(add(components, "label", id=250, model=58), 24,420,1224,45)
     write_xml(root, MANIFESTS/"HybridDeck.xml")
     bitmap = BytesIO()
     image.save(bitmap, format="PNG", optimize=True)

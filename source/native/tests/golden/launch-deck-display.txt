@@ -1,0 +1,79 @@
+== shown, no data yet (26 models changed)
+  50 image 57800
+  51 image 57876
+  52 image 57880
+  60 image 57821
+  61 image 57810
+  62 image 57820
+  63 image 57810
+  64 image 57810
+  70 image 57861
+  71 image 57861
+  72 image 57861
+  75 image 57861
+  76 image 57861
+  77 image 57861
+  78 image 57861
+  79 image 57861
+  80 image 57861
+  81 image 57861
+  82 image 57861
+  83 image 57861
+  84 image 57861
+  85 image 57861
+  86 image 57861
+  87 image 57861
+  88 image 57861
+  89 image 57861
+== first frame (4 models changed)
+  51 image 57870
+  52 image 57896
+  71 image 57853
+  72 image 57851
+== same frame again (0 models changed)
+== rpm and speed change (3 models changed)
+  52 image 57908
+  71 image 57855
+  72 image 57856
+== above the shift point (3 models changed)
+  52 image 57911
+  71 image 57858
+  72 image 57851
+== 0.9 s without data (stale) (4 models changed)
+  51 image 57876
+  52 image 57880
+  71 image 57861
+  72 image 57861
+== hidden (0 models changed)
+== shown again with a frame (4 models changed)
+  51 image 57870
+  52 image 57892
+  71 image 57852
+  72 image 57855
+== first timed run finished (13 models changed)
+  51 image 57874
+  52 image 57911
+  60 image 57841
+  61 image 57830
+  62 image 57840
+  63 image 57831
+  64 image 57837
+  71 image 57856
+  72 image 57858
+  76 image 57850
+  77 image 57860
+  78 image 57851
+  79 image 57857
+== second, slower timed run finished (12 models changed)
+  51 image 57873
+  60 image 57821
+  61 image 57810
+  62 image 57820
+  63 image 57813
+  64 image 57818
+  78 image 57853
+  79 image 57858
+  81 image 57850
+  82 image 57860
+  83 image 57851
+  84 image 57857

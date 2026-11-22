@@ -1,0 +1,326 @@
+== shown, no data yet (92 models changed)
+  110 text 'Gauge color: BMW Orange'
+  120 text 'Pressure: psi'
+  121 text 'Speed: mph'
+  122 text 'Temperature: °F'
+  123 text 'Gauge style: Bars'
+  124 text 'Alert mode: Screen + soft chime'
+  125 text 'Coolant high: Off'
+  126 text 'Oil temp high: Off'
+  127 text 'Oil pressure low: Off'
+  300 text '--'
+  301 text '--'
+  302 text '--'
+  303 text '--'
+  304 text '--'
+  305 text '--'
+  306 text '--'
+  307 text '--'
+  308 text '--'
+  320 image 55000
+  321 image 55000
+  322 image 55000
+  323 image 55000
+  324 image 55000
+  325 image 55000
+  326 image 55000
+  327 image 55000
+  328 image 56100
+  330 image 57000
+  331 image 57000
+  332 image 57000
+  333 image 57000
+  334 image 57000
+  335 image 57000
+  336 image 57000
+  337 image 57000
+  338 image 57000
+  340 text 'Gauge 1: Boost'
+  341 text 'Gauge 2: AFR'
+  342 text 'Gauge 3: Timing'
+  343 text 'Gauge 4: Intake air'
+  344 text 'Gauge 5: Trans temp'
+  345 text 'Gauge 6: Rail pressure'
+  346 text 'Gauge 7: Oil pressure'
+  347 text 'Gauge 8: Coolant'
+  348 text 'Gauge 9: Active ethanol'
+  360 text 'Engine profile: Gasoline'
+  370 text 'Boost'
+  371 text 'AFR'
+  372 text 'Timing'
+  373 text 'Intake air'
+  374 text 'Trans temp'
+  375 text 'Rail press.'
+  376 text 'Oil press.'
+  377 text 'Coolant'
+  378 text 'E%'
+  700 text 'psi'
+  701 text 'bar'
+  702 text 'kPa'
+  720 text 'mph'
+  721 text 'km/h'
+  740 text '°F'
+  741 text '°C'
+  760 text 'Bars'
+  761 text 'Circular dials'
+  780 text 'Screen + soft chime'
+  781 text 'Screen only'
+  800 text 'Off'
+  801 text '220 °F'
+  802 text '225 °F'
+  803 text '230 °F'
+  804 text '235 °F'
+  805 text '240 °F'
+  806 text '245 °F'
+  807 text '250 °F'
+  808 text '255 °F'
+  809 text '260 °F'
+  820 text 'Off'
+  821 text '220 °F'
+  822 text '225 °F'
+  823 text '230 °F'
+  824 text '235 °F'
+  825 text '240 °F'
+  826 text '245 °F'
+  827 text '250 °F'
+  828 text '255 °F'
+  829 text '260 °F'
+  840 text 'Off'
+  841 text '5 psi'
+  842 text '10 psi'
+  843 text '15 psi'
+  844 text '20 psi'
+  845 text '25 psi'
+== first frame (18 models changed)
+  300 text '10.5 psi'
+  301 text '12.5'
+  302 text '8.0 deg'
+  303 text '86.0 °F'
+  304 text '176.0 °F'
+  305 text '1740 psi'
+  306 text '50.8 psi'
+  307 text '194.0 °F'
+  308 text '40%'
+  320 image 55010
+  321 image 55011
+  322 image 55013
+  323 image 55013
+  324 image 55017
+  325 image 55015
+  326 image 55014
+  327 image 55022
+  328 image 56108
+== same values again (0 models changed)
+== boost changes (2 models changed)
+  300 text '12.0 psi'
+  320 image 55011
+== boost changes below the shown precision (0 models changed)
+== frame older than the last one is ignored (0 models changed)
+== three frames queued, the newest wins (2 models changed)
+  300 text '17.0 psi'
+  320 image 55016
+== burst: newer packet first, older after it (20.0 stays) (2 models changed)
+  300 text '20.0 psi'
+  320 image 55018
+== burst: equal sent_ms (the later one, 23.0, wins) (2 models changed)
+  300 text '23.0 psi'
+  320 image 55021
+== burst: valid packet, then a broken one claiming a later time (24.0 stays) (2 models changed)
+  300 text '24.0 psi'
+  320 image 55022
+== burst: a packet from the future is ignored (25.0 stays) (2 models changed)
+  300 text '25.0 psi'
+  320 image 55023
+== pressure to bar (10 models changed)
+  118 text ''
+  120 text 'Pressure: bar'
+  300 text '1.7 bar'
+  305 text '120 bar'
+  306 text '3.5 bar'
+  841 text '0.34 bar'
+  842 text '0.69 bar'
+  843 text '1.03 bar'
+  844 text '1.38 bar'
+  845 text '1.72 bar'
+== temperature to celsius (22 models changed)
+  122 text 'Temperature: °C'
+  303 text '30.0 °C'
+  304 text '80.0 °C'
+  307 text '90.0 °C'
+  801 text '104.4 °C'
+  802 text '107.2 °C'
+  803 text '110.0 °C'
+  804 text '112.8 °C'
+  805 text '115.6 °C'
+  806 text '118.3 °C'
+  807 text '121.1 °C'
+  808 text '123.9 °C'
+  809 text '126.7 °C'
+  821 text '104.4 °C'
+  822 text '107.2 °C'
+  823 text '110.0 °C'
+  824 text '112.8 °C'
+  825 text '115.6 °C'
+  826 text '118.3 °C'
+  827 text '121.1 °C'
+  828 text '123.9 °C'
+  829 text '126.7 °C'
+== gauge style to circular dials (19 models changed)
+  123 text 'Gauge style: Circular dials'
+  320 image 57000
+  321 image 57000
+  322 image 57000
+  323 image 57000
+  324 image 57000
+  325 image 57000
+  326 image 57000
+  327 image 57000
+  328 image 57000
+  330 image 57011
+  331 image 57006
+  332 image 57007
+  333 image 57007
+  334 image 57008
+  335 image 57008
+  336 image 57007
+  337 image 57010
+  338 image 57007
+== colour 3 (10 models changed)
+  110 text 'Gauge color: White'
+  330 image 57050
+  331 image 57045
+  332 image 57046
+  333 image 57046
+  334 image 57047
+  335 image 57047
+  336 image 57046
+  337 image 57049
+  338 image 57046
+== hidden and shown again to reset the sample age (18 models changed)
+  300 text '--'
+  301 text '--'
+  302 text '--'
+  303 text '--'
+  304 text '--'
+  305 text '--'
+  306 text '--'
+  307 text '--'
+  308 text '--'
+  330 image 57001
+  331 image 57001
+  332 image 57001
+  333 image 57001
+  334 image 57001
+  335 image 57001
+  336 image 57001
+  337 image 57001
+  338 image 57001
+== frame 2.3 s old (still fresh) (18 models changed)
+  300 text '1.0 bar'
+  301 text '12.5'
+  302 text '8.0 deg'
+  303 text '30.0 °C'
+  304 text '80.0 °C'
+  305 text '120 bar'
+  306 text '3.5 bar'
+  307 text '90.0 °C'
+  308 text '40%'
+  330 image 57046
+  331 image 57045
+  332 image 57046
+  333 image 57046
+  334 image 57047
+  335 image 57047
+  336 image 57046
+  337 image 57049
+  338 image 57046
+== 0.4 s later: the readings with a 2.5 s limit go stale (10 models changed)
+  300 text '--'
+  301 text '--'
+  302 text '--'
+  305 text '--'
+  306 text '--'
+  330 image 57001
+  331 image 57001
+  332 image 57001
+  335 image 57001
+  336 image 57001
+== hidden (8 models changed)
+  303 text '--'
+  304 text '--'
+  307 text '--'
+  308 text '--'
+  333 image 57001
+  334 image 57001
+  337 image 57001
+  338 image 57001
+== shown again with a frame (18 models changed)
+  300 text '0.6 bar'
+  301 text '12.5'
+  302 text '8.0 deg'
+  303 text '30.0 °C'
+  304 text '80.0 °C'
+  305 text '120 bar'
+  306 text '3.5 bar'
+  307 text '90.0 °C'
+  308 text '40%'
+  330 image 57044
+  331 image 57045
+  332 image 57046
+  333 image 57046
+  334 image 57047
+  335 image 57047
+  336 image 57046
+  337 image 57049
+  338 image 57046
+== back to psi, fahrenheit, bars (50 models changed)
+  120 text 'Pressure: psi'
+  122 text 'Temperature: °F'
+  123 text 'Gauge style: Bars'
+  300 text '9.0 psi'
+  303 text '86.0 °F'
+  304 text '176.0 °F'
+  305 text '1740 psi'
+  306 text '50.8 psi'
+  307 text '194.0 °F'
+  320 image 55104
+  321 image 55107
+  322 image 55109
+  323 image 55109
+  324 image 55113
+  325 image 55111
+  326 image 55110
+  327 image 55118
+  328 image 56168
+  330 image 57000
+  331 image 57000
+  332 image 57000
+  333 image 57000
+  334 image 57000
+  335 image 57000
+  336 image 57000
+  337 image 57000
+  338 image 57000
+  801 text '220 °F'
+  802 text '225 °F'
+  803 text '230 °F'
+  804 text '235 °F'
+  805 text '240 °F'
+  806 text '245 °F'
+  807 text '250 °F'
+  808 text '255 °F'
+  809 text '260 °F'
+  821 text '220 °F'
+  822 text '225 °F'
+  823 text '230 °F'
+  824 text '235 °F'
+  825 text '240 °F'
+  826 text '245 °F'
+  827 text '250 °F'
+  828 text '255 °F'
+  829 text '260 °F'
+  841 text '5 psi'
+  842 text '10 psi'
+  843 text '15 psi'
+  844 text '20 psi'
+  845 text '25 psi'

@@ -4,6 +4,7 @@
 import argparse
 from ipaddress import IPv4Address
 import json
+import os
 import re
 import socket
 import struct
@@ -58,22 +59,36 @@ def exchange(connection, ecu, request):
             return {"reply": reply.hex(" "), "nrc": f"{reply[2]:02X}"}
 
 
+def sgbd_lookup(ecu, data):
+    """Name the SGBD for a 22 F150 reply (last 3 bytes) from f150_table.h; None if unknown."""
+    key = (int(ecu, 16), int.from_bytes(bytes.fromhex(data)[-3:], "big"))
+    table = os.path.join(os.path.dirname(__file__), "..", "native", "src", "common", "f150_table.h")
+    with open(table) as file:
+        for found in re.finditer(r'\{(0x[0-9A-Fa-f]+),\s*(0x[0-9A-Fa-f]+),\s*"([^"]+)"\}', file.read()):
+            if (int(found[1], 16), int(found[2], 16)) == key:
+                return found[3]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--local", required=True, type=enet_address, help="computer's wired ENET IPv4")
     parser.add_argument("--gateway", required=True, type=enet_address, help="diagnostic gateway IPv4")
     parser.add_argument("--ecu", choices=("12", "18", "19", "29"), default="12", help="12 DME, 18 EGS, 19 transfer case, 29 DSC")
-    parser.add_argument("requests", nargs="+", type=read_request)
+    parser.add_argument("--identify", action="store_true", help="read 22 F150 on DME, EGS, transfer case and DSC and name each SGBD")
+    parser.add_argument("requests", nargs="*", type=read_request)
     args = parser.parse_args()
-    if args.local == args.gateway or len(args.requests) > 12:
-        parser.error("use separate local and gateway IPs and at most 12 explicit requests")
+    if args.local == args.gateway or len(args.requests) > 12 or bool(args.requests) == args.identify:
+        parser.error("use separate local and gateway IPs and either --identify or 1-12 explicit requests")
+    jobs = [(ecu, read_request("22f150")) for ecu in ("12", "18", "19", "29")] if args.identify else [(args.ecu, r) for r in args.requests]
     try:
-        for request in args.requests:
-            result = {"ecu": args.ecu, "request": request.hex(" ")}
+        for ecu, request in jobs:
+            result = {"ecu": ecu, "request": request.hex(" ")}
             try:
                 # A separate connection prevents a late response from matching a later read.
                 with socket.create_connection((args.gateway, 6801), timeout=2, source_address=(args.local, 0)) as connection:
-                    result.update(exchange(connection, int(args.ecu, 16), request))
+                    result.update(exchange(connection, int(ecu, 16), request))
+                if args.identify and "data" in result:
+                    result["sgbd"] = sgbd_lookup(ecu, result["data"].replace(" ", ""))
             except TimeoutError as error:
                 result["error"] = str(error)
             print(json.dumps(result), flush=True)

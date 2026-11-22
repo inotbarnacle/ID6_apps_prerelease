@@ -50,7 +50,7 @@ class EngineCodes : public bmw::PluginApp {
     void reapWorker() {
         if (codes_pid_<=0) return;
         pid_t ended=waitpid(codes_pid_,0,WNOHANG);
-        if (ended==codes_pid_ || (ended<0 && errno==ECHILD)) codes_pid_=-1;
+        if (ended==codes_pid_ || (ended<0 && errno==ECHILD && kill(codes_pid_,0)!=0 && errno==ESRCH)) codes_pid_=-1;
     }
     void stopWorker() {
         ++poll_generation_;

@@ -26,6 +26,7 @@ GROUPS = {
 }
 COMPACT = {"BoostDeck", "ShiftDeck", "EngineCodes", "MhdMaps", "Bootmod3Suite", "MgFlasher",
            "LaunchDeck", "HudTest", "WarmDeck", "HybridDeck"}
+CONTENT_HEIGHT = 477
 GEOMETRY = re.compile(rb'(<property id=")(9|10|20|21)(" value=")(-?\d+)(")')
 
 
@@ -42,6 +43,27 @@ def compact_xml(data, factor):
         return match[1] + match[2] + match[3] + str(value).encode() + match[5]
 
     return GEOMETRY.sub(scale, data)
+
+
+def center_vertically(data):
+    """Shrunk layouts are shorter than the content area: centre each page's components in it."""
+    root = ET.fromstring(data)
+    for state in root.iter("hmiState"):
+        boxes = []
+        for component in state.findall("components/*"):
+            props = {p.get("id"): p for p in component.findall("./properties/property")}
+            if {"21", "10"} <= props.keys():
+                boxes.append((props["21"], int(props["21"].get("value")), int(props["10"].get("value"))))
+        if not boxes:
+            continue
+        top, bottom = min(y for _, y, _ in boxes), max(y + h for _, y, h in boxes)
+        shift = (CONTENT_HEIGHT - (bottom - top)) // 2 - top
+        for prop, y, _ in boxes:
+            prop.set("value", str(y + max(0, shift)))
+    ET.indent(root, space="  ")
+    out = BytesIO()
+    ET.ElementTree(root).write(out, encoding="utf-8", xml_declaration=True)
+    return out.getvalue()
 
 
 def check_bounds(data, right, app):
@@ -103,7 +125,7 @@ def stage(repo, qnx_fileops, installer):
                     factor = Fraction(width, content_width(1440, 540))
                     target = layouts / f"{panel[0]}x{panel[1]}"
                     target.mkdir(parents=True, exist_ok=True)
-                    scaled = compact_xml(source, factor)
+                    scaled = center_vertically(compact_xml(source, factor))
                     check_bounds(scaled, width, app)
                     (target / xml.name).write_bytes(scaled)
                     if image.is_file():

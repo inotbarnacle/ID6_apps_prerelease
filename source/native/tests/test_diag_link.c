@@ -315,7 +315,7 @@ static void test_most_closed_is_minus1_lost(void)
     finish(&l);
 }
 
-static void test_egs_on_most_is_minus3(void)
+static void test_egs_on_most_is_forwarded(void)
 {
     static const unsigned char rq[] = {0x22,0xda,0x12}, prefix[] = {0x62,0xda,0x12};
     struct diag_link l;
@@ -325,9 +325,45 @@ static void test_egs_on_most_is_minus3(void)
     start(&l, "up", 0, 6801, DIAG_AUTO, DIAG_LOOP, 0);
     CHECK(diag_link_up(&l) == 1);
     t0 = bd_mono_ms();
-    CHECK(diag_link_request(&l, 0x18, rq, 3, prefix, 3, reply, sizeof reply, 500, &negative) == -3);
-    CHECK(bd_mono_ms() - t0 < 100);
-    CHECK(fake_dme_count("22DA12") == 0);
+    CHECK(diag_link_request(&l, 0x18, rq, 3, prefix, 3, reply, sizeof reply, 500, &negative) != -3);
+    CHECK(bd_mono_ms() - t0 < 2000);
+    CHECK(fake_dme_count("22DA12") == 1);
+    CHECK(!diag_link_lost(&l));
+    finish(&l);
+}
+
+/* Nothing in our code filters a request on MOST: every ECU address and every UDS service reaches the
+ * tunnel with that address in the frame, and each reply comes back to the caller. Only the 16-byte request
+ * cap is ours. */
+static void test_most_forwards_every_ecu_and_service(void)
+{
+    static const unsigned char ecus[] = {0x00,0x10,0x12,0x18,0x19,0x29,0x40,0x63,0xA0,0xFF};
+    static const struct { const char *hex; unsigned char rq[16]; unsigned n; } svc[] = {
+        {"224201", {0x22,0x42,0x01}, 3}, {"22F150", {0x22,0xF1,0x50}, 3}, {"1001", {0x10,0x01}, 2},
+        {"2F4A0103", {0x2F,0x4A,0x01,0x03}, 4}, {"3E00", {0x3E,0x00}, 2}, {"190208", {0x19,0x02,0x08}, 3},
+        {"14FFFFFF", {0x14,0xFF,0xFF,0xFF}, 4}, {"2EF19000", {0x2E,0xF1,0x90,0x00}, 4},
+        {"31010203", {0x31,0x01,0x02,0x03}, 4}, {"2C8801", {0x2C,0x88,0x01}, 3},
+        {"0100", {0x01,0x00}, 2}, {"2201020304050607080910111213", {0x22,1,2,3,4,5,6,7,8,9,0x10,0x11,0x12,0x13}, 14},
+    };
+    struct diag_link l;
+    unsigned char reply[64], prefix[1];
+    unsigned negative;
+    size_t e, s, sent = 0;
+    start(&l, "up", 0, 6801, DIAG_AUTO, DIAG_LOOP, 0);
+    CHECK(diag_link_up(&l) == 1);
+    for (e = 0; e < sizeof ecus; ++e)
+        for (s = 0; s < sizeof svc / sizeof svc[0]; ++s) {
+            char hex[64];
+            unsigned i, k = 0;
+            for (i = 0; i < svc[s].n; ++i) k += (unsigned)snprintf(hex + k, sizeof hex - k, "%02X", svc[s].rq[i]);
+            prefix[0] = (unsigned char)(svc[s].rq[0] + 0x40);
+            /* -3 is our own refusal; any reply, even a negative one from the fake, proves it was sent */
+            CHECK(diag_link_request(&l, ecus[e], svc[s].rq, svc[s].n, prefix, 1, reply, sizeof reply, 500,
+                                    &negative) != -3);
+            CHECK(fake_dme_count_ecu(ecus[e], hex) == 1);
+            ++sent;
+        }
+    CHECK(fake_dme_count("") == (int)sent);
     CHECK(!diag_link_lost(&l));
     finish(&l);
 }
@@ -657,7 +693,8 @@ int main(void)
     RUN(test_most_slot_echo);
     RUN(test_most_timeout_is_minus3_and_kept);
     RUN(test_most_closed_is_minus1_lost);
-    RUN(test_egs_on_most_is_minus3);
+    RUN(test_egs_on_most_is_forwarded);
+    RUN(test_most_forwards_every_ecu_and_service);
     RUN(test_most_wait_floor);
     RUN(test_failed_open_retries_after_30s);
     RUN(test_oneshot_failed_open_is_final);

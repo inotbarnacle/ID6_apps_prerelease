@@ -136,7 +136,7 @@ int main(int argc,char **argv) {
     if (argv[6][0]<'0' || argv[6][0]>'9' || argv[6][1]) return 2;
     const unsigned value=(unsigned)(argv[6][0]-'0');
     if (value>(feature==FEATURE_COUNT ? 0 : limits[feature])) return 2;
-    struct diag_link_cfg cfg={argv[2],6801,DIAG_HSFZ,DIAG_ONESHOT,"mgflasher",0};
+    struct diag_link_cfg cfg={argv[2],6801,DIAG_AUTO,DIAG_ONESHOT,"mgflasher",0};
     if (argc==9) {
         char *end;
         const unsigned long port=strtoul(argv[8],&end,10);

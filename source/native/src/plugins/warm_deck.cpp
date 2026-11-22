@@ -28,7 +28,7 @@ class WarmDeck : public bmw::PluginApp {
     void reap() {
         if (child_<=0) return;
         pid_t ended=waitpid(child_,0,WNOHANG);
-        if (ended==child_ || (ended<0 && errno==ECHILD)) {
+        if (ended==child_ || (ended<0 && errno==ECHILD && kill(child_,0)!=0 && errno==ESRCH)) {
             child_=-1;
             stopping_=false;
         }
@@ -67,6 +67,8 @@ class WarmDeck : public bmw::PluginApp {
             retry_=0;
             if (!visible_) stopWorker();
             else tick();
+            // The poll loop ends while hidden; a new generation retires any tick still queued.
+            if (visible_ && socket_>=0) { ++generation_; postPoll(); }
         }
         return true;
     }
@@ -162,7 +164,7 @@ public:
         if (!data.readUInt32(generation)) return false;
         if (generation==generation_ && socket_>=0) {
             tick();
-            postPoll();
+            if (visible_ || child_>0) postPoll();
         }
         return true;
     }

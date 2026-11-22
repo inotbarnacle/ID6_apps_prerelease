@@ -44,6 +44,19 @@ int bd_decode_did(unsigned did, const unsigned char *p, size_t n, double *out) {
     return 1;
 }
 
+int bd_decode_scaled(unsigned width, int is_signed, const unsigned char *p, size_t n,
+                      double mul, double div, double add, double lo, double hi, double *out) {
+    unsigned r; long v; double x;
+    if (!p || !out || (width != 1 && width != 2) || n != width || div == 0) return 0;
+    r = width == 1 ? p[0] : ((unsigned)p[0] << 8) | p[1];
+    if (r == (width == 1 ? 0xFFu : 0xFFFFu)) return 0; /* all-ones: unavailable, as with the DIDs above */
+    v = is_signed ? (width == 1 ? (signed char)r : (short)r) : (long)r;
+    x = (double)v * mul / div + add;
+    if (!isfinite(x) || x < lo || x > hi) return 0;
+    *out = x;
+    return 1;
+}
+
 /* Mode 01 data bytes only, after the 41 <pid> prefix. SAE J1979 formulas.
    Read at idle on an F22 M240i (B58 Gen 1, NBTevo_S19322I): 5C 94 -> 108 C,
    42 39 F8 -> 14.840 V, both agreeing with the car. */
@@ -60,6 +73,9 @@ int bd_decode_obd(unsigned pid, const unsigned char *p, size_t n, double *out) {
     case 0x0e:
         if (n != 1) return 0;
         x = p[0] / 2.0 - 64; lo = -64; hi = 63.5; break;
+    case 0x24: /* wide-range O2 sensor 1: lambda in the first two bytes, its voltage after */
+        if (n != 4) return 0;
+        x = (((unsigned)p[0] << 8) | p[1]) / 32768.0; lo = 0; hi = 2; break;
     case 0x3c: case 0x43: case 0x44:
         if (n != 2) return 0;
         x = ((unsigned)p[0] << 8) | p[1];
@@ -96,7 +112,7 @@ int bd_encode(const bd_frame *f, char *out, size_t len) {
     size_t used;
     unsigned i;
     if (!f || !out || !len) return -1;
-    const char *version = "NBG7";
+    const char *version = "NBG8";
     n = snprintf(out, len, "%s %lu %u %u %llu", version,
                  (unsigned long)f->seq, f->demo, f->valid,
                  (unsigned long long)f->sent_ms);
@@ -143,7 +159,8 @@ int bd_parse(const char *data, size_t len, bd_frame *out) {
     memcpy(b, data, len); b[len] = 0;
     memset(&f, 0, sizeof f);
     if (len<5 || !isspace((unsigned char)b[4])) return 0;
-    if (!memcmp(b,"NBG7",4)) fields=BD_COUNT;
+    if (!memcmp(b,"NBG8",4)) fields=BD_COUNT;
+    else if (!memcmp(b,"NBG7",4)) fields=31;
     else if (!memcmp(b,"NBG6",4)) fields=22;
     else if (!memcmp(b,"NBG5",4)) fields=11;
     else if (!memcmp(b,"NBG4",4)) fields=9;
@@ -156,7 +173,7 @@ int bd_parse(const char *data, size_t len, bd_frame *out) {
     f.seq=(uint32_t)integer;
     if (!unsigned_field(&cursor,1,&integer)) return 0;
     f.demo=(unsigned)integer;
-    if (!unsigned_field(&cursor,(1u<<fields)-1,&integer)) return 0;
+    if (!unsigned_field(&cursor,BD_ALL_MASK(fields),&integer)) return 0;
     f.valid=(unsigned)integer;
     if (!unsigned_field(&cursor,UINT64_MAX,&f.sent_ms)) return 0;
     for (i = 0; i < fields; ++i) {

@@ -22,6 +22,7 @@ void fake_dme_tunnel_refused(int on);                        /* outer 7F 31 31 *
 void fake_dme_drop_link_after(int n_requests);               /* the link is lost at request n, once */
 void fake_dme_hold_ms(int ms);       /* each reply, and the DSI thread's stop, take this long; 0 = 1 ms */
 int  fake_dme_count(const char *hex_prefix);
+int  fake_dme_count_ecu(uint8_t ecu, const char *hex_prefix);   /* as fake_dme_count, for one tunnel ECU address */
 int  fake_dme_overlaps(void);                                /* a request arrived before the last reply */
 
 void fake_dme_give_client(void);                             /* responseMOSTClient */

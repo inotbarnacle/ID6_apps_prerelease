@@ -1,0 +1,7 @@
+== init (0 updates)
+== shown (2 updates)
+  50 image 57300
+  52 text 'Waiting for vehicle data'
+== next tick (0 updates)
+== hidden (0 updates)
+== shown again (0 updates)

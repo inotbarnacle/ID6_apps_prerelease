@@ -25,6 +25,9 @@ static unsigned number(const char *s, unsigned lo, unsigned hi) {
 
 #include "most/dsi_client.h"
 #include "most/most_link.h"
+#include "f150_table.h"
+#include "dme_signal_table.h"
+#include "egs_signal_table.h"
 
 #ifdef __QNX__
 int boost_alert_tone(void);
@@ -33,8 +36,12 @@ int boost_alert_tone(void);
 static int trace_reads = 0;
 static void pause_ms(int ms) { while (diag_running && poll(0, 0, ms) < 0 && errno == EINTR) {} }
 
-static int decode_reply(unsigned ecu, unsigned did, const unsigned char *reply, int n, double *value) {
-    int decoded=bd_decode_did(did,reply+3,(size_t)n-3,value);
+static int decode_reply(unsigned ecu, unsigned did, const unsigned char *reply, int n, double *value,
+                         const struct dme_signal_slot *scale) {
+    int decoded = scale && scale->present
+        ? bd_decode_scaled(scale->width, scale->is_signed, reply+3, (size_t)n-3,
+                           scale->mul, scale->div, scale->add, scale->lo, scale->hi, value)
+        : bd_decode_did(did,reply+3,(size_t)n-3,value);
     int i;
     if (trace_reads) {
         fprintf(stderr,"RAW mono_ms=%llu ecu=%02X did=%04X payload=",
@@ -48,36 +55,94 @@ static int decode_reply(unsigned ecu, unsigned did, const unsigned char *reply, 
     return decoded;
 }
 
-/* 1 decoded, 0 unavailable or refused, -1 link lost, -3 this read failed but the link is kept. */
-static int read_did(struct diag_link *link, unsigned ecu, unsigned did, double *value) {
-    unsigned char request[]={0x22,(unsigned char)(did>>8),(unsigned char)did};
-    unsigned char prefix[]={0x62,request[1],request[2]};
+/* 1 decoded, 0 unavailable or refused, -1 link lost, -3 this read failed but the link is kept.
+ * scale, when its did is non-zero, is read instead of the given did and decoded with
+ * bd_decode_scaled rather than gauge_core.c's dme8ff_r-default bd_decode_did. */
+static int read_did(struct diag_link *link, unsigned ecu, unsigned did, double *value,
+                     const struct dme_signal_slot *scale) {
+    unsigned char request[3], prefix[3];
     unsigned char reply[4094];
     unsigned negative;
-    int n=diag_link_request(link,ecu,request,3,prefix,3,reply,
-                            diag_link_on_most(link) ? 64 : sizeof reply,500,&negative);
+    int n;
+    if (scale && scale->present) did = scale->did;
+    request[0]=0x22; request[1]=(unsigned char)(did>>8); request[2]=(unsigned char)did;
+    prefix[0]=0x62; prefix[1]=request[1]; prefix[2]=request[2];
+    n=diag_link_request(link,ecu,request,3,prefix,3,reply,
+                        diag_link_on_most(link) ? 64 : sizeof reply,500,&negative);
     if (n==-2) {
         fprintf(stderr,"ECU %02X DID %04X NRC %02X\n",ecu,did,negative);
         return 0;
     }
     if (n==-3) return -3;
     if (n<0) return -1;
-    return decode_reply(ecu,did,reply,n,value);
+    return decode_reply(ecu,did,reply,n,value,scale);
 }
 
-/* Query selected standardized channels only. Diesel substitutes Mode 01
- * for unverified gasoline DIDs and reads the ambient reference before boost. */
+/* dids[] index of the EGS transmission-temperature read (DA12 by default; identify_egs may
+ * replace both the DID and its decode, same as identify_dme does for the DME slots). */
+enum { TRANS_SLOT = 5 };
+
+/* Reads 22 F150 on the DME once per connection. A car reporting an SGBD that dme_signal_table.h has a
+ * row for reads only that row's DIDs, with its scaling; a signal the row lacks is read from its PID where
+ * there is one and is otherwise left blank, because nothing says which quantity the default DID would
+ * return on that SGBD. Returns 1 then. An SGBD without a row, an unknown SGBD and a failed read all keep
+ * the dme8ff_r default DIDs, with the PID fallbacks (see obd_pids).
+ * slot_at maps a dme_signal_table.h slot to its dids[] index; TRANS_SLOT is never in this table,
+ * only in egs_signal_table.h (identify_egs). Not read on a car. */
+static int identify_dme(struct diag_link *link, struct dme_signal_slot *scale) {
+    static const unsigned char slot_at[9] = {0,1,2,3,4,6,7,8,9};
+    const unsigned char request[]={0x22,0xF1,0x50}, prefix[]={0x62,0xF1,0x50};
+    unsigned char reply[16];
+    unsigned negative, index, j;
+    const char *sgbd;
+    const struct dme_sgbd_row *row;
+    int n=diag_link_request(link,0x12,request,3,prefix,3,reply,
+                            diag_link_on_most(link) ? 16 : sizeof reply,500,&negative);
+    if (n<6) return 0; /* the 62 F1 50 prefix plus at least a 3-byte index */
+    index=((unsigned)reply[n-3]<<16)|((unsigned)reply[n-2]<<8)|reply[n-1];
+    sgbd=f150_sgbd(0x12,index);
+    row=dme_signal_row(sgbd);
+    if (row) for (j=0; j<9; ++j) if (row->slot[j].present) scale[slot_at[j]]=row->slot[j];
+    return row != 0;
+}
+
+/* Same identification, on the EGS (0x18), for egs_signal_table.h's transmission-temperature
+ * overrides. Also runs over MOST: the tunnel forwards the EGS read (MOST.md). Test build only. */
+static void identify_egs(struct diag_link *link, struct dme_signal_slot *scale) {
+    const unsigned char request[]={0x22,0xF1,0x50}, prefix[]={0x62,0xF1,0x50};
+    unsigned char reply[16];
+    unsigned negative, index;
+    const struct egs_sgbd_row *row;
+    int n=diag_link_request(link,0x18,request,3,prefix,3,reply,sizeof reply,500,&negative);
+    if (n<6) return;
+    index=((unsigned)reply[n-3]<<16)|((unsigned)reply[n-2]<<8)|reply[n-1];
+    row=egs_signal_row(f150_sgbd(0x18,index));
+    if (!row || !row->trans_temp.present) return;
+    scale[TRANS_SLOT].present=row->trans_temp.present; scale[TRANS_SLOT].width=row->trans_temp.width;
+    scale[TRANS_SLOT].is_signed=row->trans_temp.is_signed; scale[TRANS_SLOT].did=row->trans_temp.did;
+    scale[TRANS_SLOT].mul=row->trans_temp.mul; scale[TRANS_SLOT].div=row->trans_temp.div;
+    scale[TRANS_SLOT].add=row->trans_temp.add; scale[TRANS_SLOT].lo=row->trans_temp.lo;
+    scale[TRANS_SLOT].hi=row->trans_temp.hi;
+}
+
+/* Query selected standardized channels only. No engine type is needed. Where the identified SGBD has a
+ * verified DID for a signal (dme_signal_table.h), that DID is read and the PID is only its fallback.
+ * Otherwise four signals are read as standard Mode 01 PIDs first (coolant, intake air, rail pressure,
+ * boost): the diesel DDEs reuse those proprietary DIDs for other quantities, so an unverified DID can
+ * decode to a plausible wrong value. The DID is then read only while the car refuses the PID
+ * (pid_refused). Timing and AFR keep their DID and fall back to the PID when it has no fresh value. */
+enum { PID_ONLY, PID_FIRST, DID_FIRST };
 static const struct {
     unsigned char pid;
-    unsigned slot, diesel_only;
+    unsigned slot, mode;
 } obd_pids[] = {
     {0x33, BD_BARO, 0}, {0x5c, BD_OIL_TEMP, 0}, {0x42, BD_BATTERY, 0},
     {0x0c, BD_RPM, 0}, {0x0d, BD_SPEED, 0}, {0x04, BD_LOAD, 0},
     {0x0b, BD_MAP, 0}, {0x10, BD_MAF, 0}, {0x11, BD_THROTTLE, 0},
     {0x46, BD_AMBIENT, 0}, {0x5e, BD_FUEL_RATE, 0},
     {0x2f, BD_FUEL_LEVEL, 0}, {0x49, BD_ACCELERATOR, 0},
-    {0x05, BD_COOLANT, 0}, {0x0f, BD_IAT, 1}, {0x23, BD_RAIL, 0},
-    {0x0b, BD_BOOST, 1},
+    {0x05, BD_COOLANT, PID_FIRST}, {0x0f, BD_IAT, PID_FIRST}, {0x23, BD_RAIL, PID_FIRST},
+    {0x0b, BD_BOOST, PID_FIRST}, {0x0e, BD_TIMING, DID_FIRST}, {0x24, BD_AFR, DID_FIRST},
     {0x0e, BD_SPARK_ADVANCE, 0}, {0x43, BD_ABS_LOAD, 0},
     {0x06, BD_STFT_B1, 0}, {0x07, BD_LTFT_B1, 0},
     {0x08, BD_STFT_B2, 0}, {0x09, BD_LTFT_B2, 0},
@@ -164,7 +229,13 @@ int main(int argc, char **argv) {
     const unsigned first_delay[] = {900,0,0,0,500,1150,0,0,1700};
     uint64_t due[sizeof dids/sizeof dids[0]] = {0};
     uint64_t failed_until[sizeof dids/sizeof dids[0]] = {0};
+    /* scale[9] is the intercooler-coolant row slot, read apart from dids[] (see below). */
+    struct dme_signal_slot scale[sizeof dids/sizeof dids[0] + 1] = {{0,0,0,0,0,0,0,0,0}};
+    uint64_t next_ic = 0;
     int ethanol=0, diesel=0;
+    unsigned char pid_refused[BD_COUNT] = {0};
+    int no_default_dids = 0; /* the SGBD has a row: only its DIDs are read */
+    const unsigned pid_first_slots = (1u<<BD_BOOST)|(1u<<BD_IAT)|(1u<<BD_RAIL)|(1u<<BD_COOLANT);
     int check_fuel_support=1, fuel_supported=1;
     uint64_t next_hud=0;
     unsigned selected=(1u << 8) - 1;
@@ -177,7 +248,7 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "--extended")) selected |= (1u << BD_OIL_TEMP) | (1u << BD_BATTERY);
         else if (!strcmp(argv[i], "--diesel")) diesel=1;
         else if (!strcmp(argv[i], "--signals") && i+1 < (unsigned)argc)
-            selected=number(argv[++i],1,(1u << BD_COUNT)-1);
+            selected=number(argv[++i],1,BD_ALL_MASK(BD_COUNT));
         else if (!strcmp(argv[i], "--session")) session = 1;
         else if (!strcmp(argv[i], "--trace")) trace_reads = 1;
         else if (!strcmp(argv[i], "--no-trans")) no_trans = 1;
@@ -192,7 +263,6 @@ int main(int argc, char **argv) {
     }
     if (host && demo) { fprintf(stderr, "Choose --host or --demo, never both.\n"); return 2; }
     if (!host && !demo && transport == DIAG_HSFZ) { fprintf(stderr, "--transport hsfz needs --host.\n"); return 2; }
-    if (native_android_auto_installed()) transport = DIAG_HSFZ;
     if (transport == DIAG_MOST) host = 0;
     memset(&cfg, 0, sizeof cfg);
     cfg.host = host; cfg.port = port; cfg.transport = transport; cfg.kind = DIAG_LOOP;
@@ -236,22 +306,28 @@ int main(int argc, char **argv) {
             f.value[BD_STFT_B2]=1.6; f.value[BD_LTFT_B2]=-0.8;
             f.value[BD_LAMBDA_TARGET]=.95; f.value[BD_CAT_TEMP]=580;
             f.value[BD_THROTTLE_TARGET]=46;
-            f.valid=(1u<<BD_COUNT)-1;
+            f.valid=BD_ALL_MASK(BD_COUNT);
+            f.value[BD_IC_COOLANT]=41+2*sin(t);
             for (i=0;i<BD_COUNT;++i) observed[i]=bd_mono_ms();
         } else {
             int full_scan = session ? !scanned : link.fd < 0 && !diag_link_on_most(&link);
             int up, stopped = 0; /* the DID scan ended early on a failed read */
             diag_link_tick(&link);
             up = diag_link_up(&link);
-            if (diag_link_on_most(&link)) f.valid &= ~(1u << BD_TRANS); /* no EGS reads on MOST */
+            if (up && full_scan) {
+                no_default_dids = identify_dme(&link, scale);
+                if (!no_trans) identify_egs(&link, scale);
+            }
             for (i=0; up && i < sizeof dids / sizeof dids[0] && diag_running; ++i) {
                 double v = 0;
                 int rc;
                 unsigned kept;
-                int on_most = diag_link_on_most(&link);
-                if (diesel && dids[i] != 0xda12) continue;
+                if (diesel && i != TRANS_SLOT) continue;
+                if (no_default_dids && i != TRANS_SLOT && !scale[i].present) continue;
+                /* The PID answers for these four slots until the car refuses it. */
+                if (i && (pid_first_slots & (1u << (i-1))) && !pid_refused[i-1] && !scale[i].present) continue;
                 if (!(selected & (1u << (i ? i-1 : BD_BOOST)))) continue;
-                if ((no_trans || on_most) && dids[i] == 0xda12) continue;
+                if (no_trans && i == TRANS_SLOT) continue;
                 if (start < failed_until[i]) continue;
                 if (!full_scan && periods[i] && start < due[i]) continue;
                 if (full_scan) due[i]=start+first_delay[i];
@@ -262,7 +338,7 @@ int main(int argc, char **argv) {
                 /* Preserve values supplied by OBD while retrying the preferred DID. */
                 kept = i ? f.valid & did_values & (1u << (i-1)) : 0;
                 f.valid &= ~kept;
-                rc = read_did(&link, dids[i] == 0xda12 ? 0x18 : 0x12, dids[i], &v);
+                rc = read_did(&link, i == TRANS_SLOT ? 0x18 : 0x12, dids[i], &v, &scale[i]);
                 if (rc == -3) { /* skip it for a while; a value still fresh stays shown */
                     failed_until[i] = bd_mono_ms()+read_retry_ms;
                     if (kept) {
@@ -301,19 +377,37 @@ int main(int argc, char **argv) {
                 /* A tunnel read is slow, so each new value goes out at once. */
                 if (diag_link_on_most(&link) && !send_frame(sock,&dest,&f,observed)) { perror("send frame"); diag_running=0; }
             }
+            /* Intercooler (low-temperature circuit) coolant: only an SGBD row names its DID, there is no PID. */
+            if (up && !stopped && diag_running && !diesel && scale[9].present &&
+                (selected & (1u<<BD_IC_COOLANT)) && start >= next_ic) {
+                double v = 0;
+                const int rc = read_did(&link,0x12,0,&v,&scale[9]);
+                next_ic = bd_mono_ms()+2000;
+                if (rc < 0 && rc != -3) {
+                    diag_link_drop(&link);
+                    if (diag_link_lost(&link)) { most_lost = 1; diag_running = 0; }
+                    stopped = 1;
+                } else if (rc == 1) {
+                    f.value[BD_IC_COOLANT]=v; observed[BD_IC_COOLANT]=bd_mono_ms(); f.valid |= 1u<<BD_IC_COOLANT;
+                } else f.valid &= ~(1u<<BD_IC_COOLANT);
+            }
             for (i=0; up && !stopped && diag_running &&
                       i < sizeof obd_pids / sizeof obd_pids[0]; ++i) {
                 const unsigned k = obd_pids[i].slot;
                 double v = 0;
                 int rc;
-                const unsigned wanted = selected | (diesel && (selected & (1u<<BD_BOOST)) ?
-                                                         (1u<<BD_BARO) : 0);
-                if (!(wanted & (1u<<k)) || (obd_pids[i].diesel_only && !diesel)) continue;
-                const int fallback = !diesel && (k == BD_COOLANT || k == BD_RAIL);
+                /* Boost from Mode 01 is MAP minus the barometric reading. */
+                const unsigned wanted = selected | ((selected & (1u<<BD_BOOST)) ? (1u<<BD_BARO) : 0);
+                if (!(wanted & (1u<<k))) continue;
+                /* DID first where a verified row names the DID; the PID otherwise (see the enum above). */
+                const int did_first = obd_pids[i].mode == DID_FIRST ||
+                                      (obd_pids[i].mode == PID_FIRST && scale[k+1].present);
+                const int fallback = did_first && !diesel;
                 if (fallback && (did_values & f.valid & (1u<<k)) &&
-                    bd_mono_ms()-observed[k] < (k == BD_RAIL ? BD_STALE_MS : BD_TEMP_STALE_MS)) continue;
+                    bd_mono_ms()-observed[k] < (k == BD_RAIL || k == BD_BOOST || k == BD_TIMING || k == BD_AFR ?
+                                                BD_STALE_MS : BD_TEMP_STALE_MS)) continue;
                 if (start < obd_due[i] || start < obd_failed_until[i]) continue;
-                if (full_scan && i && !obd_due[i] && !fallback) {
+                if (full_scan && i && !obd_due[i] && !fallback && !(obd_pids[i].mode == PID_FIRST && !did_first)) {
                     obd_due[i]=start+100+i*65;
                     continue;
                 }
@@ -331,13 +425,19 @@ int main(int argc, char **argv) {
                     }
                     break;
                 }
-                if (!rc) { f.valid &= ~(1u<<k); continue; }
+                pid_refused[k] = !rc && obd_pids[i].mode == PID_FIRST && !did_first;
+                if (!rc) {
+                    f.valid &= ~(1u<<k);
+                    if (fallback || pid_refused[k]) obd_due[i]=bd_mono_ms()+10000; /* likely unsupported here */
+                    continue;
+                }
                 did_values &= ~(1u << k);
                 if (k == BD_BOOST) {
                     if (!(f.valid & (1u<<BD_BARO)) || bd_mono_ms()-observed[BD_BARO]>=BD_TEMP_STALE_MS)
                         continue;
                     v=(v-f.value[BD_BARO])*.145037738;
                 }
+                if (k == BD_AFR) v *= 14.7; /* lambda -> gasoline-equivalent AFR, as for the DID */
                 f.value[k]=v; observed[k]=bd_mono_ms(); f.valid |= 1u << k;
                 if (diag_link_on_most(&link) && !send_frame(sock,&dest,&f,observed)) { perror("send frame"); diag_running=0; }
             }

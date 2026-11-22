@@ -26,7 +26,7 @@ class HybridDeck : public bmw::PluginApp {
     void reap() {
         if (child_<=0) return;
         const pid_t ended=waitpid(child_,0,WNOHANG);
-        if (ended==child_ || (ended<0 && errno==ECHILD)) {
+        if (ended==child_ || (ended<0 && errno==ECHILD && kill(child_,0)!=0 && errno==ESRCH)) {
             child_=-1;
             stopping_=false;
         }
@@ -128,6 +128,8 @@ class HybridDeck : public bmw::PluginApp {
             visible_=visible;
             if (visible_) refresh(data);
             else stopWorker();
+            // The poll loop ends while hidden; a new generation retires any tick still queued.
+            if (visible_ && socket_>=0) { ++generation_; postPoll(); }
         }
         return true;
     }
@@ -162,7 +164,7 @@ public:
         if (!data.readUInt32(generation)) return false;
         if (generation==generation_ && socket_>=0) {
             tick();
-            postPoll();
+            if (visible_ || child_>0) postPoll();
         }
         return true;
     }

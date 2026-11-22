@@ -32,22 +32,26 @@ def label(parent, identifier, model):
 def button(parent, identifier, action, text):
     ET.SubElement(parent,'button',id=str(identifier),action=str(action),text=text)
 
+def bar_images(size=(240, 12)):
+    width, height = size
+    for color, fill in enumerate(tuple(fill for _, fill in COLORS) + MULTICOLOR):
+        for step in range(STEPS+1):
+            if color and not step:
+                continue
+            image = Image.new('RGBA',size)
+            draw = ImageDraw.Draw(image)
+            draw.rounded_rectangle((0,0,width-1,height-1),radius=4,fill='#263342')
+            if step:
+                filled = max(6, round(width*step/STEPS))
+                draw.rounded_rectangle((0,0,filled-1,height-1),radius=4,fill=fill)
+            yield FIRST+color*STEPS+step, image
+
 def build_assets():
     with ZipFile(ROOT/'manifests/BoostDeck_ALL_Images.zip','w', compression=ZIP_DEFLATED) as archive:
-        for color, fill in enumerate(tuple(fill for _, fill in COLORS) + MULTICOLOR):
-            for step in range(STEPS+1):
-                if color and not step:
-                    continue
-                image = Image.new('RGBA',(240,12))
-                draw = ImageDraw.Draw(image)
-                draw.rounded_rectangle((0,0,239,11),radius=4,fill='#263342')
-                if step:
-                    width = max(6, round(240*step/STEPS))
-                    draw.rounded_rectangle((0,0,width-1,11),radius=4,fill=fill)
-                data = BytesIO()
-                image.save(data,format='PNG',optimize=True)
-                identifier = FIRST+color*STEPS+step
-                archive.writestr(ZipInfo(f'{identifier}.png'),data.getvalue(),ZIP_DEFLATED)
+        for identifier, image in bar_images():
+            data = BytesIO()
+            image.save(data,format='PNG',optimize=True)
+            archive.writestr(ZipInfo(f'{identifier}.png'),data.getvalue(),ZIP_DEFLATED)
 
 def main():
     root = ET.Element('pluginApps')

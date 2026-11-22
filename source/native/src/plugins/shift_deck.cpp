@@ -28,6 +28,7 @@ class ShiftDeck : public bmw::PluginApp {
     drive_frame frame_;
     unsigned bar_, lights_;
     int rpm_,kph_;
+    unsigned rpm_digits_[4],kph_digits_[3]; // image last sent for each digit; ~0u = unknown
     bool shift_;
     bool metric_;
     double rpm_from_;
@@ -42,7 +43,7 @@ class ShiftDeck : public bmw::PluginApp {
     void reap() {
         if (child_<=0) return;
         pid_t ended=waitpid(child_,0,WNOHANG);
-        if (ended==child_ || (ended<0 && errno==ECHILD)) child_=-1;
+        if (ended==child_ || (ended<0 && errno==ECHILD && kill(child_,0)!=0 && errno==ESRCH)) child_=-1;
     }
     void stopChild() {
         reap();
@@ -60,12 +61,16 @@ class ShiftDeck : public bmw::PluginApp {
         data.writeUInt32(generation_);
         post(bmw::Message(0x40000003u,data),visible_ ? 16u : 150u);
     }
-    void digits(unsigned model, unsigned width, const char* text, unsigned base, bool center) {
+    void forgetDigits() { memset(rpm_digits_,0xff,sizeof rpm_digits_); memset(kph_digits_,0xff,sizeof kph_digits_); }
+    void digits(unsigned model, unsigned width, const char* text, unsigned base, bool center, unsigned* shown) {
         unsigned length=static_cast<unsigned>(strlen(text));
         unsigned offset=center && length<width ? (width-length)/2 : 0;
         for (unsigned i=0;i<width;++i) {
             char c=i>=offset && i-offset<length ? text[i-offset] : ' ';
-            updateModel(model+i,bmw::ImageID(base+(c==' ' ? 11u : c=='-' ? 10u : c-'0')));
+            const unsigned image=base+(c==' ' ? 11u : c=='-' ? 10u : c-'0');
+            if (image==shown[i]) continue;
+            updateModel(model+i,bmw::ImageID(image));
+            shown[i]=image;
         }
     }
     void draw(uint64_t now) {
@@ -94,7 +99,7 @@ class ShiftDeck : public bmw::PluginApp {
         if (displayed_rpm!=rpm_ || shift!=shift_) {
             if (displayed_rpm<0) strcpy(text,"--");
             else snprintf(text,sizeof text,"%d",displayed_rpm>9999 ? 9999 : displayed_rpm);
-            digits(60u,4u,text,shift ? kDigitWarn : kDigitBase,true);
+            digits(60u,4u,text,shift ? kDigitWarn : kDigitBase,true,rpm_digits_);
             rpm_=displayed_rpm;
         }
         if (kph!=kph_) {
@@ -104,7 +109,7 @@ class ShiftDeck : public bmw::PluginApp {
             if (metric_) speed=kph;
             snprintf(text,sizeof text,"%d",speed);
         }
-            digits(70u,3u,text,kDigitBase,false);
+            digits(70u,3u,text,kDigitBase,false,kph_digits_);
             kph_=kph;
         }
         if (shift!=shift_) {
@@ -121,6 +126,8 @@ class ShiftDeck : public bmw::PluginApp {
         if (show) retry_at_=0;
         else stopChild();
         draw(bd_mono_ms());
+        // The poll loop ends while hidden; a new generation retires any tick still queued.
+        if (show && socket_>=0) { ++generation_; postPoll(); }
         return true;
     }
     template <unsigned Index> bool setTarget(const bmw::Parcel&) {
@@ -153,6 +160,7 @@ public:
           visible_(false),target_(kDefaultTarget),retry_at_(0),bar_(0),lights_(0),
           rpm_(-2),kph_(-2),shift_(false),metric_(false) {
         memset(&frame_,0,sizeof frame_);
+        forgetDigits();
         rpm_from_=0;
         rpm_started_=0;
     }
@@ -164,6 +172,7 @@ public:
         bar_=0;
         lights_=static_cast<unsigned>(-1);
         rpm_=kph_=-2;
+        forgetDigits();
         shift_=false;
         socket_=socket(AF_INET,SOCK_DGRAM,0);
         if (socket_>=0) {
@@ -235,7 +244,7 @@ public:
             }
         }
         draw(now);
-        postPoll();
+        if (visible_ || child_>0) postPoll();
         return true;
     }
 };

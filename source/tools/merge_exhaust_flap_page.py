@@ -29,12 +29,12 @@ flap = states.find("hmiState[@id='102']")
 flap.set("text", "Exhaust Flap")
 flap.remove(flap.find("components"))
 group = ET.SubElement(flap, "components")
-for index, (x, action) in enumerate(((52, 26), (384, 25), (716, 27))):
+for index, (x, action) in enumerate(((0, 26), (420, 25), (840, 27))):
     add_position(ET.SubElement(group, "image", id=str(230 + index), model=str(66 + index)),
-                 x, 130, 320, 168, artwork=True)
+                 x, 132, 408, 198, artwork=True)
     add_position(ET.SubElement(group, "button", id=str(215 + index), action=str(action), imageModel="65"),
-                 x, 130, 320, 168)
-add_position(ET.SubElement(group, "label", id="321", model="51"), 35, 360, 1020, 50)
+                 x, 132, 408, 198)
+add_position(ET.SubElement(group, "label", id="321", model="51"), 0, 390, 1248, 60)
 ET.indent(xml, space="  ")
 xml.write(args.xml, encoding="utf-8", xml_declaration=True)
 

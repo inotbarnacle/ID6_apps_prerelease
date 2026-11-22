@@ -89,7 +89,7 @@ cxx -Isrc/common -Isrc/ipc -Isdk -O2 -fno-exceptions -fPIC -shared src/plugins/h
 # Optional HUD build against the licensed NBT-AAD milestone-7 source.
 if test -n "${NBTAAD_SOURCE:-}"; then
     aad="$NBTAAD_SOURCE"
-    c -D_QNX_SOURCE -Isrc/common -Isrc/ipc -O2 -c src/workers/parked_check.c -o out/hud-sample.o
+    c -D_QNX_SOURCE -Isrc/common -Isrc/ipc -O2 -c src/workers/hud_reader.c -o out/hud-sample.o
     for file in src/common/diag_link.c src/common/most/*.c; do
         c -Isrc/common -O2 -c "$file" -o "out/hud-$(basename "$file" .c).o"
     done

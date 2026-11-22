@@ -186,6 +186,8 @@ void diag_link_init(struct diag_link *l, const struct diag_link_cfg *cfg) {
     if (l->cfg.transport == DIAG_MOST) l->cfg.host = 0;
     l->fd = l->lock = l->gauge_most_lock = -1;
     l->most_usable = 1;
+    /* NBT-AAD, native Android Auto, is installed: keep every worker off MOST unless it asked for MOST by name. */
+    if (l->cfg.transport == DIAG_AUTO && native_android_auto_installed()) l->cfg.transport = DIAG_HSFZ;
 }
 
 static void pause_until(uint64_t until) {
@@ -290,7 +292,7 @@ int diag_link_up(struct diag_link *l) {
     return 0;
 }
 
-/* Only DME 0x12 has been seen through the tunnel. Loop workers hold the lease for each request and step
+/* Any ECU address goes through the tunnel unfiltered. Loop workers hold the lease for each request and step
  * aside when a waiter showed up; a one-shot worker already holds it for the run. */
 static int most_request_link(struct diag_link *l, unsigned ecu, const unsigned char *uds, unsigned n,
                              const unsigned char *prefix, unsigned pn, unsigned char *reply, unsigned cap,
@@ -299,12 +301,12 @@ static int most_request_link(struct diag_link *l, unsigned ecu, const unsigned c
     enum most_rc rc;
     int lock = -1;
     if (l->lost) return -1;
-    if (!diag_running || ecu != MOST_ECU_DME || n == 0 || n > 16) return -3;
+    if (!diag_running || n == 0 || n > 16) return -3;
     if (l->cfg.kind == DIAG_LOOP) {
         pause_until(l->most_yield_until);   /* a yield does not count against the 300 ms */
         if ((lock = take_lease(LOOP_LEASE_WAIT_MS)) < 0) return -3;
     }
-    rc = most_request_wait(MOST_ECU_DME, uds, n, reply, cap, &len,
+    rc = most_request_wait((unsigned char)ecu, uds, n, reply, cap, &len,
                            timeout_ms > MOST_WAIT_MIN_MS ? timeout_ms : MOST_WAIT_MIN_MS);
     if (lock >= 0) {
         char waiting;

@@ -7,7 +7,7 @@ import re
 import xml.etree.ElementTree as ET
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
-from make_bars import COLORS, MULTICOLOR, THEMES
+from make_bars import COLORS, MULTICOLOR, THEMES, bar_images
 
 ROOT = Path(__file__).resolve().parents[1] / "native"
 XML = ROOT / "manifests/BoostDeck.xml"
@@ -22,7 +22,13 @@ TRANSPARENT = 57000
 DIAL_FIRST = 57001
 DIAL_STEPS = 12
 DIAL_SIZE = 96
-WIDTH, HEIGHT = 1172, 400
+# Layout rules (docs/LAYOUT.md): 6-unit grid, 12-unit gutters. Eight 258 x 192 tiles in four columns, one
+# 168 x 396 tile on the right, and a 45-high alert bar below, spanning 1248 x 453 from y = 12.
+GUTTER, TILE_W, TILE_H, TALL_W = 12, 258, 192, 168
+WIDTH, HEIGHT = 4 * (TILE_W + GUTTER) + TALL_W, 2 * TILE_H + GUTTER
+TOP, ALERT_H = 12, 45
+BAR_SIZE, VERTICAL_SIZE = (210, 18), (42, 246)
+TILE_FILL, TILE_RADIUS = (23, 27, 34, 255), 12
 SETTINGS = (
     ("Pressure", 3), ("Speed", 2), ("Temperature", 2), ("Gauge style", 2),
     ("Alert mode", 2), ("Coolant high", 10), ("Oil temp high", 10),
@@ -31,13 +37,13 @@ SETTINGS = (
 
 
 def tile(i):
-    return (258 * (i // 2), 208 * (i % 2)) if i < 8 else (1032, 0)
+    return ((TILE_W + GUTTER) * (i // 2), (TILE_H + GUTTER) * (i % 2)) if i < 8 else (4 * (TILE_W + GUTTER), 0)
 
 
 def placed(parent, tag, identifier, model, x, y, w, h):
     node = ET.SubElement(parent, tag, id=str(identifier), model=str(model))
     props = ET.SubElement(node, "properties")
-    for prop, value in ((20, x + 24), (21, y + 13), (9, w), (10, h)):
+    for prop, value in ((20, x), (21, y + TOP), (9, w), (10, h)):
         ET.SubElement(props, "property", id=str(prop), value=str(value))
     if tag == "image":
         for prop, value in ((2, "false"), (3, "true")):
@@ -101,8 +107,8 @@ def update_xml():
     placed(components, "image", 209, 69, 0, 0, WIDTH, HEIGHT)
     image_model(models, 68, TRANSPARENT)
     richtext(models, 119)
-    placed(components, "image", 208, 68, 0, 421, WIDTH, 43)
-    placed(components, "label", 218, 119, 14, 421, WIDTH - 28, 43)
+    placed(components, "image", 208, 68, 0, HEIGHT + GUTTER, WIDTH, ALERT_H)
+    placed(components, "label", 218, 119, 24, HEIGHT + GUTTER, WIDTH - 48, ALERT_H)
 
     settings = page(states, 520, 100, "BoostDeck settings")
     richtext(models, 118)
@@ -147,15 +153,15 @@ def update_xml():
         image_model(models, 320 + i, BAR_EMPTY if i < 8 else VERTICAL_EMPTY)
         image_model(models, 330 + i, TRANSPARENT)
         if i < 8:
-            placed(components, "label", 260+i, 370+i, x+15, y+16, 216, 40)
-            placed(components, "label", 310+i, 300+i, x+15, y+55, 216, 48)
-            placed(components, "image", 280+i, 320+i, x+15, y+140, 210, 15)
-            placed(components, "image", 290+i, 330+i, x+67, y+94, DIAL_SIZE, DIAL_SIZE)
+            placed(components, "label", 260+i, 370+i, x+24, y+6, 210, 42)
+            placed(components, "label", 310+i, 300+i, x+24, y+48, 210, 48)
+            placed(components, "image", 280+i, 320+i, x+24, y+150, *BAR_SIZE)
+            placed(components, "image", 290+i, 330+i, x+78, y+90, DIAL_SIZE, DIAL_SIZE)
         else:
-            placed(components, "label", 260+i, 370+i, x+10, y+10, 120, 46)
-            placed(components, "image", 280+i, 320+i, x+50, y+58, 40, 250)
-            placed(components, "image", 290+i, 330+i, x+22, y+128, DIAL_SIZE, DIAL_SIZE)
-            placed(components, "label", 310+i, 300+i, x+24, y+322, 112, 63)
+            placed(components, "label", 260+i, 370+i, x+12, y+6, 132, 42)
+            placed(components, "image", 280+i, 320+i, x+54, y+54, *VERTICAL_SIZE)
+            placed(components, "image", 290+i, 330+i, x+30, y+132, DIAL_SIZE, DIAL_SIZE)
+            placed(components, "label", 310+i, 300+i, x+24, y+318, 108, 60)
         target = 510 + i
         goto(actions, target, target)
         button(config, 540 + i, target, model=340+i)
@@ -169,29 +175,33 @@ def update_xml():
 def update_images(source, dest):
     from PIL import Image, ImageDraw
     with ZipFile(source) as original, ZipFile(dest, "w", ZIP_DEFLATED) as updated:
-        background_name = f"{BACKGROUND}.png"
-        background = Image.open(BytesIO(original.read(background_name))).convert("RGBA")
-        if background.size != (WIDTH, HEIGHT):
-            raise ValueError(f"Unexpected BoostDeck background size: {background.size}")
+        background = Image.new("RGBA", (WIDTH, HEIGHT))
         draw = ImageDraw.Draw(background)
         for i in range(SLOTS):
             x, y = tile(i)
-            right = 232 if i < 8 else 132
-            draw.rectangle((x+8, y+13, x+right, y+51), fill=background.getpixel((x+24,y+65)))
-        bitmap = BytesIO()
-        background.save(bitmap, format="PNG", optimize=True)
+            tile_w, tile_h = (TILE_W, TILE_H) if i < 8 else (TALL_W, HEIGHT)
+            draw.rounded_rectangle((x, y, x + tile_w - 1, y + tile_h - 1), radius=TILE_RADIUS, fill=TILE_FILL)
         for entry in original.infolist():
-            if entry.filename.removesuffix(".png").isdigit() and int(entry.filename[:-4]) >= ALERT_BACKGROUND:
+            number = int(entry.filename[:-4])
+            if number >= ALERT_BACKGROUND or number == BACKGROUND or BAR_EMPTY <= number < BAR_EMPTY + 513:
                 continue
-            updated.writestr(entry, bitmap.getvalue() if entry.filename == background_name else original.read(entry))
+            data = original.read(entry)
+            if VERTICAL_EMPTY <= number < VERTICAL_EMPTY + 181:
+                bitmap = BytesIO()
+                Image.open(BytesIO(data)).convert("RGBA").resize(VERTICAL_SIZE, Image.Resampling.LANCZOS).save(bitmap, format="PNG", optimize=True)
+                data = bitmap.getvalue()
+            updated.writestr(entry, data)
 
         def write(identifier, image):
             bitmap = BytesIO()
             image.save(bitmap, format="PNG", optimize=True)
             updated.writestr(ZipInfo(f"{identifier}.png"), bitmap.getvalue(), ZIP_DEFLATED)
 
-        warning = Image.new("RGBA", (WIDTH, 43))
-        ImageDraw.Draw(warning).rounded_rectangle((0, 0, WIDTH-1, 42), radius=8, fill="#74252a")
+        write(BACKGROUND, background)
+        for identifier, image in bar_images(BAR_SIZE):
+            write(identifier, image)
+        warning = Image.new("RGBA", (WIDTH, ALERT_H))
+        ImageDraw.Draw(warning).rounded_rectangle((0, 0, WIDTH-1, ALERT_H-1), radius=8, fill="#74252a")
         write(ALERT_BACKGROUND, warning)
         write(TRANSPARENT, Image.new("RGBA", (1, 1)))
 

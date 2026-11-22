@@ -2,6 +2,7 @@
 #include "plugin_factory.h"
 #include "diagnostic_worker.h"
 #include "diagnostic_gateway.h"
+#include <signal.h>
 #include <sys/wait.h>
 
 namespace {
@@ -16,7 +17,9 @@ class HudTest : public bmw::PluginApp {
     unsigned retries_;
     void status(const char* text) { updateModel(50u, bmw::BasicString<char>(text)); }
 
-    void poll(unsigned delay = 200) {
+    // The worker draws the HUD, but it exits on faults (no HUD, no data) and this plugin restarts it.
+    // That check must keep running while the page is hidden, so it ticks slowly instead of stopping.
+    void poll(unsigned delay = 1000) {
         if (polling_) return;
         polling_ = true;
         bmw::Parcel data;
@@ -82,7 +85,9 @@ public:
         }
         int outcome = 0;
         const pid_t result = waitpid(child_, &outcome, WNOHANG);
-        if (result == 0 || (result < 0 && errno == EINTR)) {
+        // ECHILD with a live process means the kernel auto-reaps children: the worker is still running.
+        if (result == 0 || (result < 0 && (errno == EINTR ||
+            (errno == ECHILD && !(kill(child_, 0) != 0 && errno == ESRCH))))) {
             poll();
             return true;
         }

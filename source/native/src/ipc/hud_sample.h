@@ -16,8 +16,8 @@ typedef struct {
 } hud_sample;
 
 typedef struct {
-    int fd, lock;
-    uint64_t lease_until, retry_at, boost_due, boost_seen;
+    void *link;   /* struct diag_link, allocated on the first poll */
+    uint64_t boost_due, boost_seen;
     int boost_tenths;
 } hud_reader;
 

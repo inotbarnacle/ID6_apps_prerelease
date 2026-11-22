@@ -326,6 +326,19 @@ class DriveAppsTest(unittest.TestCase):
             ("22f150",["62f1500f2520"])],targets=["29","19","39"])
         self.assertEqual(result,"Unsupported DSC 0F2500. Transfer case 0F2180. VIP 0F2520.\n")
 
+    def test_xdrive_names_a_known_but_unverified_sgbd(self):
+        """0F18F0 is DSC_25 on an F10, in dsc_control_table.h but not in verified_write -- the
+        same control-list rejection as an unlisted SGBD, now naming it instead of a bare hex
+        index. A completely unlisted index keeps the old wording (test_xdrive_status_... above)."""
+        result=self.run_worker("xdrive-control",["--status","0"],[
+            ("22f150",["62f1500f18f0"]), ("22f150",["62f1500f2180"]),
+            ("22f150",["62f1500f2520"])],targets=["29","19","39"])
+        self.assertEqual(result,"DSC_25 (F10, 0F18F0) is identified but not yet verified for control. "
+                                 "Transfer case 0F2180. VIP 0F2520.\n")
+        result=self.run_worker("xdrive-control",["--drive-mode","0"],
+            [("22f150",["62f1500f18f0"])],targets=["29"])
+        self.assertEqual(result,"DSC_25 (F10, 0F18F0) is identified but not yet verified for control.\n")
+
     def test_dsc25_switch_requires_park_and_verified_lmv(self):
         ident = [("22f150", ["62f1500f1860"]), ("22dbe1", ["62dbe101"])]
         result = self.run_worker("xdrive-control", ["--drive-mode", "0"],

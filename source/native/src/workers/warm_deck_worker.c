@@ -36,7 +36,6 @@ int main(int argc, char **argv) {
             else cycles=(unsigned)value;
         } else return 2;
     }
-    if (native_android_auto_installed()) cfg.transport=DIAG_HSFZ;
     const pid_t parent=getppid();
     const int socket_fd=gauge_bind(WARM_ACTIVE_PORT);
     if (socket_fd<0 || parent<=1) return 1;
@@ -51,10 +50,6 @@ int main(int argc, char **argv) {
             for (unsigned reads=0;reads<WARM_COUNT && diag_running;++reads) {
                 const unsigned signal=next;
                 next=(next+1)%WARM_COUNT;
-                if (signal==WARM_TRANS && diag_link_on_most(&link)) {
-                    frame.sample[signal]=0;
-                    continue;
-                }
                 const int status=temperature(&link,signal,&frame.celsius[signal]);
                 frame.sample[signal]=status==1 ? bd_mono_ms() : 0;
                 if (status==-1) {

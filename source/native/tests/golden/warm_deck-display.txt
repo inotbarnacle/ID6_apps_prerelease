@@ -1,0 +1,9 @@
+== init (4 updates)
+  50 text '--'
+  51 text '--'
+  52 text '--'
+  53 text 'Waiting for temperature readings'
+== shown (0 updates)
+== next tick (0 updates)
+== hidden (0 updates)
+== shown again (0 updates)
