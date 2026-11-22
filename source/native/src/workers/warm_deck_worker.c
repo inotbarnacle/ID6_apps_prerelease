@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
             else cycles=(unsigned)value;
         } else return 2;
     }
-    if (native_android_auto_installed()) cfg.transport=DIAG_HSFZ;
+    if (native_android_auto_running()) cfg.transport=DIAG_HSFZ;
     const pid_t parent=getppid();
     const int socket_fd=gauge_bind(WARM_ACTIVE_PORT);
     if (socket_fd<0 || parent<=1) return 1;

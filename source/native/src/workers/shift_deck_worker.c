@@ -58,7 +58,7 @@ int main(int argc, char **argv) {
     }
     if ((!cfg.host && cfg.transport==DIAG_HSFZ) || parent<=1) return 2;
     if (speed_only) cfg.dsi_name = "launchdeck";
-    if (native_android_auto_installed()) cfg.transport = DIAG_HSFZ;
+    if (native_android_auto_running()) cfg.transport = DIAG_HSFZ;
     diag_link_signals();
     diag_link_init(&link,&cfg);
     const unsigned source = speed_only ? LAUNCH_ACTIVE_PORT : SHIFT_ACTIVE_PORT;
