@@ -20,7 +20,7 @@
 #define DATA_MAX    64
 #define MAX_PLAIN   16
 #define MAX_REFUSE  4
-#define MAX_RAW     16
+#define MAX_RAW     24
 
 static struct {
     struct { uint16_t did; uint8_t data[DATA_MAX]; size_t n; } plain[MAX_PLAIN];

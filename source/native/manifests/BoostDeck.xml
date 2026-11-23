@@ -1,0 +1,1478 @@
+<?xml version='1.0' encoding='utf-8'?>
+<pluginApps>
+  <pluginApp applicationType="VehicleInformation" applicationWeight="210" text="BoostDeck">
+    <entryButton id="1" action="10">
+      <properties>
+        <property id="23" value="2" />
+      </properties>
+    </entryButton>
+    <actions>
+      <hmiAction id="10" target="100" />
+      <hmiAction id="520" target="520" />
+      <hmiAction id="521" target="521" />
+      <combinedAction id="2000">
+        <actions>
+          <raAction id="2400" />
+          <hmiAction id="2800" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2001">
+        <actions>
+          <raAction id="2401" />
+          <hmiAction id="2801" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2002">
+        <actions>
+          <raAction id="2402" />
+          <hmiAction id="2802" target="520" />
+        </actions>
+      </combinedAction>
+      <hmiAction id="522" target="522" />
+      <combinedAction id="2020">
+        <actions>
+          <raAction id="2420" />
+          <hmiAction id="2820" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2021">
+        <actions>
+          <raAction id="2421" />
+          <hmiAction id="2821" target="520" />
+        </actions>
+      </combinedAction>
+      <hmiAction id="523" target="523" />
+      <combinedAction id="2040">
+        <actions>
+          <raAction id="2440" />
+          <hmiAction id="2840" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2041">
+        <actions>
+          <raAction id="2441" />
+          <hmiAction id="2841" target="520" />
+        </actions>
+      </combinedAction>
+      <hmiAction id="524" target="524" />
+      <combinedAction id="2060">
+        <actions>
+          <raAction id="2460" />
+          <hmiAction id="2860" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2061">
+        <actions>
+          <raAction id="2461" />
+          <hmiAction id="2861" target="520" />
+        </actions>
+      </combinedAction>
+      <hmiAction id="525" target="525" />
+      <combinedAction id="2080">
+        <actions>
+          <raAction id="2480" />
+          <hmiAction id="2880" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2081">
+        <actions>
+          <raAction id="2481" />
+          <hmiAction id="2881" target="520" />
+        </actions>
+      </combinedAction>
+      <hmiAction id="526" target="526" />
+      <combinedAction id="2100">
+        <actions>
+          <raAction id="2500" />
+          <hmiAction id="2900" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2101">
+        <actions>
+          <raAction id="2501" />
+          <hmiAction id="2901" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2102">
+        <actions>
+          <raAction id="2502" />
+          <hmiAction id="2902" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2103">
+        <actions>
+          <raAction id="2503" />
+          <hmiAction id="2903" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2104">
+        <actions>
+          <raAction id="2504" />
+          <hmiAction id="2904" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2105">
+        <actions>
+          <raAction id="2505" />
+          <hmiAction id="2905" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2106">
+        <actions>
+          <raAction id="2506" />
+          <hmiAction id="2906" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2107">
+        <actions>
+          <raAction id="2507" />
+          <hmiAction id="2907" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2108">
+        <actions>
+          <raAction id="2508" />
+          <hmiAction id="2908" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2109">
+        <actions>
+          <raAction id="2509" />
+          <hmiAction id="2909" target="520" />
+        </actions>
+      </combinedAction>
+      <hmiAction id="527" target="527" />
+      <combinedAction id="2120">
+        <actions>
+          <raAction id="2520" />
+          <hmiAction id="2920" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2121">
+        <actions>
+          <raAction id="2521" />
+          <hmiAction id="2921" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2122">
+        <actions>
+          <raAction id="2522" />
+          <hmiAction id="2922" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2123">
+        <actions>
+          <raAction id="2523" />
+          <hmiAction id="2923" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2124">
+        <actions>
+          <raAction id="2524" />
+          <hmiAction id="2924" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2125">
+        <actions>
+          <raAction id="2525" />
+          <hmiAction id="2925" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2126">
+        <actions>
+          <raAction id="2526" />
+          <hmiAction id="2926" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2127">
+        <actions>
+          <raAction id="2527" />
+          <hmiAction id="2927" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2128">
+        <actions>
+          <raAction id="2528" />
+          <hmiAction id="2928" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2129">
+        <actions>
+          <raAction id="2529" />
+          <hmiAction id="2929" target="520" />
+        </actions>
+      </combinedAction>
+      <hmiAction id="528" target="528" />
+      <combinedAction id="2140">
+        <actions>
+          <raAction id="2540" />
+          <hmiAction id="2940" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2141">
+        <actions>
+          <raAction id="2541" />
+          <hmiAction id="2941" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2142">
+        <actions>
+          <raAction id="2542" />
+          <hmiAction id="2942" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2143">
+        <actions>
+          <raAction id="2543" />
+          <hmiAction id="2943" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2144">
+        <actions>
+          <raAction id="2544" />
+          <hmiAction id="2944" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2145">
+        <actions>
+          <raAction id="2545" />
+          <hmiAction id="2945" target="520" />
+        </actions>
+      </combinedAction>
+      <hmiAction id="104" target="104" />
+      <hmiAction id="501" target="501" />
+      <hmiAction id="500" target="500" />
+      <combinedAction id="2200">
+        <actions>
+          <raAction id="40" />
+          <hmiAction id="3000" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2201">
+        <actions>
+          <raAction id="41" />
+          <hmiAction id="3001" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2202">
+        <actions>
+          <raAction id="42" />
+          <hmiAction id="3002" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2203">
+        <actions>
+          <raAction id="43" />
+          <hmiAction id="3003" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2204">
+        <actions>
+          <raAction id="44" />
+          <hmiAction id="3004" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2205">
+        <actions>
+          <raAction id="45" />
+          <hmiAction id="3005" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2206">
+        <actions>
+          <raAction id="46" />
+          <hmiAction id="3006" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2207">
+        <actions>
+          <raAction id="47" />
+          <hmiAction id="3007" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2208">
+        <actions>
+          <raAction id="48" />
+          <hmiAction id="3008" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2210">
+        <actions>
+          <raAction id="502" />
+          <hmiAction id="3010" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2211">
+        <actions>
+          <raAction id="503" />
+          <hmiAction id="3011" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3500">
+        <actions>
+          <raAction id="600" />
+          <hmiAction id="4500" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3501">
+        <actions>
+          <raAction id="601" />
+          <hmiAction id="4501" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3502">
+        <actions>
+          <raAction id="602" />
+          <hmiAction id="4502" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3503">
+        <actions>
+          <raAction id="603" />
+          <hmiAction id="4503" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3504">
+        <actions>
+          <raAction id="604" />
+          <hmiAction id="4504" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3505">
+        <actions>
+          <raAction id="605" />
+          <hmiAction id="4505" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3506">
+        <actions>
+          <raAction id="606" />
+          <hmiAction id="4506" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3507">
+        <actions>
+          <raAction id="607" />
+          <hmiAction id="4507" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3508">
+        <actions>
+          <raAction id="608" />
+          <hmiAction id="4508" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3509">
+        <actions>
+          <raAction id="609" />
+          <hmiAction id="4509" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3510">
+        <actions>
+          <raAction id="610" />
+          <hmiAction id="4510" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3511">
+        <actions>
+          <raAction id="611" />
+          <hmiAction id="4511" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3512">
+        <actions>
+          <raAction id="612" />
+          <hmiAction id="4512" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3513">
+        <actions>
+          <raAction id="613" />
+          <hmiAction id="4513" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3514">
+        <actions>
+          <raAction id="614" />
+          <hmiAction id="4514" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3515">
+        <actions>
+          <raAction id="615" />
+          <hmiAction id="4515" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3516">
+        <actions>
+          <raAction id="616" />
+          <hmiAction id="4516" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3517">
+        <actions>
+          <raAction id="617" />
+          <hmiAction id="4517" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3518">
+        <actions>
+          <raAction id="618" />
+          <hmiAction id="4518" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3519">
+        <actions>
+          <raAction id="619" />
+          <hmiAction id="4519" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3520">
+        <actions>
+          <raAction id="620" />
+          <hmiAction id="4520" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3521">
+        <actions>
+          <raAction id="621" />
+          <hmiAction id="4521" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3522">
+        <actions>
+          <raAction id="622" />
+          <hmiAction id="4522" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3523">
+        <actions>
+          <raAction id="623" />
+          <hmiAction id="4523" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3524">
+        <actions>
+          <raAction id="624" />
+          <hmiAction id="4524" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3525">
+        <actions>
+          <raAction id="625" />
+          <hmiAction id="4525" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3526">
+        <actions>
+          <raAction id="626" />
+          <hmiAction id="4526" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3527">
+        <actions>
+          <raAction id="627" />
+          <hmiAction id="4527" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3528">
+        <actions>
+          <raAction id="628" />
+          <hmiAction id="4528" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3529">
+        <actions>
+          <raAction id="629" />
+          <hmiAction id="4529" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3530">
+        <actions>
+          <raAction id="630" />
+          <hmiAction id="4530" target="500" />
+        </actions>
+      </combinedAction>
+      <hmiAction id="510" target="510" />
+      <hmiAction id="511" target="511" />
+      <hmiAction id="512" target="512" />
+      <hmiAction id="513" target="513" />
+      <hmiAction id="514" target="514" />
+      <hmiAction id="515" target="515" />
+      <hmiAction id="516" target="516" />
+      <hmiAction id="517" target="517" />
+      <hmiAction id="518" target="518" />
+    </actions>
+    <models>
+      <imageIdModel id="69" imageId="56300" />
+      <imageIdModel id="68" imageId="57000" />
+      <raDataModel id="119" modelType="Richtext" />
+      <raDataModel id="118" modelType="Richtext" />
+      <raDataModel id="120" modelType="Richtext" />
+      <raDataModel id="700" modelType="Richtext" />
+      <raBoolModel id="5000" />
+      <raDataModel id="701" modelType="Richtext" />
+      <raBoolModel id="5001" />
+      <raDataModel id="702" modelType="Richtext" />
+      <raBoolModel id="5002" />
+      <raDataModel id="121" modelType="Richtext" />
+      <raDataModel id="720" modelType="Richtext" />
+      <raBoolModel id="5020" />
+      <raDataModel id="721" modelType="Richtext" />
+      <raBoolModel id="5021" />
+      <raDataModel id="122" modelType="Richtext" />
+      <raDataModel id="740" modelType="Richtext" />
+      <raBoolModel id="5040" />
+      <raDataModel id="741" modelType="Richtext" />
+      <raBoolModel id="5041" />
+      <raDataModel id="123" modelType="Richtext" />
+      <raDataModel id="760" modelType="Richtext" />
+      <raBoolModel id="5060" />
+      <raDataModel id="761" modelType="Richtext" />
+      <raBoolModel id="5061" />
+      <raDataModel id="124" modelType="Richtext" />
+      <raDataModel id="780" modelType="Richtext" />
+      <raBoolModel id="5080" />
+      <raDataModel id="781" modelType="Richtext" />
+      <raBoolModel id="5081" />
+      <raDataModel id="125" modelType="Richtext" />
+      <raDataModel id="800" modelType="Richtext" />
+      <raBoolModel id="5100" />
+      <raDataModel id="801" modelType="Richtext" />
+      <raBoolModel id="5101" />
+      <raDataModel id="802" modelType="Richtext" />
+      <raBoolModel id="5102" />
+      <raDataModel id="803" modelType="Richtext" />
+      <raBoolModel id="5103" />
+      <raDataModel id="804" modelType="Richtext" />
+      <raBoolModel id="5104" />
+      <raDataModel id="805" modelType="Richtext" />
+      <raBoolModel id="5105" />
+      <raDataModel id="806" modelType="Richtext" />
+      <raBoolModel id="5106" />
+      <raDataModel id="807" modelType="Richtext" />
+      <raBoolModel id="5107" />
+      <raDataModel id="808" modelType="Richtext" />
+      <raBoolModel id="5108" />
+      <raDataModel id="809" modelType="Richtext" />
+      <raBoolModel id="5109" />
+      <raDataModel id="126" modelType="Richtext" />
+      <raDataModel id="820" modelType="Richtext" />
+      <raBoolModel id="5120" />
+      <raDataModel id="821" modelType="Richtext" />
+      <raBoolModel id="5121" />
+      <raDataModel id="822" modelType="Richtext" />
+      <raBoolModel id="5122" />
+      <raDataModel id="823" modelType="Richtext" />
+      <raBoolModel id="5123" />
+      <raDataModel id="824" modelType="Richtext" />
+      <raBoolModel id="5124" />
+      <raDataModel id="825" modelType="Richtext" />
+      <raBoolModel id="5125" />
+      <raDataModel id="826" modelType="Richtext" />
+      <raBoolModel id="5126" />
+      <raDataModel id="827" modelType="Richtext" />
+      <raBoolModel id="5127" />
+      <raDataModel id="828" modelType="Richtext" />
+      <raBoolModel id="5128" />
+      <raDataModel id="829" modelType="Richtext" />
+      <raBoolModel id="5129" />
+      <raDataModel id="127" modelType="Richtext" />
+      <raDataModel id="840" modelType="Richtext" />
+      <raBoolModel id="5140" />
+      <raDataModel id="841" modelType="Richtext" />
+      <raBoolModel id="5141" />
+      <raDataModel id="842" modelType="Richtext" />
+      <raBoolModel id="5142" />
+      <raDataModel id="843" modelType="Richtext" />
+      <raBoolModel id="5143" />
+      <raDataModel id="844" modelType="Richtext" />
+      <raBoolModel id="5144" />
+      <raDataModel id="845" modelType="Richtext" />
+      <raBoolModel id="5145" />
+      <raDataModel id="110" modelType="Richtext" />
+      <raDataModel id="360" modelType="Richtext" />
+      <raBoolModel id="5200" />
+      <raBoolModel id="5201" />
+      <raBoolModel id="5202" />
+      <raBoolModel id="5203" />
+      <raBoolModel id="5204" />
+      <raBoolModel id="5205" />
+      <raBoolModel id="5206" />
+      <raBoolModel id="5207" />
+      <raBoolModel id="5208" />
+      <raBoolModel id="5210" />
+      <raBoolModel id="5211" />
+      <raBoolModel id="5300" />
+      <raBoolModel id="5301" />
+      <raBoolModel id="5302" />
+      <raBoolModel id="5303" />
+      <raBoolModel id="5304" />
+      <raBoolModel id="5305" />
+      <raBoolModel id="5306" />
+      <raBoolModel id="5307" />
+      <raBoolModel id="5308" />
+      <raBoolModel id="5309" />
+      <raBoolModel id="5310" />
+      <raBoolModel id="5311" />
+      <raBoolModel id="5312" />
+      <raBoolModel id="5313" />
+      <raBoolModel id="5314" />
+      <raBoolModel id="5315" />
+      <raBoolModel id="5316" />
+      <raBoolModel id="5317" />
+      <raBoolModel id="5318" />
+      <raBoolModel id="5319" />
+      <raBoolModel id="5320" />
+      <raBoolModel id="5321" />
+      <raBoolModel id="5322" />
+      <raBoolModel id="5323" />
+      <raBoolModel id="5324" />
+      <raBoolModel id="5325" />
+      <raBoolModel id="5326" />
+      <raBoolModel id="5327" />
+      <raBoolModel id="5328" />
+      <raBoolModel id="5329" />
+      <raBoolModel id="5330" />
+      <raDataModel id="300" modelType="Richtext" />
+      <raDataModel id="340" modelType="Richtext" />
+      <raDataModel id="370" modelType="Richtext" />
+      <imageIdModel id="320" imageId="55000" />
+      <imageIdModel id="330" imageId="57000" />
+      <raDataModel id="301" modelType="Richtext" />
+      <raDataModel id="341" modelType="Richtext" />
+      <raDataModel id="371" modelType="Richtext" />
+      <imageIdModel id="321" imageId="55000" />
+      <imageIdModel id="331" imageId="57000" />
+      <raDataModel id="302" modelType="Richtext" />
+      <raDataModel id="342" modelType="Richtext" />
+      <raDataModel id="372" modelType="Richtext" />
+      <imageIdModel id="322" imageId="55000" />
+      <imageIdModel id="332" imageId="57000" />
+      <raDataModel id="303" modelType="Richtext" />
+      <raDataModel id="343" modelType="Richtext" />
+      <raDataModel id="373" modelType="Richtext" />
+      <imageIdModel id="323" imageId="55000" />
+      <imageIdModel id="333" imageId="57000" />
+      <raDataModel id="304" modelType="Richtext" />
+      <raDataModel id="344" modelType="Richtext" />
+      <raDataModel id="374" modelType="Richtext" />
+      <imageIdModel id="324" imageId="55000" />
+      <imageIdModel id="334" imageId="57000" />
+      <raDataModel id="305" modelType="Richtext" />
+      <raDataModel id="345" modelType="Richtext" />
+      <raDataModel id="375" modelType="Richtext" />
+      <imageIdModel id="325" imageId="55000" />
+      <imageIdModel id="335" imageId="57000" />
+      <raDataModel id="306" modelType="Richtext" />
+      <raDataModel id="346" modelType="Richtext" />
+      <raDataModel id="376" modelType="Richtext" />
+      <imageIdModel id="326" imageId="55000" />
+      <imageIdModel id="336" imageId="57000" />
+      <raDataModel id="307" modelType="Richtext" />
+      <raDataModel id="347" modelType="Richtext" />
+      <raDataModel id="377" modelType="Richtext" />
+      <imageIdModel id="327" imageId="55000" />
+      <imageIdModel id="337" imageId="57000" />
+      <raDataModel id="308" modelType="Richtext" />
+      <raDataModel id="348" modelType="Richtext" />
+      <raDataModel id="378" modelType="Richtext" />
+      <imageIdModel id="328" imageId="56100" />
+      <imageIdModel id="338" imageId="57000" />
+    </models>
+    <hmiStates>
+      <hmiState id="100" text="BoostDeck">
+        <optionComponents>
+          <button id="33" action="520" text="BoostDeck settings" />
+        </optionComponents>
+        <components>
+          <image id="209" model="69">
+            <properties>
+              <property id="20" value="24" />
+              <property id="21" value="13" />
+              <property id="9" value="1172" />
+              <property id="10" value="400" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="208" model="68">
+            <properties>
+              <property id="20" value="24" />
+              <property id="21" value="434" />
+              <property id="9" value="1172" />
+              <property id="10" value="43" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <label id="218" model="119">
+            <properties>
+              <property id="20" value="38" />
+              <property id="21" value="434" />
+              <property id="9" value="1144" />
+              <property id="10" value="43" />
+            </properties>
+          </label>
+          <label id="260" model="370">
+            <properties>
+              <property id="20" value="39" />
+              <property id="21" value="29" />
+              <property id="9" value="216" />
+              <property id="10" value="40" />
+            </properties>
+          </label>
+          <label id="310" model="300">
+            <properties>
+              <property id="20" value="39" />
+              <property id="21" value="68" />
+              <property id="9" value="216" />
+              <property id="10" value="48" />
+            </properties>
+          </label>
+          <image id="280" model="320">
+            <properties>
+              <property id="20" value="39" />
+              <property id="21" value="153" />
+              <property id="9" value="210" />
+              <property id="10" value="15" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="290" model="330">
+            <properties>
+              <property id="20" value="91" />
+              <property id="21" value="107" />
+              <property id="9" value="96" />
+              <property id="10" value="96" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <label id="261" model="371">
+            <properties>
+              <property id="20" value="39" />
+              <property id="21" value="237" />
+              <property id="9" value="216" />
+              <property id="10" value="40" />
+            </properties>
+          </label>
+          <label id="311" model="301">
+            <properties>
+              <property id="20" value="39" />
+              <property id="21" value="276" />
+              <property id="9" value="216" />
+              <property id="10" value="48" />
+            </properties>
+          </label>
+          <image id="281" model="321">
+            <properties>
+              <property id="20" value="39" />
+              <property id="21" value="361" />
+              <property id="9" value="210" />
+              <property id="10" value="15" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="291" model="331">
+            <properties>
+              <property id="20" value="91" />
+              <property id="21" value="315" />
+              <property id="9" value="96" />
+              <property id="10" value="96" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <label id="262" model="372">
+            <properties>
+              <property id="20" value="297" />
+              <property id="21" value="29" />
+              <property id="9" value="216" />
+              <property id="10" value="40" />
+            </properties>
+          </label>
+          <label id="312" model="302">
+            <properties>
+              <property id="20" value="297" />
+              <property id="21" value="68" />
+              <property id="9" value="216" />
+              <property id="10" value="48" />
+            </properties>
+          </label>
+          <image id="282" model="322">
+            <properties>
+              <property id="20" value="297" />
+              <property id="21" value="153" />
+              <property id="9" value="210" />
+              <property id="10" value="15" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="292" model="332">
+            <properties>
+              <property id="20" value="349" />
+              <property id="21" value="107" />
+              <property id="9" value="96" />
+              <property id="10" value="96" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <label id="263" model="373">
+            <properties>
+              <property id="20" value="297" />
+              <property id="21" value="237" />
+              <property id="9" value="216" />
+              <property id="10" value="40" />
+            </properties>
+          </label>
+          <label id="313" model="303">
+            <properties>
+              <property id="20" value="297" />
+              <property id="21" value="276" />
+              <property id="9" value="216" />
+              <property id="10" value="48" />
+            </properties>
+          </label>
+          <image id="283" model="323">
+            <properties>
+              <property id="20" value="297" />
+              <property id="21" value="361" />
+              <property id="9" value="210" />
+              <property id="10" value="15" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="293" model="333">
+            <properties>
+              <property id="20" value="349" />
+              <property id="21" value="315" />
+              <property id="9" value="96" />
+              <property id="10" value="96" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <label id="264" model="374">
+            <properties>
+              <property id="20" value="555" />
+              <property id="21" value="29" />
+              <property id="9" value="216" />
+              <property id="10" value="40" />
+            </properties>
+          </label>
+          <label id="314" model="304">
+            <properties>
+              <property id="20" value="555" />
+              <property id="21" value="68" />
+              <property id="9" value="216" />
+              <property id="10" value="48" />
+            </properties>
+          </label>
+          <image id="284" model="324">
+            <properties>
+              <property id="20" value="555" />
+              <property id="21" value="153" />
+              <property id="9" value="210" />
+              <property id="10" value="15" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="294" model="334">
+            <properties>
+              <property id="20" value="607" />
+              <property id="21" value="107" />
+              <property id="9" value="96" />
+              <property id="10" value="96" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <label id="265" model="375">
+            <properties>
+              <property id="20" value="555" />
+              <property id="21" value="237" />
+              <property id="9" value="216" />
+              <property id="10" value="40" />
+            </properties>
+          </label>
+          <label id="315" model="305">
+            <properties>
+              <property id="20" value="555" />
+              <property id="21" value="276" />
+              <property id="9" value="216" />
+              <property id="10" value="48" />
+            </properties>
+          </label>
+          <image id="285" model="325">
+            <properties>
+              <property id="20" value="555" />
+              <property id="21" value="361" />
+              <property id="9" value="210" />
+              <property id="10" value="15" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="295" model="335">
+            <properties>
+              <property id="20" value="607" />
+              <property id="21" value="315" />
+              <property id="9" value="96" />
+              <property id="10" value="96" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <label id="266" model="376">
+            <properties>
+              <property id="20" value="813" />
+              <property id="21" value="29" />
+              <property id="9" value="216" />
+              <property id="10" value="40" />
+            </properties>
+          </label>
+          <label id="316" model="306">
+            <properties>
+              <property id="20" value="813" />
+              <property id="21" value="68" />
+              <property id="9" value="216" />
+              <property id="10" value="48" />
+            </properties>
+          </label>
+          <image id="286" model="326">
+            <properties>
+              <property id="20" value="813" />
+              <property id="21" value="153" />
+              <property id="9" value="210" />
+              <property id="10" value="15" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="296" model="336">
+            <properties>
+              <property id="20" value="865" />
+              <property id="21" value="107" />
+              <property id="9" value="96" />
+              <property id="10" value="96" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <label id="267" model="377">
+            <properties>
+              <property id="20" value="813" />
+              <property id="21" value="237" />
+              <property id="9" value="216" />
+              <property id="10" value="40" />
+            </properties>
+          </label>
+          <label id="317" model="307">
+            <properties>
+              <property id="20" value="813" />
+              <property id="21" value="276" />
+              <property id="9" value="216" />
+              <property id="10" value="48" />
+            </properties>
+          </label>
+          <image id="287" model="327">
+            <properties>
+              <property id="20" value="813" />
+              <property id="21" value="361" />
+              <property id="9" value="210" />
+              <property id="10" value="15" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="297" model="337">
+            <properties>
+              <property id="20" value="865" />
+              <property id="21" value="315" />
+              <property id="9" value="96" />
+              <property id="10" value="96" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <label id="268" model="378">
+            <properties>
+              <property id="20" value="1066" />
+              <property id="21" value="23" />
+              <property id="9" value="120" />
+              <property id="10" value="46" />
+            </properties>
+          </label>
+          <image id="288" model="328">
+            <properties>
+              <property id="20" value="1106" />
+              <property id="21" value="71" />
+              <property id="9" value="40" />
+              <property id="10" value="250" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="298" model="338">
+            <properties>
+              <property id="20" value="1078" />
+              <property id="21" value="141" />
+              <property id="9" value="96" />
+              <property id="10" value="96" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <label id="318" model="308">
+            <properties>
+              <property id="20" value="1080" />
+              <property id="21" value="335" />
+              <property id="9" value="112" />
+              <property id="10" value="63" />
+            </properties>
+          </label>
+        </components>
+      </hmiState>
+      <hmiState id="520" parentId="100" text="BoostDeck settings">
+        <components>
+          <label id="118" model="118" />
+          <button id="120" action="521" text="" model="120" />
+          <button id="121" action="522" text="" model="121" />
+          <button id="122" action="523" text="" model="122" />
+          <button id="123" action="524" text="" model="123" />
+          <button id="124" action="525" text="" model="124" />
+          <button id="125" action="526" text="" model="125" />
+          <button id="126" action="527" text="" model="126" />
+          <button id="127" action="528" text="" model="127" />
+          <button id="654" action="104" text="" model="110" />
+          <button id="1051" action="501" text="" model="360" />
+          <button id="1050" action="500" text="Configure gauges" />
+        </components>
+      </hmiState>
+      <hmiState id="521" parentId="520" text="Pressure">
+        <components>
+          <radiobutton id="700" action="2000" model="5000" text="" textModel="700" />
+          <radiobutton id="701" action="2001" model="5001" text="" textModel="701" />
+          <radiobutton id="702" action="2002" model="5002" text="" textModel="702" />
+        </components>
+      </hmiState>
+      <hmiState id="522" parentId="520" text="Speed">
+        <components>
+          <radiobutton id="720" action="2020" model="5020" text="" textModel="720" />
+          <radiobutton id="721" action="2021" model="5021" text="" textModel="721" />
+        </components>
+      </hmiState>
+      <hmiState id="523" parentId="520" text="Temperature">
+        <components>
+          <radiobutton id="740" action="2040" model="5040" text="" textModel="740" />
+          <radiobutton id="741" action="2041" model="5041" text="" textModel="741" />
+        </components>
+      </hmiState>
+      <hmiState id="524" parentId="520" text="Gauge style">
+        <components>
+          <radiobutton id="760" action="2060" model="5060" text="" textModel="760" />
+          <radiobutton id="761" action="2061" model="5061" text="" textModel="761" />
+        </components>
+      </hmiState>
+      <hmiState id="525" parentId="520" text="Alert mode">
+        <components>
+          <radiobutton id="780" action="2080" model="5080" text="" textModel="780" />
+          <radiobutton id="781" action="2081" model="5081" text="" textModel="781" />
+        </components>
+      </hmiState>
+      <hmiState id="526" parentId="520" text="Coolant high">
+        <components>
+          <radiobutton id="800" action="2100" model="5100" text="" textModel="800" />
+          <radiobutton id="801" action="2101" model="5101" text="" textModel="801" />
+          <radiobutton id="802" action="2102" model="5102" text="" textModel="802" />
+          <radiobutton id="803" action="2103" model="5103" text="" textModel="803" />
+          <radiobutton id="804" action="2104" model="5104" text="" textModel="804" />
+          <radiobutton id="805" action="2105" model="5105" text="" textModel="805" />
+          <radiobutton id="806" action="2106" model="5106" text="" textModel="806" />
+          <radiobutton id="807" action="2107" model="5107" text="" textModel="807" />
+          <radiobutton id="808" action="2108" model="5108" text="" textModel="808" />
+          <radiobutton id="809" action="2109" model="5109" text="" textModel="809" />
+        </components>
+      </hmiState>
+      <hmiState id="527" parentId="520" text="Oil temp high">
+        <components>
+          <radiobutton id="820" action="2120" model="5120" text="" textModel="820" />
+          <radiobutton id="821" action="2121" model="5121" text="" textModel="821" />
+          <radiobutton id="822" action="2122" model="5122" text="" textModel="822" />
+          <radiobutton id="823" action="2123" model="5123" text="" textModel="823" />
+          <radiobutton id="824" action="2124" model="5124" text="" textModel="824" />
+          <radiobutton id="825" action="2125" model="5125" text="" textModel="825" />
+          <radiobutton id="826" action="2126" model="5126" text="" textModel="826" />
+          <radiobutton id="827" action="2127" model="5127" text="" textModel="827" />
+          <radiobutton id="828" action="2128" model="5128" text="" textModel="828" />
+          <radiobutton id="829" action="2129" model="5129" text="" textModel="829" />
+        </components>
+      </hmiState>
+      <hmiState id="528" parentId="520" text="Oil pressure low">
+        <components>
+          <radiobutton id="840" action="2140" model="5140" text="" textModel="840" />
+          <radiobutton id="841" action="2141" model="5141" text="" textModel="841" />
+          <radiobutton id="842" action="2142" model="5142" text="" textModel="842" />
+          <radiobutton id="843" action="2143" model="5143" text="" textModel="843" />
+          <radiobutton id="844" action="2144" model="5144" text="" textModel="844" />
+          <radiobutton id="845" action="2145" model="5145" text="" textModel="845" />
+        </components>
+      </hmiState>
+      <hmiState id="104" parentId="520" text="Gauge color">
+        <components>
+          <radiobutton id="390" action="2200" model="5200" text="BMW Orange" />
+          <radiobutton id="391" action="2201" model="5201" text="Blue" />
+          <radiobutton id="392" action="2202" model="5202" text="Green" />
+          <radiobutton id="393" action="2203" model="5203" text="White" />
+          <radiobutton id="394" action="2204" model="5204" text="Purple" />
+          <radiobutton id="395" action="2205" model="5205" text="Pink" />
+          <radiobutton id="396" action="2206" model="5206" text="Cyan" />
+          <radiobutton id="397" action="2207" model="5207" text="Red" />
+          <radiobutton id="398" action="2208" model="5208" text="Multicolor" />
+        </components>
+      </hmiState>
+      <hmiState id="501" parentId="520" text="Engine profile">
+        <components>
+          <radiobutton id="591" action="2210" model="5210" text="Gasoline" />
+          <radiobutton id="592" action="2211" model="5211" text="Diesel (standard OBD PIDs)" />
+        </components>
+      </hmiState>
+      <hmiState id="500" parentId="520" text="Configure gauges">
+        <components>
+          <button id="540" action="510" text="" model="340" />
+          <button id="541" action="511" text="" model="341" />
+          <button id="542" action="512" text="" model="342" />
+          <button id="543" action="513" text="" model="343" />
+          <button id="544" action="514" text="" model="344" />
+          <button id="545" action="515" text="" model="345" />
+          <button id="546" action="516" text="" model="346" />
+          <button id="547" action="517" text="" model="347" />
+          <button id="548" action="518" text="" model="348" />
+        </components>
+      </hmiState>
+      <hmiState id="510" parentId="500" text="Gauge 1">
+        <components>
+          <radiobutton id="3500" action="3500" model="5300" text="Boost" />
+          <radiobutton id="3501" action="3501" model="5301" text="AFR" />
+          <radiobutton id="3502" action="3502" model="5302" text="Timing" />
+          <radiobutton id="3503" action="3503" model="5303" text="Intake air" />
+          <radiobutton id="3504" action="3504" model="5304" text="Trans temp" />
+          <radiobutton id="3505" action="3505" model="5305" text="Rail pressure" />
+          <radiobutton id="3506" action="3506" model="5306" text="Oil pressure" />
+          <radiobutton id="3507" action="3507" model="5307" text="Coolant" />
+          <radiobutton id="3508" action="3508" model="5308" text="Active ethanol" />
+          <radiobutton id="3509" action="3509" model="5309" text="Oil temp" />
+          <radiobutton id="3510" action="3510" model="5310" text="Voltage" />
+          <radiobutton id="3511" action="3511" model="5311" text="Engine RPM" />
+          <radiobutton id="3512" action="3512" model="5312" text="Speed" />
+          <radiobutton id="3513" action="3513" model="5313" text="Engine load" />
+          <radiobutton id="3514" action="3514" model="5314" text="Manifold abs." />
+          <radiobutton id="3515" action="3515" model="5315" text="Air flow" />
+          <radiobutton id="3516" action="3516" model="5316" text="Throttle" />
+          <radiobutton id="3517" action="3517" model="5317" text="Barometric" />
+          <radiobutton id="3518" action="3518" model="5318" text="Outside air" />
+          <radiobutton id="3519" action="3519" model="5319" text="Fuel rate" />
+          <radiobutton id="3520" action="3520" model="5320" text="Fuel level" />
+          <radiobutton id="3521" action="3521" model="5321" text="Accel. pedal" />
+          <radiobutton id="3522" action="3522" model="5322" text="Spark advance" />
+          <radiobutton id="3523" action="3523" model="5323" text="Absolute load" />
+          <radiobutton id="3524" action="3524" model="5324" text="STFT bank 1" />
+          <radiobutton id="3525" action="3525" model="5325" text="LTFT bank 1" />
+          <radiobutton id="3526" action="3526" model="5326" text="STFT bank 2" />
+          <radiobutton id="3527" action="3527" model="5327" text="LTFT bank 2" />
+          <radiobutton id="3528" action="3528" model="5328" text="Lambda target" />
+          <radiobutton id="3529" action="3529" model="5329" text="Catalyst temp" />
+          <radiobutton id="3530" action="3530" model="5330" text="Throttle target" />
+        </components>
+      </hmiState>
+      <hmiState id="511" parentId="500" text="Gauge 2">
+        <components>
+          <radiobutton id="3540" action="3500" model="5300" text="Boost" />
+          <radiobutton id="3541" action="3501" model="5301" text="AFR" />
+          <radiobutton id="3542" action="3502" model="5302" text="Timing" />
+          <radiobutton id="3543" action="3503" model="5303" text="Intake air" />
+          <radiobutton id="3544" action="3504" model="5304" text="Trans temp" />
+          <radiobutton id="3545" action="3505" model="5305" text="Rail pressure" />
+          <radiobutton id="3546" action="3506" model="5306" text="Oil pressure" />
+          <radiobutton id="3547" action="3507" model="5307" text="Coolant" />
+          <radiobutton id="3548" action="3508" model="5308" text="Active ethanol" />
+          <radiobutton id="3549" action="3509" model="5309" text="Oil temp" />
+          <radiobutton id="3550" action="3510" model="5310" text="Voltage" />
+          <radiobutton id="3551" action="3511" model="5311" text="Engine RPM" />
+          <radiobutton id="3552" action="3512" model="5312" text="Speed" />
+          <radiobutton id="3553" action="3513" model="5313" text="Engine load" />
+          <radiobutton id="3554" action="3514" model="5314" text="Manifold abs." />
+          <radiobutton id="3555" action="3515" model="5315" text="Air flow" />
+          <radiobutton id="3556" action="3516" model="5316" text="Throttle" />
+          <radiobutton id="3557" action="3517" model="5317" text="Barometric" />
+          <radiobutton id="3558" action="3518" model="5318" text="Outside air" />
+          <radiobutton id="3559" action="3519" model="5319" text="Fuel rate" />
+          <radiobutton id="3560" action="3520" model="5320" text="Fuel level" />
+          <radiobutton id="3561" action="3521" model="5321" text="Accel. pedal" />
+          <radiobutton id="3562" action="3522" model="5322" text="Spark advance" />
+          <radiobutton id="3563" action="3523" model="5323" text="Absolute load" />
+          <radiobutton id="3564" action="3524" model="5324" text="STFT bank 1" />
+          <radiobutton id="3565" action="3525" model="5325" text="LTFT bank 1" />
+          <radiobutton id="3566" action="3526" model="5326" text="STFT bank 2" />
+          <radiobutton id="3567" action="3527" model="5327" text="LTFT bank 2" />
+          <radiobutton id="3568" action="3528" model="5328" text="Lambda target" />
+          <radiobutton id="3569" action="3529" model="5329" text="Catalyst temp" />
+          <radiobutton id="3570" action="3530" model="5330" text="Throttle target" />
+        </components>
+      </hmiState>
+      <hmiState id="512" parentId="500" text="Gauge 3">
+        <components>
+          <radiobutton id="3580" action="3500" model="5300" text="Boost" />
+          <radiobutton id="3581" action="3501" model="5301" text="AFR" />
+          <radiobutton id="3582" action="3502" model="5302" text="Timing" />
+          <radiobutton id="3583" action="3503" model="5303" text="Intake air" />
+          <radiobutton id="3584" action="3504" model="5304" text="Trans temp" />
+          <radiobutton id="3585" action="3505" model="5305" text="Rail pressure" />
+          <radiobutton id="3586" action="3506" model="5306" text="Oil pressure" />
+          <radiobutton id="3587" action="3507" model="5307" text="Coolant" />
+          <radiobutton id="3588" action="3508" model="5308" text="Active ethanol" />
+          <radiobutton id="3589" action="3509" model="5309" text="Oil temp" />
+          <radiobutton id="3590" action="3510" model="5310" text="Voltage" />
+          <radiobutton id="3591" action="3511" model="5311" text="Engine RPM" />
+          <radiobutton id="3592" action="3512" model="5312" text="Speed" />
+          <radiobutton id="3593" action="3513" model="5313" text="Engine load" />
+          <radiobutton id="3594" action="3514" model="5314" text="Manifold abs." />
+          <radiobutton id="3595" action="3515" model="5315" text="Air flow" />
+          <radiobutton id="3596" action="3516" model="5316" text="Throttle" />
+          <radiobutton id="3597" action="3517" model="5317" text="Barometric" />
+          <radiobutton id="3598" action="3518" model="5318" text="Outside air" />
+          <radiobutton id="3599" action="3519" model="5319" text="Fuel rate" />
+          <radiobutton id="3600" action="3520" model="5320" text="Fuel level" />
+          <radiobutton id="3601" action="3521" model="5321" text="Accel. pedal" />
+          <radiobutton id="3602" action="3522" model="5322" text="Spark advance" />
+          <radiobutton id="3603" action="3523" model="5323" text="Absolute load" />
+          <radiobutton id="3604" action="3524" model="5324" text="STFT bank 1" />
+          <radiobutton id="3605" action="3525" model="5325" text="LTFT bank 1" />
+          <radiobutton id="3606" action="3526" model="5326" text="STFT bank 2" />
+          <radiobutton id="3607" action="3527" model="5327" text="LTFT bank 2" />
+          <radiobutton id="3608" action="3528" model="5328" text="Lambda target" />
+          <radiobutton id="3609" action="3529" model="5329" text="Catalyst temp" />
+          <radiobutton id="3610" action="3530" model="5330" text="Throttle target" />
+        </components>
+      </hmiState>
+      <hmiState id="513" parentId="500" text="Gauge 4">
+        <components>
+          <radiobutton id="3620" action="3500" model="5300" text="Boost" />
+          <radiobutton id="3621" action="3501" model="5301" text="AFR" />
+          <radiobutton id="3622" action="3502" model="5302" text="Timing" />
+          <radiobutton id="3623" action="3503" model="5303" text="Intake air" />
+          <radiobutton id="3624" action="3504" model="5304" text="Trans temp" />
+          <radiobutton id="3625" action="3505" model="5305" text="Rail pressure" />
+          <radiobutton id="3626" action="3506" model="5306" text="Oil pressure" />
+          <radiobutton id="3627" action="3507" model="5307" text="Coolant" />
+          <radiobutton id="3628" action="3508" model="5308" text="Active ethanol" />
+          <radiobutton id="3629" action="3509" model="5309" text="Oil temp" />
+          <radiobutton id="3630" action="3510" model="5310" text="Voltage" />
+          <radiobutton id="3631" action="3511" model="5311" text="Engine RPM" />
+          <radiobutton id="3632" action="3512" model="5312" text="Speed" />
+          <radiobutton id="3633" action="3513" model="5313" text="Engine load" />
+          <radiobutton id="3634" action="3514" model="5314" text="Manifold abs." />
+          <radiobutton id="3635" action="3515" model="5315" text="Air flow" />
+          <radiobutton id="3636" action="3516" model="5316" text="Throttle" />
+          <radiobutton id="3637" action="3517" model="5317" text="Barometric" />
+          <radiobutton id="3638" action="3518" model="5318" text="Outside air" />
+          <radiobutton id="3639" action="3519" model="5319" text="Fuel rate" />
+          <radiobutton id="3640" action="3520" model="5320" text="Fuel level" />
+          <radiobutton id="3641" action="3521" model="5321" text="Accel. pedal" />
+          <radiobutton id="3642" action="3522" model="5322" text="Spark advance" />
+          <radiobutton id="3643" action="3523" model="5323" text="Absolute load" />
+          <radiobutton id="3644" action="3524" model="5324" text="STFT bank 1" />
+          <radiobutton id="3645" action="3525" model="5325" text="LTFT bank 1" />
+          <radiobutton id="3646" action="3526" model="5326" text="STFT bank 2" />
+          <radiobutton id="3647" action="3527" model="5327" text="LTFT bank 2" />
+          <radiobutton id="3648" action="3528" model="5328" text="Lambda target" />
+          <radiobutton id="3649" action="3529" model="5329" text="Catalyst temp" />
+          <radiobutton id="3650" action="3530" model="5330" text="Throttle target" />
+        </components>
+      </hmiState>
+      <hmiState id="514" parentId="500" text="Gauge 5">
+        <components>
+          <radiobutton id="3660" action="3500" model="5300" text="Boost" />
+          <radiobutton id="3661" action="3501" model="5301" text="AFR" />
+          <radiobutton id="3662" action="3502" model="5302" text="Timing" />
+          <radiobutton id="3663" action="3503" model="5303" text="Intake air" />
+          <radiobutton id="3664" action="3504" model="5304" text="Trans temp" />
+          <radiobutton id="3665" action="3505" model="5305" text="Rail pressure" />
+          <radiobutton id="3666" action="3506" model="5306" text="Oil pressure" />
+          <radiobutton id="3667" action="3507" model="5307" text="Coolant" />
+          <radiobutton id="3668" action="3508" model="5308" text="Active ethanol" />
+          <radiobutton id="3669" action="3509" model="5309" text="Oil temp" />
+          <radiobutton id="3670" action="3510" model="5310" text="Voltage" />
+          <radiobutton id="3671" action="3511" model="5311" text="Engine RPM" />
+          <radiobutton id="3672" action="3512" model="5312" text="Speed" />
+          <radiobutton id="3673" action="3513" model="5313" text="Engine load" />
+          <radiobutton id="3674" action="3514" model="5314" text="Manifold abs." />
+          <radiobutton id="3675" action="3515" model="5315" text="Air flow" />
+          <radiobutton id="3676" action="3516" model="5316" text="Throttle" />
+          <radiobutton id="3677" action="3517" model="5317" text="Barometric" />
+          <radiobutton id="3678" action="3518" model="5318" text="Outside air" />
+          <radiobutton id="3679" action="3519" model="5319" text="Fuel rate" />
+          <radiobutton id="3680" action="3520" model="5320" text="Fuel level" />
+          <radiobutton id="3681" action="3521" model="5321" text="Accel. pedal" />
+          <radiobutton id="3682" action="3522" model="5322" text="Spark advance" />
+          <radiobutton id="3683" action="3523" model="5323" text="Absolute load" />
+          <radiobutton id="3684" action="3524" model="5324" text="STFT bank 1" />
+          <radiobutton id="3685" action="3525" model="5325" text="LTFT bank 1" />
+          <radiobutton id="3686" action="3526" model="5326" text="STFT bank 2" />
+          <radiobutton id="3687" action="3527" model="5327" text="LTFT bank 2" />
+          <radiobutton id="3688" action="3528" model="5328" text="Lambda target" />
+          <radiobutton id="3689" action="3529" model="5329" text="Catalyst temp" />
+          <radiobutton id="3690" action="3530" model="5330" text="Throttle target" />
+        </components>
+      </hmiState>
+      <hmiState id="515" parentId="500" text="Gauge 6">
+        <components>
+          <radiobutton id="3700" action="3500" model="5300" text="Boost" />
+          <radiobutton id="3701" action="3501" model="5301" text="AFR" />
+          <radiobutton id="3702" action="3502" model="5302" text="Timing" />
+          <radiobutton id="3703" action="3503" model="5303" text="Intake air" />
+          <radiobutton id="3704" action="3504" model="5304" text="Trans temp" />
+          <radiobutton id="3705" action="3505" model="5305" text="Rail pressure" />
+          <radiobutton id="3706" action="3506" model="5306" text="Oil pressure" />
+          <radiobutton id="3707" action="3507" model="5307" text="Coolant" />
+          <radiobutton id="3708" action="3508" model="5308" text="Active ethanol" />
+          <radiobutton id="3709" action="3509" model="5309" text="Oil temp" />
+          <radiobutton id="3710" action="3510" model="5310" text="Voltage" />
+          <radiobutton id="3711" action="3511" model="5311" text="Engine RPM" />
+          <radiobutton id="3712" action="3512" model="5312" text="Speed" />
+          <radiobutton id="3713" action="3513" model="5313" text="Engine load" />
+          <radiobutton id="3714" action="3514" model="5314" text="Manifold abs." />
+          <radiobutton id="3715" action="3515" model="5315" text="Air flow" />
+          <radiobutton id="3716" action="3516" model="5316" text="Throttle" />
+          <radiobutton id="3717" action="3517" model="5317" text="Barometric" />
+          <radiobutton id="3718" action="3518" model="5318" text="Outside air" />
+          <radiobutton id="3719" action="3519" model="5319" text="Fuel rate" />
+          <radiobutton id="3720" action="3520" model="5320" text="Fuel level" />
+          <radiobutton id="3721" action="3521" model="5321" text="Accel. pedal" />
+          <radiobutton id="3722" action="3522" model="5322" text="Spark advance" />
+          <radiobutton id="3723" action="3523" model="5323" text="Absolute load" />
+          <radiobutton id="3724" action="3524" model="5324" text="STFT bank 1" />
+          <radiobutton id="3725" action="3525" model="5325" text="LTFT bank 1" />
+          <radiobutton id="3726" action="3526" model="5326" text="STFT bank 2" />
+          <radiobutton id="3727" action="3527" model="5327" text="LTFT bank 2" />
+          <radiobutton id="3728" action="3528" model="5328" text="Lambda target" />
+          <radiobutton id="3729" action="3529" model="5329" text="Catalyst temp" />
+          <radiobutton id="3730" action="3530" model="5330" text="Throttle target" />
+        </components>
+      </hmiState>
+      <hmiState id="516" parentId="500" text="Gauge 7">
+        <components>
+          <radiobutton id="3740" action="3500" model="5300" text="Boost" />
+          <radiobutton id="3741" action="3501" model="5301" text="AFR" />
+          <radiobutton id="3742" action="3502" model="5302" text="Timing" />
+          <radiobutton id="3743" action="3503" model="5303" text="Intake air" />
+          <radiobutton id="3744" action="3504" model="5304" text="Trans temp" />
+          <radiobutton id="3745" action="3505" model="5305" text="Rail pressure" />
+          <radiobutton id="3746" action="3506" model="5306" text="Oil pressure" />
+          <radiobutton id="3747" action="3507" model="5307" text="Coolant" />
+          <radiobutton id="3748" action="3508" model="5308" text="Active ethanol" />
+          <radiobutton id="3749" action="3509" model="5309" text="Oil temp" />
+          <radiobutton id="3750" action="3510" model="5310" text="Voltage" />
+          <radiobutton id="3751" action="3511" model="5311" text="Engine RPM" />
+          <radiobutton id="3752" action="3512" model="5312" text="Speed" />
+          <radiobutton id="3753" action="3513" model="5313" text="Engine load" />
+          <radiobutton id="3754" action="3514" model="5314" text="Manifold abs." />
+          <radiobutton id="3755" action="3515" model="5315" text="Air flow" />
+          <radiobutton id="3756" action="3516" model="5316" text="Throttle" />
+          <radiobutton id="3757" action="3517" model="5317" text="Barometric" />
+          <radiobutton id="3758" action="3518" model="5318" text="Outside air" />
+          <radiobutton id="3759" action="3519" model="5319" text="Fuel rate" />
+          <radiobutton id="3760" action="3520" model="5320" text="Fuel level" />
+          <radiobutton id="3761" action="3521" model="5321" text="Accel. pedal" />
+          <radiobutton id="3762" action="3522" model="5322" text="Spark advance" />
+          <radiobutton id="3763" action="3523" model="5323" text="Absolute load" />
+          <radiobutton id="3764" action="3524" model="5324" text="STFT bank 1" />
+          <radiobutton id="3765" action="3525" model="5325" text="LTFT bank 1" />
+          <radiobutton id="3766" action="3526" model="5326" text="STFT bank 2" />
+          <radiobutton id="3767" action="3527" model="5327" text="LTFT bank 2" />
+          <radiobutton id="3768" action="3528" model="5328" text="Lambda target" />
+          <radiobutton id="3769" action="3529" model="5329" text="Catalyst temp" />
+          <radiobutton id="3770" action="3530" model="5330" text="Throttle target" />
+        </components>
+      </hmiState>
+      <hmiState id="517" parentId="500" text="Gauge 8">
+        <components>
+          <radiobutton id="3780" action="3500" model="5300" text="Boost" />
+          <radiobutton id="3781" action="3501" model="5301" text="AFR" />
+          <radiobutton id="3782" action="3502" model="5302" text="Timing" />
+          <radiobutton id="3783" action="3503" model="5303" text="Intake air" />
+          <radiobutton id="3784" action="3504" model="5304" text="Trans temp" />
+          <radiobutton id="3785" action="3505" model="5305" text="Rail pressure" />
+          <radiobutton id="3786" action="3506" model="5306" text="Oil pressure" />
+          <radiobutton id="3787" action="3507" model="5307" text="Coolant" />
+          <radiobutton id="3788" action="3508" model="5308" text="Active ethanol" />
+          <radiobutton id="3789" action="3509" model="5309" text="Oil temp" />
+          <radiobutton id="3790" action="3510" model="5310" text="Voltage" />
+          <radiobutton id="3791" action="3511" model="5311" text="Engine RPM" />
+          <radiobutton id="3792" action="3512" model="5312" text="Speed" />
+          <radiobutton id="3793" action="3513" model="5313" text="Engine load" />
+          <radiobutton id="3794" action="3514" model="5314" text="Manifold abs." />
+          <radiobutton id="3795" action="3515" model="5315" text="Air flow" />
+          <radiobutton id="3796" action="3516" model="5316" text="Throttle" />
+          <radiobutton id="3797" action="3517" model="5317" text="Barometric" />
+          <radiobutton id="3798" action="3518" model="5318" text="Outside air" />
+          <radiobutton id="3799" action="3519" model="5319" text="Fuel rate" />
+          <radiobutton id="3800" action="3520" model="5320" text="Fuel level" />
+          <radiobutton id="3801" action="3521" model="5321" text="Accel. pedal" />
+          <radiobutton id="3802" action="3522" model="5322" text="Spark advance" />
+          <radiobutton id="3803" action="3523" model="5323" text="Absolute load" />
+          <radiobutton id="3804" action="3524" model="5324" text="STFT bank 1" />
+          <radiobutton id="3805" action="3525" model="5325" text="LTFT bank 1" />
+          <radiobutton id="3806" action="3526" model="5326" text="STFT bank 2" />
+          <radiobutton id="3807" action="3527" model="5327" text="LTFT bank 2" />
+          <radiobutton id="3808" action="3528" model="5328" text="Lambda target" />
+          <radiobutton id="3809" action="3529" model="5329" text="Catalyst temp" />
+          <radiobutton id="3810" action="3530" model="5330" text="Throttle target" />
+        </components>
+      </hmiState>
+      <hmiState id="518" parentId="500" text="Gauge 9">
+        <components>
+          <radiobutton id="3820" action="3500" model="5300" text="Boost" />
+          <radiobutton id="3821" action="3501" model="5301" text="AFR" />
+          <radiobutton id="3822" action="3502" model="5302" text="Timing" />
+          <radiobutton id="3823" action="3503" model="5303" text="Intake air" />
+          <radiobutton id="3824" action="3504" model="5304" text="Trans temp" />
+          <radiobutton id="3825" action="3505" model="5305" text="Rail pressure" />
+          <radiobutton id="3826" action="3506" model="5306" text="Oil pressure" />
+          <radiobutton id="3827" action="3507" model="5307" text="Coolant" />
+          <radiobutton id="3828" action="3508" model="5308" text="Active ethanol" />
+          <radiobutton id="3829" action="3509" model="5309" text="Oil temp" />
+          <radiobutton id="3830" action="3510" model="5310" text="Voltage" />
+          <radiobutton id="3831" action="3511" model="5311" text="Engine RPM" />
+          <radiobutton id="3832" action="3512" model="5312" text="Speed" />
+          <radiobutton id="3833" action="3513" model="5313" text="Engine load" />
+          <radiobutton id="3834" action="3514" model="5314" text="Manifold abs." />
+          <radiobutton id="3835" action="3515" model="5315" text="Air flow" />
+          <radiobutton id="3836" action="3516" model="5316" text="Throttle" />
+          <radiobutton id="3837" action="3517" model="5317" text="Barometric" />
+          <radiobutton id="3838" action="3518" model="5318" text="Outside air" />
+          <radiobutton id="3839" action="3519" model="5319" text="Fuel rate" />
+          <radiobutton id="3840" action="3520" model="5320" text="Fuel level" />
+          <radiobutton id="3841" action="3521" model="5321" text="Accel. pedal" />
+          <radiobutton id="3842" action="3522" model="5322" text="Spark advance" />
+          <radiobutton id="3843" action="3523" model="5323" text="Absolute load" />
+          <radiobutton id="3844" action="3524" model="5324" text="STFT bank 1" />
+          <radiobutton id="3845" action="3525" model="5325" text="LTFT bank 1" />
+          <radiobutton id="3846" action="3526" model="5326" text="STFT bank 2" />
+          <radiobutton id="3847" action="3527" model="5327" text="LTFT bank 2" />
+          <radiobutton id="3848" action="3528" model="5328" text="Lambda target" />
+          <radiobutton id="3849" action="3529" model="5329" text="Catalyst temp" />
+          <radiobutton id="3850" action="3530" model="5330" text="Throttle target" />
+        </components>
+      </hmiState>
+    </hmiStates>
+  </pluginApp>
+</pluginApps>

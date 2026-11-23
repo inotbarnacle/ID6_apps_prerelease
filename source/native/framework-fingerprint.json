@@ -7,10 +7,13 @@
   "libBootmod3Suite.so",
   "libEngineCodes.so",
   "libHudTest.so",
+  "libHybridDeck.so",
   "libLaunchDeck.so",
+  "libMgFlasher.so",
   "libMhdMaps.so",
   "libRoadJet.so",
   "libShiftDeck.so",
+  "libWarmDeck.so",
   "libXDriveControl.so"
  ],
  "frameworks": {
@@ -73,6 +76,10 @@
     "_ZN3bmw9PluginApp11updateModelEjRKNS_7ImageIDE": {
      "bytes": 32,
      "prefix_sha256": "772e1d0c1b451534b2e230a86769887eb27150f1146ec2156a85c1c5c10fa4b4"
+    },
+    "_ZN3bmw9PluginApp11updateModelEjb": {
+     "bytes": 32,
+     "prefix_sha256": "a4eb236565d923775033ca5648b366b740709e273952f5f48bf969d6a3fc9aaa"
     },
     "_ZN3bmw9PluginApp11updateModelEji": {
      "bytes": 32,

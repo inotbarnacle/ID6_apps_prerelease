@@ -194,6 +194,7 @@ public:
     // BoostDeck addition: scalar overload documented in SDK docs/06 and docs/15.
     // Must be verified against the user's libAppFramework before a target build.
     void updateModel(unsigned int model, int value);
+    void updateModel(unsigned int model, bool value);
     void updateModel(unsigned int model, const ImageID& image);
     void updateModel(unsigned int model, const TextID& t);               // 0x52dc
     void addHandler (unsigned int action, const Delegate<bool, const Parcel&>& d);                 // 0x5970

@@ -12,20 +12,20 @@ Ask the owner for their choice of **MHD+ Suite** or **Bootmod3 Suite**, and whet
 
 On some units SSH lands on the Jacinto processor (`uname -a` reports `hu-jacinto`), not the HMI OMAP, and `/opt/hmi/ID5/lib` is empty on that node. The HMI files are then reachable read-only over Qnet under `/net/hu-omap/fs/sda0/...`, and OMAP commands run with `on -f hu-omap`. The capture utility detects this and reads the right paths automatically. See [Split-node units](source/docs/PORTING.md#split-node-units).
 
-The reference dashboard build uses **NBTevo_N18032I** at **1280 × 480**. The desktop installers check the exact firmware and framework pair before staging. See [Dashboard compatibility](source/docs/COMPATIBILITY.md) for the captured profiles and their validation.
+The reference dashboard build uses **NBTevo_N18032I** at **1280 × 480**. The desktop installer verifies both live framework hashes against an approved pair before staging. It accepts firmware variants that share that pair. See [Dashboard compatibility](source/docs/COMPATIBILITY.md) for the captured profiles and their validation.
 
 | File | SHA-256 |
 | --- | --- |
 | libAppFramework.A.so | 93f4c7ab7e59c0adf7923b9b491de06165ba9d97bbe7412292e7ddc418ca2123 |
 | libCoreFramework.A.so | 64ba154c68c772f9ca779fc18507f5b34715be58ded4a198b8a62b90d16c3ee0 |
 
-Check the gateway used by the payload, 169.254.21.3. For a different gateway, put its verified IPv4 address in /var/opt/hmi/data/ID5/gateway-ip.txt on the HMI node. The shared setting applies to the updated workers and overrides app-local gateway-ip.txt files. App-local files are still read when the shared file is absent. Without either file, supported workers try the reference gateway, then look for one HSFZ gateway on wired link-local ENET. Use the actual diagnostic gateway address for other subnets. For other listed profiles, verify both hashes in the [compatibility matrix](source/docs/COMPATIBILITY.md) and use the desktop installer for the active display. For an unlisted firmware or framework pair, follow the [porting workflow](source/docs/PORTING.md) to verify compatibility. Native changes need the QNX SDP 6.5 Linux host tools and ARM GCC 4.4.2. Matching packaged binaries and compatible layout resource changes do not need QNX on the ENET computer.
+Check the gateway used by the payload, 169.254.21.3. For a different gateway, put its verified IPv4 address in /var/opt/hmi/data/ID5/gateway-ip.txt on the HMI node. The shared setting applies to the updated workers and overrides app-local gateway-ip.txt files. App-local files are still read when the shared file is absent. Without either file, supported workers try the reference gateway, then look for one HSFZ gateway on wired link-local ENET. Use the actual diagnostic gateway address for other subnets. Use the desktop installer to verify both live hashes and select the layout for the active display. If the framework pair has no approved match in the [compatibility matrix](source/docs/COMPATIBILITY.md), follow the [porting workflow](source/docs/PORTING.md) to verify compatibility. Native changes need the QNX SDP 6.5 Linux host tools and ARM GCC 4.4.2. Matching packaged binaries and compatible layout resource changes do not need QNX on the ENET computer.
 
 If you need the toolchain for a native build, the [QNX SDP 6.5 archive](https://archive.org/details/qnxsdp-65.7z) includes the SDK and a license key generator, according to the archive listing. See [Build and deploy](source/docs/BUILD.md) for toolchain setup.
 
 ## Stage and verify
 
-Download and extract the selected packages from [packages/](packages/). The dashboard ZIP contains BoostDeck, ShiftDeck, EngineCodes, and MhdMaps. Exhaust Flap is under MHD+ Suite → Options and uses the same gateway-ip.txt setting. When updating MhdMaps, move its earlier standalone ExhaustFlap plugin folder to the backup outside Plugins. Include MhdMaps only for the MHD choice. Bootmod3Suite and XDriveControl are separate ZIPs. Read their package notes for module and tune constraints. **DSC_25 0F1860 with LMV 0F1480 requires the engine running. The supported G-series DSCs require the engine off. All mode changes require confirmed Park and zero speed.** Install neither when the owner declines them.
+Download and extract the selected packages from [packages/](packages/). The dashboard ZIP contains BoostDeck, ShiftDeck, EngineCodes, and MhdMaps. Exhaust Flap is under MHD+ Suite → Options and uses the same gateway-ip.txt setting. When updating MhdMaps, move its earlier standalone ExhaustFlap plugin folder to the backup outside Plugins. Include MhdMaps only for the MHD choice. Bootmod3Suite and XDriveControl are separate ZIPs. MG Flasher (connector 116) and HybridDeck (connector 117) also have separate packages. Read their package notes for module and tune constraints. **DSC_25 0F1860 with LMV 0F1480 requires the engine running. The supported G-series DSCs require the engine off. All mode changes require confirmed Park and zero speed.** Install neither when the owner declines them.
 
 Inventory /var/opt/hmi/data/ID5/Plugins for conflicting names and connector IDs. Back up any prior version being replaced to a separate directory outside Plugins. Stage complete app folders outside Plugins, upload over confirmed SSH, set the workers executable, and compare each readback with its local file before moving the folders into Plugins. Verify the final paths and bytes, and tell the owner where backups were saved. If anything fails, restore the previous folders before restarting. Do not add a second copy of an app.
 
@@ -43,7 +43,7 @@ Install [LaunchDeck](packages/launchdeck.zip) as a separate plugin folder with c
 
 ## Uninstall
 
-Each app is one folder under /var/opt/hmi/data/ID5/Plugins. Keep each folder intact so its local settings, including gateway-ip.txt and hud-enabled where present, can be restored.
+Each app is one folder under /var/opt/hmi/data/ID5/Plugins. Keep each folder intact so its local settings, including gateway-ip.txt, can be restored.
 
 | App | Folder |
 | --- | --- |
@@ -53,6 +53,8 @@ Each app is one folder under /var/opt/hmi/data/ID5/Plugins. Keep each folder int
 | MHD+ Suite (with Exhaust Flap and Max Cooling) | MhdMaps |
 | Exhaust Flap from earlier standalone builds | ExhaustFlap |
 | Bootmod3 Suite | Bootmod3Suite |
+| MG Flasher | MgFlasher |
+| HybridDeck | HybridDeck |
 | xDrive Control (experimental) | XDriveControl |
 | HUD Gauges | HudTest |
 

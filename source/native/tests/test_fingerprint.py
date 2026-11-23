@@ -11,7 +11,7 @@ from pathlib import Path
 from elftools.elf.elffile import ELFFile
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT / 'source/native/tools'))
+sys.path.insert(0, str(ROOT / 'source/tools'))
 from audit_framework_abi import VTABLES, reference_gaps
 
 FINGERPRINT = json.loads((ROOT / 'source/native/framework-fingerprint.json').read_text())

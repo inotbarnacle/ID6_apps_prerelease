@@ -18,6 +18,8 @@
 #include "diag_link.h"
 #include "diagnostic_lease.h"
 #include "gauge_core.h"
+#include "gauge_coexistence.h"
+#include "drive_frame.h"
 #include "fake_dme.h"
 #include "fake_dsi.h"
 
@@ -30,6 +32,16 @@ static const unsigned char READ_4201[] = {0x22,0x42,0x01}, PFX_4201[] = {0x62,0x
 static const unsigned char REPLY_4201[] = {0x62,0x42,0x01,0x63,0xca};
 
 static void sleep_ms(int ms) { poll(0, 0, ms); }
+
+static void test_launch_and_boost_bind_separately(void)
+{
+    int launch = gauge_bind(LAUNCH_DRIVE_PORT);
+    int boost = gauge_bind(BOOST_ACTIVE_PORT);
+    CHECK(launch >= 0);
+    CHECK(boost >= 0);
+    if (launch >= 0) close(launch);
+    if (boost >= 0) close(boost);
+}
 
 static void start(struct diag_link *l, const char *fake, const char *host, unsigned port, int transport,
                   int kind, int session)
@@ -633,6 +645,7 @@ static int run(const char *name, void (*fn)(void))
 int main(void)
 {
     int tests = 0, bad = 0;
+    RUN(test_launch_and_boost_bind_separately);
     RUN(test_hsfz_ok_never_binds);
     RUN(test_loop_switches_after_5);
     RUN(test_oneshot_switches_after_1);

@@ -1,5 +1,36 @@
 # Change notes
 
+## v0.7.6
+
+- Adds MG Flasher live controls and HybridDeck for plug-in hybrid telemetry, including battery health where reported.
+- BoostDeck gets larger circular gauges, radio-button settings, gasoline rail-pressure fallback, and improved handling of unavailable signals and an occupied HUD sharing port.
+- Bootmod3 detects supported ROMs automatically. Exhaust flap and Active Sound work independently of the ROM lookup.
+- The installer qualifies firmware variants by two matching framework hashes and reads firmware from Jacinto first on split-node head units.
+- Engine Fault Codes gains a wider code column and a read-only diagnostic trace.
+
+- **v0.7.5** adds T24081I as an exact-hash alias of Y24073J. The Windows and macOS installers offer opt-in [CarPlay Advanced HUD by @st1ng](https://github.com/st1ng/nbtevo-carplay-advanced).
+
+- **v0.7.5-rc9** labels the ethanol gauge tile `E%`.
+
+- **v0.7.5-rc8** shortens BoostDeck tile captions to fit the bars and dials, with abbreviated captions for the narrow gauge.
+
+- **v0.7.5-rc7** LaunchDeck uses a dedicated telemetry port so its menu can coexist with BoostDeck.
+
+- **v0.7.5-rc6** adopts the standalone QNX worker and RHMI plugin layout from [Andreas Boehm’s PR #109](https://github.com/inotbarnacle/ID6_apps_prerelease/pull/109).
+
+- **v0.7.5-rc5** uses the measured engine-running Park response for DSC_25 with LMV 0F1480. [zelnkup’s PR #114](https://github.com/inotbarnacle/ID6_apps_prerelease/pull/114)
+
+- **v0.7.5-rc4** narrows the BoostDeck low-oil-pressure alert choices to 5–25 psi. Earlier saved thresholds above 25 psi load as 25 psi.
+
+- **v0.7.5-rc3** adds WarmDeck to the native packages and desktop installer. It shows warm-up progress for engine oil, coolant, and transmission fluid from existing read-only diagnostics.
+- **xDrive documentation** records FreZZZeR's factory SGBD cross-check and zelnkup's follow-up drive observations for DSC_25.
+
+- **v0.7.5-rc2 BoostDeck** adds saved unit combinations, circular dials, and configurable coolant, oil temperature, and low oil pressure alerts with a soft chime option. Choice lists close after selection and show the saved value on the settings page. The compact dial artwork follows [lucasaviao’s image-size findings](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/55#issuecomment-6975682884).
+- **Engine Fault Codes** waits for a clear response, verifies fault memory in the active session, and reports when the ECU acknowledges the clear but codes remain. A possibly delivered clear is not retransmitted.
+
+- **Desktop installer v0.7.5-rc1** reuses one logical layout on 8:3 displays and stages compact layouts on narrower panels, based on Andreas Boehm’s measurements. It adds W20204I and recognises the submitted J16383I and O18184I capture-only profiles.
+- **HUD Gauges** starts on demand per iDrive session, shares dashboard telemetry, and yields to native projection add-ons and dashboards using the MOST diagnostic tunnel. Its reference HUD handles still require compatible cluster hardware.
+
 - **Engine Fault Codes and MHD+ Suite** wait up to three seconds for another app to release diagnostics. MHD+ sends the requested map command once after acquiring the gateway.
 - **HUD Gauges** polls after a 30 ms gap between reads and checks for redraws every 5 ms.
 - **Desktop installers v0.7.4 beta** add exact framework matches for M17345I, R19101I, S19221I, and T23235J.

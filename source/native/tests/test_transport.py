@@ -10,7 +10,7 @@ import time
 import unittest
 from pathlib import Path
 
-BIN = str(Path(__file__).resolve().parents[1] / "build/boostdeck-collector")
+BIN = str(Path(__file__).resolve().parents[1] / "build/boost-deck")
 VALUES = {0x4201: bytes.fromhex("63ca"), 0x4205: bytes.fromhex("31e5"),
           0x5889: bytes.fromhex("104e"), 0x4A49: bytes.fromhex("004e"),
           0x580F: bytes.fromhex("82"), 0xDA12: bytes.fromhex("008e")}
@@ -45,12 +45,17 @@ class TransportTest(unittest.TestCase):
         server.listen(1)
         server.settimeout(4)
         requests, errors = [], []
+        paced_delays = []
 
         def gateway():
             try:
                 conn, _ = server.accept()
                 with conn:
                     conn.settimeout(3)
+                    if mode == "paced":
+                        # Measure collector scheduling against the fixture's 30 ms delay.
+                        # The separate fragmentation test exercises TCP buffering.
+                        conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
                     while True:
                         first = conn.recv(1)
                         if not first:
@@ -60,6 +65,23 @@ class TransportTest(unittest.TestCase):
                         req = exact(conn, length)
                         requests.append(req)
                         self.assertEqual(req[0], 0xF4)
+                        if req == bytes.fromhex("f4120105"):
+                            self.assertEqual(mode, "s55_coolant")
+                            conn.sendall(frame(1, bytes.fromhex("12f441057a")))
+                            continue
+                        if req == bytes.fromhex("f4120140"):
+                            self.assertIn(mode, ("fuel_supported","fuel_unsupported"))
+                            mask = "00000004" if mode == "fuel_supported" else "00000000"
+                            conn.sendall(frame(1, bytes.fromhex("12f44140"+mask)))
+                            continue
+                        if req == bytes.fromhex("f412015e"):
+                            self.assertEqual(mode,"fuel_supported")
+                            conn.sendall(frame(1, bytes.fromhex("12f4415e0064")))
+                            continue
+                        if req == bytes.fromhex("f4120123"):
+                            self.assertEqual(mode, "rail_fallback")
+                            conn.sendall(frame(1, bytes.fromhex("12f4412303e8")))
+                            continue
                         self.assertEqual(length, 5)
                         self.assertEqual(req[2], 0x22)  # read only
                         ecu, did = req[1], int.from_bytes(req[3:], "big")
@@ -82,7 +104,9 @@ class TransportTest(unittest.TestCase):
                         # Wrong source with a valid-looking payload must be ignored.
                         conn.sendall(frame(1, bytes([0x99, 0xF4, 0x62]) + req[3:] + b"\0\0"))
                         conn.sendall(frame(1, bytes([ecu, 0xF4, 0x7F, 0x22, 0x78])))
-                        if mode == "no_trans" and did == 0xDA12:
+                        if ((mode == "rail_fallback" and did == 0x56D7) or
+                                (mode == "no_trans" and did == 0xDA12) or
+                                (mode == "no_afr" and did == 0x5889)):
                             result = bytes([ecu, 0xF4, 0x7F, 0x22, 0x31])
                         else:
                             values = CAR_VALUES if mode == "car_snapshot" else VALUES
@@ -91,9 +115,13 @@ class TransportTest(unittest.TestCase):
                                 payload += b"\xaa"
                             if mode == "extra_iat" and did == 0x580F:
                                 payload += b"\xaa"
+                            if mode == "s55_coolant" and did == 0x4300:
+                                payload = b"\xae"
                             result = bytes([ecu, 0xF4, 0x62]) + req[3:] + payload
                         if mode == "paced":
+                            started = time.monotonic()
                             time.sleep(.030)
+                            paced_delays.append((time.monotonic() - started) * 1000.0)
                         raw = frame(1, result)
                         # Fragment both header and body to catch partial-read bugs.
                         for part in (raw[:2], raw[2:7], raw[7:]):
@@ -110,12 +138,13 @@ class TransportTest(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             packets = [udp.recv(512).decode().split() for _ in range(cycles)]
             packet = packets[-1]
-            self.assertEqual(packet[0], "NBG3")
+            self.assertEqual(packet[0], "NBG7")
             self.assertGreater(int(packet[4]), 0)
             t.join(2)
             self.assertFalse(t.is_alive())
             if errors:
                 raise errors[0]
+            self.paced_delays = paced_delays
             return packet, requests, result.stderr
         finally:
             udp.close()
@@ -139,12 +168,16 @@ class TransportTest(unittest.TestCase):
     def test_fast_channels_and_staggered_slow_updates(self):
         packet, requests, trace = self.run_collector("paced", ("--trace",), cycles=32)
         self.assertEqual(int(packet[3]), 255)
-        self.assertEqual(len(packet), 21)  # eight pairs of values and ages
+        self.assertEqual(len(packet), 67)  # one value and age per signal
         self.assertNotIn(bytes.fromhex("f4120152"), requests)
+        # Correct for host timer coalescing in the mock gateway. Keep the same
+        # collector budget at the intended delay, including the slow DID reads.
+        mean_delay = sum(self.paced_delays) / len(self.paced_delays)
+        scheduling_budget = 215 + 6 * max(0, mean_delay - 30)
         for did in ("4205", "5889", "4A49", "56D7", "586F"):
             samples = re.findall(rf"RAW mono_ms=(\d+) ecu=12 did={did}", trace)
             self.assertEqual(len(samples), 32)
-            self.assertLess((int(samples[-1])-int(samples[1]))/30, 215)
+            self.assertLess((int(samples[-1])-int(samples[1]))/30, scheduling_budget)
         for did in ("580F", "DA12", "4300"):
             samples = re.findall(rf"RAW mono_ms=(\d+) ecu=\w+ did={did}", trace)
             gaps = [int(b)-int(a) for a,b in zip(samples[1:], samples[2:])]
@@ -154,6 +187,35 @@ class TransportTest(unittest.TestCase):
     def test_rejected_transmission_is_missing(self):
         p, _, _ = self.run_collector("no_trans")
         self.assertEqual(int(p[3]), 239)
+
+    def test_refused_fast_read_backs_off_without_holding_up_other_gauges(self):
+        packet, requests, _ = self.run_collector("no_afr", cycles=4)
+        self.assertEqual(int(packet[3]), 253)
+        self.assertEqual(requests.count(bytes.fromhex("f412225889")), 1)
+        self.assertEqual(requests.count(bytes.fromhex("f412224a49")), 4)
+
+    def test_one_byte_s55_coolant_reply_uses_standard_obd_coolant(self):
+        packet, requests, _ = self.run_collector("s55_coolant", cycles=3)
+        self.assertIn(bytes.fromhex("f412224300"), requests)
+        self.assertEqual(requests.count(bytes.fromhex("f4120105")), 1)
+        self.assertTrue(int(packet[3]) & (1 << 7))
+        self.assertEqual(float(packet[19]), 82)
+
+    def test_gasoline_rail_pressure_falls_back_to_obd_after_did_refusal(self):
+        packet, requests, _ = self.run_collector("rail_fallback", cycles=4)
+        self.assertEqual(requests.count(bytes.fromhex("f4120123")), 1)
+        self.assertEqual(float(packet[15]), 100)
+        self.assertEqual(int(packet[3]), 255)
+
+    def test_fuel_rate_respects_advertised_support_and_keeps_boost_live(self):
+        fuel_bit=1 << 19
+        for mode, expected in (("fuel_supported", True), ("fuel_unsupported", False)):
+            with self.subTest(mode=mode):
+                packet, requests, _ = self.run_collector(mode, ("--signals",str(1|fuel_bit)),cycles=32)
+                self.assertEqual(requests.count(bytes.fromhex("f4120140")),1)
+                self.assertEqual(bytes.fromhex("f412015e") in requests,expected)
+                self.assertTrue(int(packet[3]) & 1)
+                self.assertEqual(bool(int(packet[3]) & fuel_bit),expected)
 
     def test_heartbeat_reply_uses_full_ediabaslib_shape(self):
         p, requests, _ = self.run_collector("heartbeat")
@@ -166,6 +228,13 @@ class TransportTest(unittest.TestCase):
                 p, requests, _ = self.run_collector(mode)
                 self.assertEqual(len(requests), 9)
                 self.assertEqual(int(p[3]), expected_mask)
+
+    def test_boostdeck_collects_when_hud_sharing_port_is_occupied(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as holder:
+            holder.bind(("127.0.0.1", 42871))
+            packet, _, trace = self.run_collector()
+            self.assertEqual(int(packet[3]), 255)
+            self.assertIn("without HUD sharing", trace)
 
     def test_timeout_is_bounded(self):
         start = time.monotonic()
@@ -261,6 +330,14 @@ class TransportTest(unittest.TestCase):
         self.assertTrue(all(int(p[3]) & (1 << 4) == 0 for p in packets))  # transmission temperature invalid
         self.assertEqual(int(packets[-1][3]), 239)
 
+    def test_unmatched_most_read_does_not_end_the_gauge_scan(self):
+        packets, rc, err = self.run_most(["--transport", "most", "--trace"],
+                                         fake="gauge-mismatch", cycles=1)
+        self.assertEqual(rc, 0, err)
+        self.assertTrue(int(packets[-1][3]) & (1 << 7))
+        self.assertFalse(int(packets[-1][3]) & (1 << 1))
+        self.assertIn("ecu=12 did=4300 payload=0BF8", err)
+
     def test_working_gateway_never_touches_most(self):
         env = dict(os.environ, ID6_FAKE_MOST="up")
         p, requests, err = self.run_collector(cycles=3, env=env)
@@ -350,7 +427,7 @@ class TransportTest(unittest.TestCase):
             r = subprocess.run([BIN, "--demo", "--cycles", "1", "--udp-port", str(udp.getsockname()[1])],
                                capture_output=True, timeout=2)
             self.assertEqual(r.returncode, 0)
-            self.assertEqual(udp.recv(512).decode().split()[2:4], ["1", "255"])
+            self.assertEqual(udp.recv(512).decode().split()[2:4], ["1", str((1 << 31) - 1)])  # demo marks all 31 signals valid
         r = subprocess.run([BIN, "--demo", "--host", "127.0.0.1"], capture_output=True)
         self.assertEqual(r.returncode, 2)
 

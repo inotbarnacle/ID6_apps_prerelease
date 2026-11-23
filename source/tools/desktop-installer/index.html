@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ID6Apps Installer</title>
+<style>
+:root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;color:#f1f4f8;background:#101318}
+*{box-sizing:border-box}
+body{margin:0;padding:clamp(1rem,5vw,3.5rem) 1rem}
+main{max-width:39rem;margin:auto}
+header{margin-bottom:1.75rem}
+h1{font-size:clamp(1.9rem,5vw,2.7rem);letter-spacing:-.04em;line-height:1.1;margin:0 0 .7rem}
+p{margin:.3rem 0 1rem;color:#b6c2ce}
+fieldset{border:1px solid #343c48;padding:0 1rem .3rem;border-radius:.7rem;margin:0 0 1.1rem;min-width:0}
+legend{font-weight:650;padding:0 .4rem}
+.options label{display:flex;align-items:center;gap:.8rem;padding:.82rem .2rem;cursor:pointer;min-height:3.3rem}
+.options label+label{border-top:1px solid #343c48}
+input[type=checkbox],input[type=radio]{width:1.17rem;height:1.17rem;accent-color:#74b8ff}
+details{margin:0 0 1.25rem;border:1px solid #343c48;border-radius:.7rem;padding:.8rem 1rem}
+summary{cursor:pointer;font-weight:620}
+.fields{display:grid;gap:.65rem;margin-top:.8rem}
+.fields label{display:grid;gap:.25rem;color:#d3dbe5}
+input:not([type=checkbox]):not([type=radio]),select{width:100%;padding:.6rem .7rem;background:#1c232d;color:inherit;border:1px solid #434e5f;border-radius:.35rem;font:inherit}
+.row{display:flex;gap:.7rem;flex-wrap:wrap}
+button{font:inherit;font-weight:650;border-radius:.45rem;border:1px solid #465367;padding:.65rem 1rem;background:#1c232d;color:inherit;cursor:pointer}
+.primary{color:#071728;background:#83c2ff;border-color:#83c2ff}
+button:disabled{opacity:.5;cursor:default}
+:focus-visible{outline:2px solid #83c2ff;outline-offset:3px}
+dialog{width:min(32rem,calc(100% - 2rem));background:#18202a;border:1px solid #52647a;border-radius:.75rem;color:inherit;padding:1.4rem}
+dialog::backdrop{background:#090d13d9}
+code{display:block;overflow-wrap:anywhere;margin-bottom:1rem}
+#status{margin-top:1rem;overflow-wrap:anywhere;white-space:pre-wrap}
+#status[data-error=true]{color:#ffaaa3}
+</style>
+<main>
+<header>
+<h1>ID6Apps Installer</h1>
+<p>Park the car and wake iDrive. Enable temporary SSH with <a href="https://ssh.bavarian-aa.uk/" target="_blank" rel="noopener noreferrer">Bavarian SSH Client</a> before continuing.</p>
+</header>
+<form id="installer">
+<label>Operation <select id="operation"><option value="install">Install</option><option value="uninstall">Uninstall</option><option value="carplay">CarPlay Advanced HUD</option></select></label>
+<fieldset id="install-menus" class="options">
+<legend>Menus to install</legend>
+<label><input type="checkbox" name="apps" value="BoostDeck" checked>BoostDeck</label>
+<label><input type="checkbox" name="apps" value="ShiftDeck" checked>ShiftDeck</label>
+<label><input type="checkbox" name="apps" value="LaunchDeck">LaunchDeck</label>
+<label><input type="checkbox" name="apps" value="WarmDeck">WarmDeck</label>
+<label><input type="checkbox" name="apps" value="HybridDeck">HybridDeck</label>
+<label><input type="checkbox" name="apps" value="HudTest">HUD Gauges (experimental)</label>
+<p class="hint">HUD Gauges is enabled per iDrive session. The overlay is unavailable when native Android Auto or a supported CarPlay HUD add-on is installed.</p>
+<label><input type="radio" name="tuning" value="MhdMaps">MHD+ Suite (includes Exhaust Flap and Max Cooling)</label>
+<label><input type="radio" name="tuning" value="Bootmod3Suite">Bootmod3 Suite</label>
+<label><input type="radio" name="tuning" value="MgFlasher">MG Flasher</label>
+<label><input type="radio" name="tuning" value="" checked>No tuning suite</label>
+<label><input type="checkbox" name="apps" value="EngineCodes" checked>Engine Fault Codes</label>
+<label><input type="checkbox" name="apps" value="XDriveControl">xDrive Control (experimental)</label>
+<label><input type="checkbox" name="apps" value="RoadJet">Road Jet (1280 × 480)</label>
+<label><input type="checkbox" name="apps" value="BEAMer">BEAMer (1280 × 480)</label>
+</fieldset>
+<fieldset id="remove-menus" class="options" hidden disabled>
+<legend>Menus to uninstall</legend>
+<p>Set any desired vehicle settings in iDrive before removing their controls. Selected menus are moved to a backup on the head unit.</p>
+<label><input type="checkbox" name="remove" value="BoostDeck">BoostDeck</label>
+<label><input type="checkbox" name="remove" value="ShiftDeck">ShiftDeck</label>
+<label><input type="checkbox" name="remove" value="LaunchDeck">LaunchDeck</label>
+<label><input type="checkbox" name="remove" value="WarmDeck">WarmDeck</label>
+<label><input type="checkbox" name="remove" value="HybridDeck">HybridDeck</label>
+<label><input type="checkbox" name="remove" value="MhdMaps">MHD+ Suite</label>
+<label><input type="checkbox" name="remove" value="Bootmod3Suite">Bootmod3 Suite</label>
+<label><input type="checkbox" name="remove" value="MgFlasher">MG Flasher</label>
+<label><input type="checkbox" name="remove" value="EngineCodes">Engine Fault Codes</label>
+<label><input type="checkbox" name="remove" value="XDriveControl">xDrive Control (experimental)</label>
+<label><input type="checkbox" name="remove" value="RoadJet">Road Jet</label>
+<label><input type="checkbox" name="remove" value="BEAMer">BEAMer</label>
+<label><input type="checkbox" name="remove" value="HudTest">HUD Gauges</label>
+<label><input type="checkbox" name="remove" value="ExhaustFlap">Standalone Exhaust Flap</label>
+</fieldset>
+<fieldset id="carplay-options" hidden disabled>
+<legend>CarPlay Advanced by st1ng</legend>
+<p>Adds CarPlay turn-by-turn directions to a compatible cluster or HUD. It downloads and verifies st1ng’s v1.3.0 release and uses its HUD-only installer. It backs up the original boot script, adds a boot hook and leaves iDrive running until you restart it. Wired ENET, working factory CarPlay and internet access are required.</p>
+<p>Native Android Auto and CarPlay Advanced can compete for the same cluster and HUD. <a href="https://github.com/st1ng/nbtevo-carplay-advanced" target="_blank" rel="noopener noreferrer">Upstream project and rollback instructions</a>.</p>
+</fieldset>
+<details>
+<summary>Connection settings</summary>
+<div class="fields">
+<label>Adapter<select id="adapter"><option value="enet">Wired ENET</option><option value="wifi">MHD Wi-Fi</option></select></label>
+<label>Head unit IP<input id="head" placeholder="Discover automatically" inputmode="decimal" autocomplete="off"></label>
+<label>Diagnostic gateway IP<input id="gateway" placeholder="169.254.21.3" inputmode="decimal" autocomplete="off"></label>
+<label>Firmware<input id="version" placeholder="Automatic or enter the full NBTevo code" autocomplete="off"></label>
+<label>Display resolution<select id="resolution"><option value="">Automatic</option><option value="800x480">800 × 480</option><option value="960x480">960 × 480</option><option value="1280x480">1280 × 480</option><option value="1440x540">1440 × 540</option><option value="1920x720">1920 × 720</option></select></label>
+</div>
+</details>
+<div class="row"><button id="check" type="submit">Check compatibility</button><button id="install" class="primary">Install selected menus</button><button id="quit" type="button">Quit</button></div>
+</form>
+<p class="hint">Display layout measurements by <a href="https://github.com/AndreasBoehm/idrive6-layout-preview" target="_blank" rel="noopener noreferrer">Andreas Boehm</a>.</p>
+<p id="status" role="status" aria-live="polite"></p>
+<dialog id="trust">
+<h2>Trust this head unit?</h2>
+<p id="peer"></p><code id="fingerprint"></code>
+<form method="dialog" class="row"><button value="cancel">Cancel</button><button class="primary" value="trust">Trust and continue</button></form>
+</dialog>
+</main>
+<script>
+const byID = id => document.getElementById(id);
+const form = byID('installer'), status = byID('status'), dialog = byID('trust');
+const check = byID('check'), install = byID('install'), quit = byID('quit');
+const operation = byID('operation');
+function updateOperation() {
+  const removing = operation.value === 'uninstall', carplay = operation.value === 'carplay';
+  byID('install-menus').hidden = byID('install-menus').disabled = removing || carplay;
+  byID('remove-menus').hidden = byID('remove-menus').disabled = !removing;
+  byID('carplay-options').hidden = byID('carplay-options').disabled = !carplay;
+  check.hidden = check.disabled = removing;
+  check.textContent = carplay ? 'Preview CarPlay installation' : 'Check compatibility';
+  install.textContent = carplay ? 'Install CarPlay HUD' : removing ? 'Uninstall selected menus' : 'Install selected menus';
+}
+operation.addEventListener('change', updateOperation);
+updateOperation();
+let pending;
+function report(message, error = false) {
+  status.textContent = message;
+  status.dataset.error = error;
+}
+async function post(action, payload) {
+  const response = await fetch(action, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
+  if (!response.ok) throw new Error('The local installer stopped responding.');
+  return response.json();
+}
+async function run(request) {
+  check.disabled = true;
+  install.disabled = true;
+  quit.disabled = true;
+  operation.disabled = true;
+  const progress = request.CarPlay ? 'Checking the head unit and verifying the upstream CarPlay release…' :
+    request.Uninstall ? 'Moving selected menus to backup…' :
+    request.CheckOnly ? 'Checking compatibility…' : 'Checking iDrive and installing selected menus…';
+  report(request.Head ? progress : 'Finding iDrive on the adapter…');
+  try {
+    const result = await post('install', request);
+    if (result.State === 'trust') {
+      pending = {...request, Head: result.Head, Gateway: result.Gateway, Local: result.Local, Fingerprint: result.Fingerprint};
+      byID('peer').textContent = result.Head;
+      byID('fingerprint').textContent = result.Fingerprint;
+      report('');
+      dialog.showModal();
+    } else {
+      report(result.Message, !['installed', 'checked', 'uninstalled'].includes(result.State));
+    }
+  } catch (error) {
+    report(error.message, true);
+  } finally {
+    operation.disabled = false;
+    updateOperation();
+    install.disabled = false;
+    quit.disabled = false;
+  }
+}
+form.addEventListener('submit', event => {
+  event.preventDefault();
+  const fields = new FormData(form);
+  const removing = operation.value === 'uninstall', carplay = operation.value === 'carplay';
+  const checkOnly = !removing && event.submitter === check;
+  if (carplay && !checkOnly && !window.confirm('Install CarPlay turn-by-turn and its boot hook on the parked car?')) return;
+  const apps = carplay ? [] : fields.getAll(removing ? 'remove' : 'apps');
+  const tuning = fields.get('tuning');
+  if (tuning) apps.push(tuning);
+  if (!carplay && !apps.length) return report('Choose at least one menu.', true);
+  run({Apps: apps, Head: byID('head').value, Gateway: byID('gateway').value,
+       Version: byID('version').value, DisplayResolution: byID('resolution').value,
+       Uninstall: removing, CarPlay: carplay,
+       CheckOnly: checkOnly, WiFi: byID('adapter').value === 'wifi'});
+});
+dialog.addEventListener('close', () => {
+  const request = pending;
+  pending = null;
+  if (dialog.returnValue === 'trust' && request) run(request);
+  dialog.returnValue = '';
+});
+quit.addEventListener('click', async () => {
+  try {
+    await post('quit', {});
+    form.hidden = true;
+    report('Installer closed. You can close this tab.');
+  } catch (error) {
+    report(error.message, true);
+  }
+});
+</script>
+</html>

@@ -1,0 +1,133 @@
+<?xml version='1.0' encoding='utf-8'?>
+<pluginApps>
+  <pluginApp applicationType="VehicleInformation" applicationWeight="216" text="MG Flasher">
+    <entryButton id="1" action="10">
+      <properties>
+        <property id="23" value="2" />
+      </properties>
+    </entryButton>
+    <actions>
+      <hmiAction id="10" target="100" />
+      <raAction id="20" />
+      <hmiAction id="11" target="101" />
+      <raAction id="21" />
+      <raAction id="22" />
+      <raAction id="23" />
+      <raAction id="24" />
+      <raAction id="25" />
+      <hmiAction id="12" target="102" />
+      <raAction id="30" />
+      <raAction id="31" />
+      <raAction id="32" />
+      <raAction id="33" />
+      <raAction id="34" />
+      <raAction id="35" />
+      <hmiAction id="13" target="103" />
+      <raAction id="40" />
+      <raAction id="41" />
+    </actions>
+    <models>
+      <raDataModel id="50" modelType="Richtext" />
+      <imageIdModel id="65" imageId="59105" />
+      <raDataModel id="51" modelType="Richtext" />
+      <imageIdModel id="60" imageId="59100" />
+      <imageIdModel id="61" imageId="59101" />
+      <imageIdModel id="62" imageId="59102" />
+      <imageIdModel id="63" imageId="59103" />
+      <imageIdModel id="64" imageId="59104" />
+      <raDataModel id="52" modelType="Richtext" />
+      <raDataModel id="53" modelType="Richtext" />
+    </models>
+    <hmiStates>
+      <hmiState id="100" text="MG Flasher">
+        <components>
+          <button id="20" action="20" text="Refresh current settings" />
+          <label id="50" model="50" />
+          <button id="11" action="11" text="Switchable maps" />
+          <button id="12" action="12" text="Burbles" />
+          <button id="13" action="13" text="Max Cooling" />
+        </components>
+      </hmiState>
+      <hmiState id="101" text="Switchable maps" parentId="100">
+        <components>
+          <label id="51" model="51">
+            <properties>
+              <property id="20" value="90" />
+              <property id="21" value="346" />
+              <property id="9" value="1050" />
+              <property id="10" value="64" />
+            </properties>
+          </label>
+          <image id="201" model="65">
+            <properties>
+              <property id="20" value="491" />
+              <property id="21" value="18" />
+              <property id="9" value="263" />
+              <property id="10" value="80" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <button id="21" action="21" imageModel="60">
+            <properties>
+              <property id="20" value="90" />
+              <property id="21" value="112" />
+              <property id="9" value="200" />
+              <property id="10" value="208" />
+            </properties>
+          </button>
+          <button id="22" action="22" imageModel="61">
+            <properties>
+              <property id="20" value="306" />
+              <property id="21" value="112" />
+              <property id="9" value="200" />
+              <property id="10" value="208" />
+            </properties>
+          </button>
+          <button id="23" action="23" imageModel="62">
+            <properties>
+              <property id="20" value="522" />
+              <property id="21" value="112" />
+              <property id="9" value="200" />
+              <property id="10" value="208" />
+            </properties>
+          </button>
+          <button id="24" action="24" imageModel="63">
+            <properties>
+              <property id="20" value="738" />
+              <property id="21" value="112" />
+              <property id="9" value="200" />
+              <property id="10" value="208" />
+            </properties>
+          </button>
+          <button id="25" action="25" imageModel="64">
+            <properties>
+              <property id="20" value="954" />
+              <property id="21" value="112" />
+              <property id="9" value="200" />
+              <property id="10" value="208" />
+            </properties>
+          </button>
+        </components>
+      </hmiState>
+      <hmiState id="102" text="Burbles" parentId="100">
+        <components>
+          <label id="52" model="52" />
+          <button id="30" action="30" text="Slot 0" />
+          <button id="31" action="31" text="Slot 1" />
+          <button id="32" action="32" text="Slot 2" />
+          <button id="33" action="33" text="Slot 3" />
+          <button id="34" action="34" text="Slot 4" />
+          <button id="35" action="35" text="Slot 5" />
+        </components>
+      </hmiState>
+      <hmiState id="103" text="Max Cooling" parentId="100">
+        <components>
+          <label id="53" model="53" />
+          <button id="40" action="40" text="Off" />
+          <button id="41" action="41" text="On" />
+        </components>
+      </hmiState>
+    </hmiStates>
+  </pluginApp>
+</pluginApps>

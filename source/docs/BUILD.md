@@ -28,19 +28,23 @@ python3 -m pip install Pillow
 sh native/build.sh
 ```
 
-The script builds the native libraries and diagnostic workers. The dashboard diagnostic workers use the [MOST fallback](MOST.md), which loads the DSI library at runtime. The MHD+ Suite package also includes a dedicated Exhaust Flap worker as `MhdMaps/exhaust-flap-worker-qnx`. It uses the PR #29 commands and the shared HSFZ-to-MOST fallback. Use `native/tools/merge_exhaust_flap_page.py` to assemble the submenu from the original flap artwork and the MHD+ Suite image archive. The packaged XML and matching image archives must be deployed together.
+The script builds the native libraries and diagnostic workers. The dashboard diagnostic workers use the [MOST fallback](MOST.md), which loads the DSI library at runtime. The MHD+ Suite package also includes a dedicated Exhaust Flap worker as `MhdMaps/exhaust-flap-worker-qnx`. It uses the PR #29 commands and the shared HSFZ-to-MOST fallback. Use `tools/merge_exhaust_flap_page.py` to assemble the submenu from the original flap artwork and the MHD+ Suite image archive. The packaged XML and matching image archives must be deployed together.
+
+Run `make -C native assets` from the source directory to regenerate the BoostDeck layout and dial artwork. The target uses the base artwork from the dashboard package and stages the matching MHD and ShiftDeck images alongside their manifests. The alert chime is a separate invocation of the BoostDeck worker and uses the
+head unit's preferred QNX PCM playback route.
+[QNX PCM playback documentation](https://www.qnx.com/developers/docs/6.5.0SP1/neutrino/audio/pcm.html)
 
 ## New firmware
 
 Use the [car identification steps](../../AgentReadMe.md#identify-the-car), the [porting workflow](PORTING.md), and the [read-only capture tool](../tools/capture_headunit.py) to collect the platform, display, and framework evidence before building a candidate profile.
 
-Read `/opt/sys/etc/nbt_version.txt`, `uname -a`, and `/opt/sys/bin/LayerManagerControl get screen 0` over SSH. Record the on-screen version and known iDrive pixel resolution if the corresponding automatic query fails. Compare the two framework hashes with the reference table in `AgentReadMe.md`. A firmware code with an exact match for both framework hashes can reuse the existing installer profile. For a different pair, compare static ABI evidence with the already tested reference using `native/tools/audit_framework_abi.py` with `pyelftools` and `capstone`. Verify all imported symbols, constructor signatures, and vtable slots, then run a parked load and lifecycle test on that firmware. Static similarity alone does not establish runtime compatibility. Add a firmware entry only with matching evidence. Keep firmware approval separate from the vehicle's DME/EGS signal mapping.
+Read `/opt/sys/etc/nbt_version.txt`, `uname -a`, and `/opt/sys/bin/LayerManagerControl get screen 0` over SSH. Record the on-screen version and known iDrive pixel resolution if the corresponding automatic query fails. Compare the two framework hashes with the reference table in `AgentReadMe.md`. A firmware code with an exact match for both framework hashes can reuse the existing installer profile. For a different pair, compare static ABI evidence with the already tested reference using `tools/audit_framework_abi.py` with `pyelftools` and `capstone`. Verify all imported symbols, constructor signatures, and vtable slots, then run a parked load and lifecycle test on that firmware. Static similarity alone does not establish runtime compatibility. Add a firmware entry only with matching evidence. Keep firmware approval separate from the vehicle's DME/EGS signal mapping.
 
 The committed [framework fingerprint](../native/framework-fingerprint.json) lets you run this audit with only your own captured pair. It holds the symbol names, sizes, vtable relocation slots, and SHA-256 digests of the NBTevo_N18032I reference pair for the functions the packaged plugins import. It contains no framework code. Install the two Python packages, extract the plugin libraries from [packages/](../../packages/), and audit all of them in one run:
 
 ```sh
 python3 -m pip install pyelftools capstone
-python3 native/tools/audit_framework_abi.py \
+python3 tools/audit_framework_abi.py \
   --fingerprint native/framework-fingerprint.json \
   --installed-dir /private/candidate-frameworks \
   --plugin /private/plugins/lib*.so --report /private/abi-report.json
@@ -49,7 +53,7 @@ python3 native/tools/audit_framework_abi.py \
 The published ten-build [static comparison](COMPATIBILITY.md#static-framework-checks) used S19221I as its reference. To compare against a reference pair you hold yourself, pass its directory:
 
 ```sh
-python3 native/tools/audit_framework_abi.py \
+python3 tools/audit_framework_abi.py \
   --reference-dir /private/reference-frameworks \
   --installed-dir /private/candidate-frameworks \
   --plugin native/out/libBoostDeck.so --report /private/boostdeck-abi-report.json
@@ -61,4 +65,4 @@ Inspect the report's limitations. The tool checks required imports, function ins
 
 ## Build HUD Gauges
 
-Set `NBTAAD_SOURCE` to the absolute path of `milestone-7/src` from the licensed [NBT-AAD reference source](https://github.com/Sq00ky/Supra-iDrive6-Android-Auto/tree/f97f1a34bdf68f1861862bd6361a2918949a48f2/milestone-7). Run `sh native/build.sh` to produce the optional HUD library and worker. HUD retains the original 6WA handle map and factory-navigation ownership checks. The rebuilt worker accepts a configured gateway IPv4 address. A cluster that rejects the reference handles still requires a parked HUD protocol capture for porting.
+Set `NBTAAD_SOURCE` to the absolute path of `milestone-7/src` from the licensed [NBT-AAD reference source](https://github.com/Sq00ky/Supra-iDrive6-Android-Auto/tree/47ff0ae89712f2b5cbfe743cc8b7ff413ed235cc/milestone-7). Run `sh native/build.sh` to produce the optional HUD library and worker. HUD retains the original 6WA handle map and factory-navigation ownership checks. The rebuilt worker accepts a configured gateway IPv4 address. A cluster that rejects the reference handles still requires a parked HUD protocol capture for porting.
