@@ -1,5 +1,9 @@
 # Build and deploy
 
+For a step-by-step guide to adding an app, creating its package, and registering
+it with the desktop installer, see
+[Developing an ID6 dashboard](DASHBOARD-DEVELOPMENT.md).
+
 Run commands from `source/`. Host tests use a C compiler, Make, and Python 3. No car or BMW files are needed for these tests.
 
 ```sh

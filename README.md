@@ -27,6 +27,8 @@ Choose **MHD+ Suite**, **Bootmod3 Suite**, or **MG Flasher**. [Download the dash
 
 [Quick Start](Quick%20Start.md) · [Uninstall](AgentReadMe.md#uninstall) · [Change notes](CHANGELOG.md) · [Native source](source/)
 
+[Want to build your own dashboard?](source/docs/DASHBOARD-DEVELOPMENT.md) See the developer guide for the native app, RHMI, build, package, and installer workflow.
+
 ## Features
 
 - **BoostDeck** has nine configurable gauges. Open **OPTIONS → BoostDeck settings** to set pressure (psi, bar, or kPa), speed (mph or km/h), and temperature (°F or °C) independently, or switch between bars and circular dials. Picking a value returns to settings and shows the saved choice. **Configure gauges** and **Engine profile** are in the same menu. Gasoline and diesel keep separate gauge assignments.
