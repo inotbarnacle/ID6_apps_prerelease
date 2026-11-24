@@ -239,6 +239,25 @@
           <hmiAction id="2945" target="520" />
         </actions>
       </combinedAction>
+      <hmiAction id="529" target="529" />
+      <combinedAction id="2160">
+        <actions>
+          <raAction id="2560" />
+          <hmiAction id="2960" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2161">
+        <actions>
+          <raAction id="2561" />
+          <hmiAction id="2961" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2162">
+        <actions>
+          <raAction id="2562" />
+          <hmiAction id="2962" target="520" />
+        </actions>
+      </combinedAction>
       <hmiAction id="104" target="104" />
       <hmiAction id="501" target="501" />
       <hmiAction id="500" target="500" />
@@ -591,6 +610,13 @@
       <raBoolModel id="5144" />
       <raDataModel id="845" modelType="Richtext" />
       <raBoolModel id="5145" />
+      <raDataModel id="128" modelType="Richtext" />
+      <raDataModel id="860" modelType="Richtext" />
+      <raBoolModel id="5160" />
+      <raDataModel id="861" modelType="Richtext" />
+      <raBoolModel id="5161" />
+      <raDataModel id="862" modelType="Richtext" />
+      <raBoolModel id="5162" />
       <raDataModel id="110" modelType="Richtext" />
       <raDataModel id="360" modelType="Richtext" />
       <raBoolModel id="5200" />
@@ -1052,6 +1078,7 @@
           <button id="125" action="526" text="" model="125" />
           <button id="126" action="527" text="" model="126" />
           <button id="127" action="528" text="" model="127" />
+          <button id="128" action="529" text="" model="128" />
           <button id="654" action="104" text="" model="110" />
           <button id="1051" action="501" text="" model="360" />
           <button id="1050" action="500" text="Configure gauges" />
@@ -1124,6 +1151,13 @@
           <radiobutton id="843" action="2143" model="5143" text="" textModel="843" />
           <radiobutton id="844" action="2144" model="5144" text="" textModel="844" />
           <radiobutton id="845" action="2145" model="5145" text="" textModel="845" />
+        </components>
+      </hmiState>
+      <hmiState id="529" parentId="520" text="Gauge font size">
+        <components>
+          <radiobutton id="860" action="2160" model="5160" text="" textModel="860" />
+          <radiobutton id="861" action="2161" model="5161" text="" textModel="861" />
+          <radiobutton id="862" action="2162" model="5162" text="" textModel="862" />
         </components>
       </hmiState>
       <hmiState id="104" parentId="520" text="Gauge color">

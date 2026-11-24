@@ -14,6 +14,7 @@ int main() {
     BoostPreferences prefs;
     prefs.load(path,9);
     assert(prefs.color==5 && prefs.choice[BOOST_STYLE]==0);
+    assert(prefs.choice[BOOST_FONT_SIZE]==1);
     assert(prefs.units(BD_SPEED)==1 && prefs.units(BD_COOLANT)==1 && prefs.units(BD_OIL)==1);
     prefs.choice[BOOST_PRESSURE]=2;
     prefs.choice[BOOST_SPEED]=0;
@@ -41,6 +42,7 @@ int main() {
 
     unsigned char corrupted[3+BOOST_SETTING_COUNT]={'G',2,4};
     corrupted[3]=3;
+    corrupted[3+BOOST_FONT_SIZE]=1;
     assert(savePersistentBytes(path,corrupted,sizeof corrupted));
     restarted.load(path,9);
     assert(restarted.color==prefs.color && !memcmp(restarted.choice,prefs.choice,sizeof prefs.choice));
