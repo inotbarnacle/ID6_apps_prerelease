@@ -663,47 +663,47 @@
       <raBoolModel id="5330" />
       <raDataModel id="300" modelType="Richtext" />
       <raDataModel id="340" modelType="Richtext" />
-      <raDataModel id="370" modelType="Richtext" />
+      <raListModel id="370" modelType="Richtext" />
       <imageIdModel id="320" imageId="55000" />
       <imageIdModel id="330" imageId="57000" />
       <raDataModel id="301" modelType="Richtext" />
       <raDataModel id="341" modelType="Richtext" />
-      <raDataModel id="371" modelType="Richtext" />
+      <raListModel id="371" modelType="Richtext" />
       <imageIdModel id="321" imageId="55000" />
       <imageIdModel id="331" imageId="57000" />
       <raDataModel id="302" modelType="Richtext" />
       <raDataModel id="342" modelType="Richtext" />
-      <raDataModel id="372" modelType="Richtext" />
+      <raListModel id="372" modelType="Richtext" />
       <imageIdModel id="322" imageId="55000" />
       <imageIdModel id="332" imageId="57000" />
       <raDataModel id="303" modelType="Richtext" />
       <raDataModel id="343" modelType="Richtext" />
-      <raDataModel id="373" modelType="Richtext" />
+      <raListModel id="373" modelType="Richtext" />
       <imageIdModel id="323" imageId="55000" />
       <imageIdModel id="333" imageId="57000" />
       <raDataModel id="304" modelType="Richtext" />
       <raDataModel id="344" modelType="Richtext" />
-      <raDataModel id="374" modelType="Richtext" />
+      <raListModel id="374" modelType="Richtext" />
       <imageIdModel id="324" imageId="55000" />
       <imageIdModel id="334" imageId="57000" />
       <raDataModel id="305" modelType="Richtext" />
       <raDataModel id="345" modelType="Richtext" />
-      <raDataModel id="375" modelType="Richtext" />
+      <raListModel id="375" modelType="Richtext" />
       <imageIdModel id="325" imageId="55000" />
       <imageIdModel id="335" imageId="57000" />
       <raDataModel id="306" modelType="Richtext" />
       <raDataModel id="346" modelType="Richtext" />
-      <raDataModel id="376" modelType="Richtext" />
+      <raListModel id="376" modelType="Richtext" />
       <imageIdModel id="326" imageId="55000" />
       <imageIdModel id="336" imageId="57000" />
       <raDataModel id="307" modelType="Richtext" />
       <raDataModel id="347" modelType="Richtext" />
-      <raDataModel id="377" modelType="Richtext" />
+      <raListModel id="377" modelType="Richtext" />
       <imageIdModel id="327" imageId="55000" />
       <imageIdModel id="337" imageId="57000" />
       <raDataModel id="308" modelType="Richtext" />
       <raDataModel id="348" modelType="Richtext" />
-      <raDataModel id="378" modelType="Richtext" />
+      <raListModel id="378" modelType="Richtext" />
       <imageIdModel id="328" imageId="56100" />
       <imageIdModel id="338" imageId="57000" />
     </models>
@@ -741,14 +741,15 @@
               <property id="10" value="43" />
             </properties>
           </label>
-          <label id="260" model="370">
+          <list id="260" model="370">
             <properties>
               <property id="20" value="39" />
               <property id="21" value="29" />
               <property id="9" value="216" />
               <property id="10" value="40" />
+              <property id="2" value="false" />
             </properties>
-          </label>
+          </list>
           <label id="310" model="300">
             <properties>
               <property id="20" value="39" />
@@ -777,14 +778,15 @@
               <property id="3" value="true" />
             </properties>
           </image>
-          <label id="261" model="371">
+          <list id="261" model="371">
             <properties>
               <property id="20" value="39" />
               <property id="21" value="237" />
               <property id="9" value="216" />
               <property id="10" value="40" />
+              <property id="2" value="false" />
             </properties>
-          </label>
+          </list>
           <label id="311" model="301">
             <properties>
               <property id="20" value="39" />
@@ -813,14 +815,15 @@
               <property id="3" value="true" />
             </properties>
           </image>
-          <label id="262" model="372">
+          <list id="262" model="372">
             <properties>
               <property id="20" value="297" />
               <property id="21" value="29" />
               <property id="9" value="216" />
               <property id="10" value="40" />
+              <property id="2" value="false" />
             </properties>
-          </label>
+          </list>
           <label id="312" model="302">
             <properties>
               <property id="20" value="297" />
@@ -849,14 +852,15 @@
               <property id="3" value="true" />
             </properties>
           </image>
-          <label id="263" model="373">
+          <list id="263" model="373">
             <properties>
               <property id="20" value="297" />
               <property id="21" value="237" />
               <property id="9" value="216" />
               <property id="10" value="40" />
+              <property id="2" value="false" />
             </properties>
-          </label>
+          </list>
           <label id="313" model="303">
             <properties>
               <property id="20" value="297" />
@@ -885,14 +889,15 @@
               <property id="3" value="true" />
             </properties>
           </image>
-          <label id="264" model="374">
+          <list id="264" model="374">
             <properties>
               <property id="20" value="555" />
               <property id="21" value="29" />
               <property id="9" value="216" />
               <property id="10" value="40" />
+              <property id="2" value="false" />
             </properties>
-          </label>
+          </list>
           <label id="314" model="304">
             <properties>
               <property id="20" value="555" />
@@ -921,14 +926,15 @@
               <property id="3" value="true" />
             </properties>
           </image>
-          <label id="265" model="375">
+          <list id="265" model="375">
             <properties>
               <property id="20" value="555" />
               <property id="21" value="237" />
               <property id="9" value="216" />
               <property id="10" value="40" />
+              <property id="2" value="false" />
             </properties>
-          </label>
+          </list>
           <label id="315" model="305">
             <properties>
               <property id="20" value="555" />
@@ -957,14 +963,15 @@
               <property id="3" value="true" />
             </properties>
           </image>
-          <label id="266" model="376">
+          <list id="266" model="376">
             <properties>
               <property id="20" value="813" />
               <property id="21" value="29" />
               <property id="9" value="216" />
               <property id="10" value="40" />
+              <property id="2" value="false" />
             </properties>
-          </label>
+          </list>
           <label id="316" model="306">
             <properties>
               <property id="20" value="813" />
@@ -993,14 +1000,15 @@
               <property id="3" value="true" />
             </properties>
           </image>
-          <label id="267" model="377">
+          <list id="267" model="377">
             <properties>
               <property id="20" value="813" />
               <property id="21" value="237" />
               <property id="9" value="216" />
               <property id="10" value="40" />
+              <property id="2" value="false" />
             </properties>
-          </label>
+          </list>
           <label id="317" model="307">
             <properties>
               <property id="20" value="813" />
@@ -1029,14 +1037,15 @@
               <property id="3" value="true" />
             </properties>
           </image>
-          <label id="268" model="378">
+          <list id="268" model="378">
             <properties>
               <property id="20" value="1066" />
               <property id="21" value="23" />
               <property id="9" value="120" />
               <property id="10" value="46" />
+              <property id="2" value="false" />
             </properties>
-          </label>
+          </list>
           <image id="288" model="328">
             <properties>
               <property id="20" value="1106" />

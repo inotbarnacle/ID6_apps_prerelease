@@ -48,6 +48,7 @@ const unsigned kTransparent = 57000;
 const unsigned kDialFirst = 57001;
 const unsigned kCircularSteps = 12;
 const unsigned kAlertSignals[] = {BD_COOLANT, BD_OIL_TEMP, BD_OIL};
+const unsigned kGaugeFontSizes[] = {24, 32, 40};
 const char* const kSettingLabels[] = {
     "Pressure", "Speed", "Temperature", "Gauge style", "Alert mode",
     "Coolant high", "Oil temp high", "Oil pressure low", "Gauge font size"
@@ -93,10 +94,10 @@ class BoostDeck : public bmw::PluginApp {
     unsigned alert_mask_;
     uint64_t retry_at_;
     unsigned char signals_[2][kBarCount];
-    unsigned char gauge_font_;
     bool diesel_;
     unsigned editing_;
     void loadAssignments();
+    void updateGaugeCaptions();
     void updateAssignments();
     bool saveAssignments();
     void assignmentsChanged();
@@ -115,7 +116,7 @@ public:
         : bmw::PluginApp(d,name,maj,mn,rhmi,cfg,res), fd_(-1), poll_generation_(0),
           received_(0), collector_(-1), stopping_(false), gauges_visible_(false),
           tone_(-1), last_tone_(0), alert_mask_(0),
-          retry_at_(0), gauge_font_(1), diesel_(false), editing_(kBarCount) {
+          retry_at_(0), diesel_(false), editing_(kBarCount) {
         resetDisplay();
     }
     virtual ~BoostDeck() { shutdown(); }
@@ -143,7 +144,8 @@ public:
             return true;
         }
         preferences_=changed;
-        if (Row>=BOOST_COOLANT_ALERT) {
+        if (Row==BOOST_FONT_SIZE) updateGaugeCaptions();
+        if (Row>=BOOST_COOLANT_ALERT && Row<=BOOST_OIL_PRESSURE_ALERT) {
             alerts_.reset(Row-BOOST_COOLANT_ALERT);
             restartCollector();
         }
@@ -483,15 +485,27 @@ void BoostDeck::loadAssignments() {
         memcpy(signals_[profile],data+3+profile*stride,kBarCount);
 }
 
+void BoostDeck::updateGaugeCaptions() {
+    const unsigned fontSize=kGaugeFontSizes[preferences_.choice[BOOST_FONT_SIZE]];
+    for (unsigned i=0;i<kBarCount;++i) {
+        const unsigned signal=signals_[diesel_][i];
+        const char* caption=kGaugeCaptions[signal][i==kVerticalSlot];
+        char richCaption[160];
+        snprintf(richCaption,sizeof richCaption,"<font size=\"%u\">%s</font>",fontSize,caption);
+        bmw::DataTable<1> table;
+        table.at(0,0).m_impl=new bmw::Variant::ObjectContainer<bmw::BasicString<char> >(
+            bmw::BasicString<char>(richCaption));
+        updateModel(370u+i,table);
+    }
+}
+
 void BoostDeck::updateAssignments() {
     for (unsigned i=0;i<kBarCount;++i) {
         char name[64];
         snprintf(name,sizeof name,"Gauge %u: %s",i+1,bd_name(signals_[diesel_][i]));
         updateModel(340u+i,bmw::BasicString<char>(name));
-        const unsigned signal=signals_[diesel_][i];
-        const char* caption=kGaugeCaptions[signal][i==kVerticalSlot];
-        updateModel(370u+i,bmw::BasicString<char>(caption));
     }
+    updateGaugeCaptions();
     updateModel(360u,bmw::BasicString<char>(diesel_ ? "Engine profile: Diesel" : "Engine profile: Gasoline"));
     updateModel(5210u,!diesel_);
     updateModel(5211u,diesel_);
@@ -560,16 +574,11 @@ void BoostDeck::refresh() {
             updateModel(330u+i,bmw::ImageID(dial));
             dials_[i]=dial;
         }
-        if (strcmp(label,labels_[i]) || gauge_font_!=preferences_.choice[BOOST_FONT_SIZE]) {
-            const unsigned fontSize=preferences_.choice[BOOST_FONT_SIZE]==0 ? 24u
-                : preferences_.choice[BOOST_FONT_SIZE]==2 ? 40u : 32u;
-            char richLabel[160];
-            snprintf(richLabel,sizeof richLabel,"<font size=\"%u\">%s</font>",fontSize,label);
-            updateModel(300u+i,bmw::BasicString<char>(richLabel));
+        if (strcmp(label,labels_[i])) {
+            updateModel(300u+i,bmw::BasicString<char>(label));
             strcpy(labels_[i],label);
         }
     }
-    gauge_font_=preferences_.choice[BOOST_FONT_SIZE];
 }
 
 extern "C" {

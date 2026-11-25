@@ -13,8 +13,7 @@ int main() {
 
     BoostPreferences prefs;
     prefs.load(path,9);
-    assert(prefs.color==5 && prefs.choice[BOOST_STYLE]==0);
-    assert(prefs.choice[BOOST_FONT_SIZE]==1);
+    assert(prefs.color==5 && prefs.choice[BOOST_STYLE]==0 && prefs.choice[BOOST_FONT_SIZE]==1);
     assert(prefs.units(BD_SPEED)==1 && prefs.units(BD_COOLANT)==1 && prefs.units(BD_OIL)==1);
     prefs.choice[BOOST_PRESSURE]=2;
     prefs.choice[BOOST_SPEED]=0;
@@ -23,6 +22,7 @@ int main() {
     prefs.choice[BOOST_OIL_TEMP_ALERT]=1;
     prefs.choice[BOOST_OIL_PRESSURE_ALERT]=4;
     prefs.choice[BOOST_CHIME]=1;
+    prefs.choice[BOOST_FONT_SIZE]=2;
     assert(prefs.save(path));
     BoostPreferences restarted;
     restarted.load(path,9);
@@ -40,9 +40,31 @@ int main() {
     assert(!memcmp(restarted.choice,prefs.choice,sizeof prefs.choice));
     assert(fabs(bd_display_selected(BD_OIL,boostAlertThreshold(2,5),0)-25.0)<1e-6);
 
+    unsigned char withoutFontPreference[3+BOOST_FONT_SIZE]={'G',2,5};
+    for (unsigned i=0; i<BOOST_FONT_SIZE; ++i) withoutFontPreference[3+i]=prefs.choice[i];
+    assert(savePersistentBytes(path,withoutFontPreference,sizeof withoutFontPreference));
+    restarted.load(path,9);
+    assert(restarted.choice[BOOST_FONT_SIZE]==1);
+
+    unsigned char withFontPreference[3+BOOST_SETTING_COUNT]={'G',2,5};
+    for (unsigned i=0; i<BOOST_SETTING_COUNT; ++i) withFontPreference[3+i]=prefs.choice[i];
+    assert(savePersistentBytes(path,withFontPreference,sizeof withFontPreference));
+    restarted.load(path,9);
+    assert(restarted.color==prefs.color && !memcmp(restarted.choice,prefs.choice,sizeof prefs.choice));
+    assert(restarted.save(path));
+    BoostPreferences migrated;
+    migrated.load(path,9);
+    assert(migrated.color==prefs.color && !memcmp(migrated.choice,prefs.choice,sizeof prefs.choice));
+
+    unsigned char invalidFontPreference[3+BOOST_SETTING_COUNT]={'G',2,5};
+    for (unsigned i=0; i<BOOST_SETTING_COUNT; ++i) invalidFontPreference[3+i]=prefs.choice[i];
+    invalidFontPreference[3+BOOST_FONT_SIZE]=kBoostChoices[BOOST_FONT_SIZE];
+    assert(savePersistentBytes(path,invalidFontPreference,sizeof invalidFontPreference));
+    restarted.load(path,9);
+    assert(restarted.color==prefs.color && !memcmp(restarted.choice,prefs.choice,sizeof prefs.choice));
+
     unsigned char corrupted[3+BOOST_SETTING_COUNT]={'G',2,4};
     corrupted[3]=3;
-    corrupted[3+BOOST_FONT_SIZE]=1;
     assert(savePersistentBytes(path,corrupted,sizeof corrupted));
     restarted.load(path,9);
     assert(restarted.color==prefs.color && !memcmp(restarted.choice,prefs.choice,sizeof prefs.choice));

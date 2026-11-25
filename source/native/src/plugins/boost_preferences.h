@@ -7,7 +7,8 @@
 enum BoostSetting {
     BOOST_PRESSURE, BOOST_SPEED, BOOST_TEMPERATURE, BOOST_STYLE,
     BOOST_CHIME, BOOST_COOLANT_ALERT, BOOST_OIL_TEMP_ALERT, BOOST_OIL_PRESSURE_ALERT,
-    BOOST_FONT_SIZE, BOOST_SETTING_COUNT
+    BOOST_FONT_SIZE,
+    BOOST_SETTING_COUNT
 };
 
 static const unsigned char kBoostChoices[] = {3, 2, 2, 2, 2, 10, 10, 6, 3};
@@ -32,19 +33,21 @@ struct BoostPreferences {
         if (data[1]==1 && length==4 && data[3]<=1) {
             color=data[2];
             choice[BOOST_PRESSURE]=choice[BOOST_SPEED]=choice[BOOST_TEMPERATURE]=data[3];
+            choice[BOOST_FONT_SIZE]=1;
         } else if (data[1]==2) {
-            const unsigned oldLength=3+BOOST_FONT_SIZE;
-            if (length!=sizeof data && length!=oldLength) return;
+            const size_t oldLength=3+BOOST_FONT_SIZE;
+            if (length!=oldLength && length!=sizeof data) return;
             // Earlier beta builds offered pressure thresholds of up to 60 psi.
             unsigned char& floor=data[3+BOOST_OIL_PRESSURE_ALERT];
             const unsigned char maximum=kBoostChoices[BOOST_OIL_PRESSURE_ALERT]-1;
             if (floor>maximum && floor<=12) floor=maximum;
-            for (unsigned i=0; i<BOOST_FONT_SIZE; ++i)
+            for (unsigned i=0; i<BOOST_SETTING_COUNT; ++i) {
+                if (i==BOOST_FONT_SIZE && length==oldLength) continue;
                 if (data[3+i]>=kBoostChoices[i]) return;
+            }
             color=data[2];
-            for (unsigned i=0; i<BOOST_FONT_SIZE; ++i) choice[i]=data[3+i];
-            choice[BOOST_FONT_SIZE]=length==sizeof data && data[3+BOOST_FONT_SIZE]<kBoostChoices[BOOST_FONT_SIZE]
-                                        ? data[3+BOOST_FONT_SIZE] : 1;
+            for (unsigned i=0; i<BOOST_SETTING_COUNT; ++i)
+                choice[i]=(i==BOOST_FONT_SIZE && length==oldLength) ? 1 : data[3+i];
         }
     }
 
