@@ -52,9 +52,16 @@ static unsigned char parking_status(struct diag_link *link) {
     const unsigned char gear[] = {0x22, 0xda, 0x2e}, gear_ok[] = {0x62, 0xda, 0x2e};
     const unsigned char speed[] = {0x01, 0x0d}, speed_ok[] = {0x41, 0x0d};
     unsigned char reply[64];
-    if (request(link, 0x18, gear, sizeof gear, gear_ok, sizeof gear_ok, reply) != 5)
-        return 'T';
-    if (reply[3] != 0 || reply[4] != 6) return 'P';
+    const unsigned char dkg[] = {0x22, 0xde, 0x31}, dkg_ok[] = {0x62, 0xde, 0x31};
+    int n = request(link, 0x18, gear, sizeof gear, gear_ok, sizeof gear_ok, reply);
+    if (n == -2) { /* M DCT: no DA2E; Park is reported in the DE31 status block */
+        n = request(link, 0x18, dkg, sizeof dkg, dkg_ok, sizeof dkg_ok, reply);
+        if (n != 3 + BD_DKG_STATUS_SIZE) return 'T';
+        if (!bd_dkg_parked(reply + 3, BD_DKG_STATUS_SIZE)) return 'P';
+    } else {
+        if (n != 5) return 'T';
+        if (reply[3] != 0 || reply[4] != 6) return 'P';
+    }
     if (request(link, 0x12, speed, sizeof speed, speed_ok, sizeof speed_ok, reply) != 3)
         return 'V';
     return reply[2] == 0 ? 0 : 'M';

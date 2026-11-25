@@ -50,11 +50,20 @@ int hud_reader_poll(hud_reader *reader, const char *host, hud_sample *sample, in
         reader->lease_until = bd_mono_ms() + DIAGNOSTIC_LEASE_MS;
     }
     const int fd = reader->fd;
-    const int permitted = !require_park ||
-        (diag_hsfz_exchange(fd, 0x12, speed, 2, speed_prefix, 2, reply, sizeof reply, 350, &negative) == 3 &&
-         reply[2] == 0 &&
-         diag_hsfz_exchange(fd, 0x18, gear, 3, gear_prefix, 3, reply, sizeof reply, 350, &negative) == 5 &&
-         reply[3] == 0 && reply[4] == 6);
+    int permitted = !require_park;
+    if (!permitted &&
+        diag_hsfz_exchange(fd, 0x12, speed, 2, speed_prefix, 2, reply, sizeof reply, 350, &negative) == 3 &&
+        reply[2] == 0) {
+        const int count = diag_hsfz_exchange(fd, 0x18, gear, 3, gear_prefix, 3, reply, sizeof reply, 350, &negative);
+        if (count == 5) permitted = reply[3] == 0 && reply[4] == 6;
+        else if (count == -2 && negative == 0x31) { /* M DCT: Park is in the DE31 status block */
+            const unsigned char dkg[] = {0x22, 0xde, 0x31}, dkg_prefix[] = {0x62, 0xde, 0x31};
+            unsigned char status[3 + BD_DKG_STATUS_SIZE];
+            permitted = diag_hsfz_exchange(fd, 0x18, dkg, 3, dkg_prefix, 3, status, sizeof status, 350, &negative)
+                            == (int)sizeof status &&
+                        bd_dkg_parked(status + 3, BD_DKG_STATUS_SIZE);
+        }
+    }
     if (!permitted ||
         diag_hsfz_exchange(fd, 0x12, rpm, 2, rpm_prefix, 2, reply, sizeof reply, 180, &negative) != 4) {
         pause_gateway(reader, DIAGNOSTIC_RETRY_MS);

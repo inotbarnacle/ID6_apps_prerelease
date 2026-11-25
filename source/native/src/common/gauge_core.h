@@ -26,6 +26,11 @@ typedef struct {
 uint64_t bd_mono_ms(void);
 int bd_decode_did(unsigned did, const unsigned char *data, size_t len, double *out);
 /* Standard OBD-II mode 01 PIDs (SAE J1979): data bytes after the "41 <pid>" prefix. */
+/* GS7D36SG (M DCT) live status block: EGS 22 DE31, 38 payload bytes of big-endian words.
+   The DCT rejects the ZF DA12/DA2E reads with NRC 31. */
+enum { BD_DKG_STATUS_SIZE = 38 };
+int bd_decode_dkg_oil(const unsigned char *data, size_t len, double *out);
+int bd_dkg_parked(const unsigned char *data, size_t len);
 int bd_decode_obd(unsigned pid, const unsigned char *data, size_t len, double *out);
 int bd_encode(const bd_frame *f, char *out, size_t len);
 int bd_parse(const char *data, size_t len, bd_frame *out);

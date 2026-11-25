@@ -120,6 +120,20 @@ class DriveAppsTest(unittest.TestCase):
             self.assertGreaterEqual(trans,oil)
             self.assertEqual((oil_c,trans_c),(85.0,40.0))
 
+    def test_warmdeck_reads_dct_oil_temperature_after_da12_is_rejected(self):
+        # 22 DE31 payload read on a 2018 F82 M4 (GS7D36SG) in Neutral: oil temperature words are 18.
+        status=("001c6c04282828512837 3c330b66000001cc02d4 00120012 00aa00a8020b020e0202012e0101").replace(" ","")
+        with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as listener:
+            listener.bind(("127.0.0.1",42862))
+            listener.settimeout(2)
+            self.run_worker("warmdeck-collector", ["--cycles","1"], [
+                ("015c", ["415c7d"]), ("0105", ["41057a"]), ("22da12", ["7f2231"]),
+                ("22de31", ["62de31"+status]),
+            ], targets=["12","12","18","18"])
+            _, _, trans, _, _, trans_c=struct.unpack("=QQQddd", listener.recv(64))
+            self.assertGreater(trans,0)
+            self.assertEqual(trans_c,18.0)
+
     def test_shift_worker_decodes_live_rpm_and_speed(self):
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as listener:
             listener.bind(("127.0.0.1", 0))

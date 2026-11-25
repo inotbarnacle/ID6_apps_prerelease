@@ -35,6 +35,9 @@ def exact(conn, n):
     return out
 
 
+# 22 DE31 payload read on a 2018 F82 M4 (GS7D36SG) in Neutral; oil temperature words are 18 C.
+DKG_STATUS = bytes.fromhex("001c6c04282828512837" "3c330b66000001cc02d4" "0012001200aa00a8020b" "020e0202012e0101")
+
 class TransportTest(unittest.TestCase):
     def run_collector(self, mode="normal", extra=(), cycles=1, env=None):
         udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -85,7 +88,7 @@ class TransportTest(unittest.TestCase):
                         self.assertEqual(length, 5)
                         self.assertEqual(req[2], 0x22)  # read only
                         ecu, did = req[1], int.from_bytes(req[3:], "big")
-                        self.assertEqual(ecu, 0x18 if did == 0xDA12 else 0x12)
+                        self.assertEqual(ecu, 0x18 if did in (0xDA12, 0xDE31) else 0x12)
                         if mode == "timeout":
                             time.sleep(.8)
                             return
@@ -105,12 +108,13 @@ class TransportTest(unittest.TestCase):
                         conn.sendall(frame(1, bytes([0x99, 0xF4, 0x62]) + req[3:] + b"\0\0"))
                         conn.sendall(frame(1, bytes([ecu, 0xF4, 0x7F, 0x22, 0x78])))
                         if ((mode == "rail_fallback" and did == 0x56D7) or
-                                (mode == "no_trans" and did == 0xDA12) or
+                                (mode == "no_trans" and did in (0xDA12, 0xDE31)) or
+                                (mode == "dkg_trans" and did == 0xDA12) or
                                 (mode == "no_afr" and did == 0x5889)):
                             result = bytes([ecu, 0xF4, 0x7F, 0x22, 0x31])
                         else:
                             values = CAR_VALUES if mode == "car_snapshot" else VALUES
-                            payload = values[did]
+                            payload = DKG_STATUS if did == 0xDE31 else values[did]
                             if mode == "extra_pressure" and did == 0x4205:
                                 payload += b"\xaa"
                             if mode == "extra_iat" and did == 0x580F:
@@ -185,8 +189,16 @@ class TransportTest(unittest.TestCase):
             self.assertTrue(all(1700 < gap < 2300 for gap in gaps), (did,gaps))
 
     def test_rejected_transmission_is_missing(self):
-        p, _, _ = self.run_collector("no_trans")
+        p, requests, _ = self.run_collector("no_trans")
         self.assertEqual(int(p[3]), 239)
+        self.assertEqual(requests.count(bytes.fromhex("f41822de31")), 1)
+
+    def test_dct_oil_temperature_replaces_rejected_da12(self):
+        p, requests, _ = self.run_collector("dkg_trans")
+        self.assertEqual(int(p[3]), 255)
+        self.assertAlmostEqual(float(p[13]), 18)
+        self.assertEqual(requests.count(bytes.fromhex("f41822da12")), 1)
+        self.assertEqual(requests.count(bytes.fromhex("f41822de31")), 1)
 
     def test_refused_fast_read_backs_off_without_holding_up_other_gauges(self):
         packet, requests, _ = self.run_collector("no_afr", cycles=4)

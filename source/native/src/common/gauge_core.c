@@ -44,6 +44,23 @@ int bd_decode_did(unsigned did, const unsigned char *p, size_t n, double *out) {
     return 1;
 }
 
+/* Payload bytes only, after 62 DE 31. Read on a 2018 F82 M4 (GS7D36SG): the words at 20 and 22
+   are two oil temperature sensors in whole degrees C (9 at a 9 C cold start, rising together),
+   and bytes 36-37 are 00 00 in Park and 01 01 in R, N and D. */
+int bd_decode_dkg_oil(const unsigned char *p, size_t n, double *out) {
+    int raw;
+    if (!p || !out || n != BD_DKG_STATUS_SIZE) return 0;
+    raw = (p[20] << 8) | p[21];
+    if (raw & 0x8000) raw -= 65536;
+    if (raw < -48 || raw > 180) return 0;
+    *out = raw;
+    return 1;
+}
+
+int bd_dkg_parked(const unsigned char *p, size_t n) {
+    return p && n == BD_DKG_STATUS_SIZE && p[36] == 0 && p[37] == 0;
+}
+
 /* Mode 01 data bytes only, after the 41 <pid> prefix. SAE J1979 formulas.
    Read at idle on an F22 M240i (B58 Gen 1, NBTevo_S19322I): 5C 94 -> 108 C,
    42 39 F8 -> 14.840 V, both agreeing with the car. */

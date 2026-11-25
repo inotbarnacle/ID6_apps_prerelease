@@ -58,11 +58,30 @@ static int read_did(struct diag_link *link, unsigned ecu, unsigned did, double *
                             diag_link_on_most(link) ? 64 : sizeof reply,500,&negative);
     if (n==-2) {
         fprintf(stderr,"ECU %02X DID %04X NRC %02X\n",ecu,did,negative);
-        return 0;
+        return negative==0x31 ? -4 : 0;
     }
     if (n==-3) return -3;
     if (n<0) return -1;
     return decode_reply(ecu,did,reply,n,value);
+}
+
+/* The M DCT answers NRC 31 to the ZF DA12 read; its oil temperature is in the DE31 block. */
+static int read_trans(struct diag_link *link, double *value) {
+    static const unsigned char request[]={0x22,0xde,0x31}, prefix[]={0x62,0xde,0x31};
+    static int dkg;
+    unsigned char reply[64];
+    unsigned negative;
+    int n;
+    if (!dkg) {
+        n=read_did(link,0x18,0xda12,value);
+        if (n!=-4) return n;
+        dkg=1;
+    }
+    n=diag_link_request(link,0x18,request,3,prefix,3,reply,sizeof reply,500,&negative);
+    if (n==-2) return 0;
+    if (n==-3) return -3;
+    if (n<0) return -1;
+    return bd_decode_dkg_oil(reply+3,(size_t)n-3,value);
 }
 
 /* Query selected standardized channels only. Diesel substitutes Mode 01
@@ -262,7 +281,8 @@ int main(int argc, char **argv) {
                 /* Preserve values supplied by OBD while retrying the preferred DID. */
                 kept = i ? f.valid & did_values & (1u << (i-1)) : 0;
                 f.valid &= ~kept;
-                rc = read_did(&link, dids[i] == 0xda12 ? 0x18 : 0x12, dids[i], &v);
+                rc = dids[i] == 0xda12 ? read_trans(&link, &v) : read_did(&link, 0x12, dids[i], &v);
+                if (rc == -4) rc = 0;
                 if (rc == -3) { /* skip it for a while; a value still fresh stays shown */
                     failed_until[i] = bd_mono_ms()+read_retry_ms;
                     if (kept) {
