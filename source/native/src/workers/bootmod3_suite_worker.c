@@ -95,7 +95,28 @@ static int unsupported_marker_read(unsigned nrc) {
     return nrc==0x11 || nrc==0x12 || nrc==0x13 || nrc==0x31 || nrc==0x7e || nrc==0x7f;
 }
 
+/* Manual override: rom-profile.txt (one ROM id, e.g. R1C900001) lets the owner
+   name the CustomROM when the DME will not let the marker be read (a security
+   refusal still stops the probe: no failing reads). When it names a known profile
+   the worker uses it directly and skips the diagnostic probe. */
+static int bm3_override_profile(void) {
+    FILE *f = fopen("/var/opt/hmi/data/ID5/Plugins/Bootmod3Suite/rom-profile.txt", "r");
+    char line[32];
+    int found = -1;
+    if (!f) return -1;
+    if (fgets(line, sizeof line, f)) {
+        size_t n = strlen(line);
+        while (n && (line[n-1]=='\n' || line[n-1]=='\r' || line[n-1]==' ' || line[n-1]=='\t')) line[--n]=0;
+        for (unsigned i=0; n && i<sizeof profiles/sizeof profiles[0]; ++i)
+            if (!strcmp(line, profiles[i].rom)) { found=(int)i; break; }
+    }
+    fclose(f);
+    return found;
+}
+
 static int bm3_profile(control_link link) {
+    const int override = bm3_override_profile();
+    if (override >= 0) { printf("Using selected CustomROM profile %s.\n", profiles[override].rom); return override; }
     static const unsigned char addresses[][4]={
         {0x80,0x7f,0xfe,0x50},{0x09,0x77,0xfe,0x4c},
         {0x80,0x1f,0xfd,0xac},{0x80,0x05,0xfe,0x1e},

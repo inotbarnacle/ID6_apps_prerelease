@@ -21,8 +21,20 @@ namespace most = nbt::most;
 static const unsigned frame = 1;
 static const unsigned shape = 5;
 static const unsigned stock = 6;
-static const uint16_t expectedNode = 0x0101;
+// Reference 340i default; the single factory HUD terminal (service 0x8200) sits
+// at a different node on other clusters (e.g. F3x 6WB), so this is adopted from
+// the registry at runtime, or pinned by an optional hud-node.txt override.
+static uint16_t hudNode = 0x0101;
+static bool hudNodeLocked = false;
 static volatile sig_atomic_t stop = 0;
+
+static void load_hud_node_override(void) {
+    FILE *f = fopen("/var/opt/hmi/data/ID5/Plugins/HudTest/hud-node.txt", "r");
+    unsigned v;
+    if (!f) return;
+    if (fscanf(f, "%x", &v) == 1 && v <= 0xffff) { hudNode = static_cast<uint16_t>(v); hudNodeLocked = true; }
+    fclose(f);
+}
 
 static void stopSignal(int) { stop = 1; diag_running = 0; }
 
@@ -32,13 +44,17 @@ static void registry(const std::vector<most::RegistryEntry>& entries, void* user
         if (entries[i].key == 0x8200)
             matched.push_back(entries[i]);
     }
-    if (matched.size() != 1 || matched[0].address != expectedNode)
-        matched.clear();
+    if (matched.size() != 1)
+        matched.clear();                         // only a single factory HUD terminal is accepted
+    else if (hudNodeLocked) {
+        if (matched[0].address != hudNode) matched.clear();   // honour the override node
+    } else
+        hudNode = matched[0].address;            // adopt the terminal's real node (6WB differs from the 340i 0x0101)
     static_cast<hud::HudTerminal*>(user)->onRegistry(matched);
 }
 
 static bool sendToExpectedNode(const most::Msg& message, void* user) {
-    if (message.dst != expectedNode || projection_hud_installed()) return false;
+    if (message.dst != hudNode || projection_hud_installed()) return false;
     if (message.fkt == hud::kTextareaSetText && message.data.size() >= 2)
         printf("HUD send text %u: %s\n", hud::rdBe16(&message.data[0]),
                hud::decodeText(&message.data[0], message.data.size()).c_str());
@@ -184,6 +200,7 @@ static bool dashboard_sample(int socket, unsigned source, hud_sample& sample) {
 }
 
 static int trial(const char* host, bool requirePark) {
+    load_hud_node_override();
     if (projection_hud_installed()) return 7;
     // Hold the port through process exit, when the MOST client is destroyed by QNX.
     const int mostAccess = gauge_bind(GAUGE_MOST_PORT);
