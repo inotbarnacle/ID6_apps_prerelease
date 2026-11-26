@@ -167,7 +167,9 @@ int diag_hsfz_exchange(int fd, unsigned ecu, const unsigned char *uds, unsigned 
     return n == -4 ? -1 : n;   /* plain HSFZ callers keep the documented values */
 }
 
-int diag_nrc_busy(unsigned negative) { return negative == 0x21 || negative == 0x25; }
+/* 7F xx 25 is not on the list: the gateway forwarded the request and the target stayed silent. That is a
+ * failed read of that signal, retried on its own schedule, not a sign that the gateway is taken. */
+int diag_nrc_busy(unsigned negative) { return negative == 0x21; }
 
 unsigned diag_busy_backoff(uint64_t *until, unsigned *backoff) {
     *backoff = !*backoff ? DIAG_BUSY_MIN_MS

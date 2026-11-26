@@ -52,8 +52,9 @@ int  diag_hsfz_exchange(int fd, unsigned ecu, const unsigned char *uds, unsigned
 int  diag_link_reserve_oneshot(struct diag_link *);
 
 /* Another tester on the OBD-II port (a dongle, ISTA) makes the gateway answer 7F xx 21 busyRepeatRequest
-   or 7F xx 25 noResponseFromSubnetComponent (issues #88, #130). Polling harder only adds to the contention,
-   so loop workers back off: 250 ms, doubling to 4 s, reset by the next positive reply. */
+   (issues #88, #130). Polling harder only adds to the contention, so loop workers back off: 250 ms,
+   doubling to 4 s, reset by the next positive reply. 7F xx 25 noResponseFromSubnetComponent means the
+   target stayed silent, so it counts as an ordinary failed read of that signal. */
 enum { DIAG_HSFZ_TIMEOUTS_TO_DROP = 3, DIAG_BUSY_MIN_MS = 250, DIAG_BUSY_MAX_MS = 4000 };
 int  diag_nrc_busy(unsigned negative);
 /* Start or double the back-off; *until is when the next request may go out. Returns the delay. */

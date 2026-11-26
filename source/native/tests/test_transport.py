@@ -94,6 +94,11 @@ class TransportTest(unittest.TestCase):
                             conn.sendall(frame(2, req))
                             conn.sendall(frame(1, bytes([ecu, 0xF4, 0x7F, 0x22, 0x21])))
                             continue
+                        if mode == "silent_target":
+                            # The gateway forwarded the request and the ECU did not answer.
+                            conn.sendall(frame(2, req))
+                            conn.sendall(frame(1, bytes([ecu, 0xF4, 0x7F, 0x22, 0x25])))
+                            continue
                         if mode == "slow_first" and len(requests) == 1:
                             time.sleep(.6)  # one missed reply; the connection stays usable
                             continue
@@ -256,6 +261,13 @@ class TransportTest(unittest.TestCase):
         # Without the back-off the first scan alone sends all nine DID requests.
         self.assertLessEqual(len(requests), 3)
         self.assertIn("BUSY NRC 21 backoff_ms=250", trace)
+
+    def test_silent_target_is_a_failed_read_not_a_busy_gateway(self):
+        packet, requests, trace = self.run_collector("silent_target", ("--trace",))
+        self.assertEqual(int(packet[3]), 0)
+        # NRC 25: each signal fails on its own and the scan goes on; nothing backs off.
+        self.assertEqual(len(requests), 9)
+        self.assertNotIn("BUSY NRC", trace)
 
     def test_one_missed_reply_keeps_the_connection(self):
         start = time.monotonic()
