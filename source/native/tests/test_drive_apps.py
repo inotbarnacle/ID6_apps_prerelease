@@ -241,6 +241,43 @@ class DriveAppsTest(unittest.TestCase):
             result=self.run_worker("bootmod3",[mode,value],[(request,[reply])])
             self.assertIn("accepted by DME",result)
 
+    def test_exhaust_flap_two_byte_form_is_sent_alone_when_accepted(self):
+        for value,request,label in (("1","2f60fd0314fe","open"),("2","2f60fd032328","closed")):
+            with self.subTest(value=value):
+                result=self.run_worker("exhaust-flap",["--transport","hsfz","--flap",value],[
+                    (request,["6f60fd03"]),
+                ])
+                self.assertEqual(result,"Confirmed: Exhaust "+label+"\n")
+
+    def test_exhaust_flap_retries_s55_form_after_nrc_13(self):
+        for value,first,s55,label in (
+            ("1","2f60fd0314fe","2f60fd0319990aff","open"),
+            ("2","2f60fd032328","2f60fd03e6660aff","closed"),
+        ):
+            with self.subTest(value=value):
+                result=self.run_worker("exhaust-flap",["--transport","hsfz","--flap",value],[
+                    (first,["7f2f13"]),
+                    (s55,["6f60fd03"]),
+                ])
+                self.assertEqual(result,"Confirmed: Exhaust "+label+"\n")
+
+    def test_exhaust_flap_reports_s55_form_refusal(self):
+        result=self.run_worker("exhaust-flap",["--transport","hsfz","--flap","1"],[
+            ("2f60fd0314fe",["7f2f13"]),
+            ("2f60fd0319990aff",["7f2f22"]),
+        ])
+        self.assertEqual(result,"Exhaust open refused by DME (NRC 22)\n")
+
+    def test_exhaust_flap_other_refusals_and_auto_do_not_retry(self):
+        result=self.run_worker("exhaust-flap",["--transport","hsfz","--flap","1"],[
+            ("2f60fd0314fe",["7f2f31"]),
+        ])
+        self.assertEqual(result,"Exhaust open refused by DME (NRC 31)\n")
+        result=self.run_worker("exhaust-flap",["--transport","hsfz","--flap","0"],[
+            ("2f60fd00",["7f2f13"]),
+        ])
+        self.assertEqual(result,"Exhaust auto refused by DME (NRC 13)\n")
+
     def test_bm3_burble_preset_uses_automatically_identified_rom(self):
         marker=b"BM3_R #011000".ljust(255,b"\x00")
         timing="f0"*24
