@@ -241,6 +241,18 @@ class DriveAppsTest(unittest.TestCase):
             result=self.run_worker("bootmod3",[mode,value],[(request,[reply])])
             self.assertIn("accepted by DME",result)
 
+    def test_bm3_flap_retries_s55_eight_byte_override_after_rejection(self):
+        for value,short,wide in (("1","2f60fd0314fe","2f60fd03147afaff"),
+                                 ("2","2f60fd032328","2f60fd03eb85faff")):
+            for nrc in ("13","31"):
+                result=self.run_worker("bootmod3",["--flap",value],[
+                    (short,["7f2f"+nrc]),(wide,["6f60fd03"])])
+                self.assertIn("accepted by DME",result)
+
+    def test_bm3_flap_does_not_retry_when_conditions_are_not_correct(self):
+        result=self.run_worker("bootmod3",["--flap","1"],[("2f60fd0314fe",["7f2f22"])])
+        self.assertIn("could not be confirmed",result)
+
     def test_bm3_burble_preset_uses_automatically_identified_rom(self):
         marker=b"BM3_R #011000".ljust(255,b"\x00")
         timing="f0"*24
