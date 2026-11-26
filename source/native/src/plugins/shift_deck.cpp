@@ -18,6 +18,13 @@ const unsigned kSweepSteps=128, kSweepBase=56400, kSweepAlert=56529;
 const unsigned kEaseMs=50;
 }
 
+static bool valid_tpms(const drive_frame& frame, uint64_t now) {
+    if (frame.tpms_ms>now) return false;
+    for (unsigned i=0;i<4;++i)
+        if (frame.tpms_hpa[i]<-1 || frame.tpms_hpa[i]>6000) return false;
+    return true;
+}
+
 class ShiftDeck : public bmw::PluginApp {
     int socket_;
     pid_t child_;
@@ -28,6 +35,7 @@ class ShiftDeck : public bmw::PluginApp {
     drive_frame frame_;
     unsigned bar_, lights_;
     int rpm_,kph_;
+    int tpms_[4];
     bool shift_;
     bool metric_;
     double rpm_from_;
@@ -111,6 +119,18 @@ class ShiftDeck : public bmw::PluginApp {
             updateModel(57u,bmw::ImageID(shift ? kShiftOn : kShiftOff));
             shift_=shift;
         }
+        static const char* const corners[]={"FL","FR","RL","RR"};
+        bool fresh=visible_ && frame_.tpms_ms && frame_.tpms_ms<=now &&
+                   now-frame_.tpms_ms<TPMS_STALE_MS;
+        for (unsigned i=0;i<4;++i) {
+            int shown=fresh ? frame_.tpms_hpa[i] : -1;
+            if (shown==tpms_[i]) continue;
+            if (shown<0) snprintf(text,sizeof text,"%s --",corners[i]);
+            else if (metric_) snprintf(text,sizeof text,"%s %.1f bar",corners[i],shown/1000.);
+            else snprintf(text,sizeof text,"%s %.0f psi",corners[i],shown*0.0145038);
+            label(73u+i,text);
+            tpms_[i]=shown;
+        }
     }
     bool visibility(const bmw::Parcel& event) {
         bool show;
@@ -134,6 +154,7 @@ class ShiftDeck : public bmw::PluginApp {
         metric_=Metric;
         saveGaugePreferences(kPreferences, target_, metric_);
         kph_=-2;
+        tpms_[0]=tpms_[1]=tpms_[2]=tpms_[3]=-2;
         updateModel(64u,bmw::ImageID(metric_ ? 56660u : 55916u));
         draw(bd_mono_ms());
         return true;
@@ -153,6 +174,7 @@ public:
           visible_(false),target_(kDefaultTarget),retry_at_(0),bar_(0),lights_(0),
           rpm_(-2),kph_(-2),shift_(false),metric_(false) {
         memset(&frame_,0,sizeof frame_);
+        tpms_[0]=tpms_[1]=tpms_[2]=tpms_[3]=-2;
         rpm_from_=0;
         rpm_started_=0;
     }
@@ -164,6 +186,7 @@ public:
         bar_=0;
         lights_=static_cast<unsigned>(-1);
         rpm_=kph_=-2;
+        tpms_[0]=tpms_[1]=tpms_[2]=tpms_[3]=-2;
         shift_=false;
         socket_=socket(AF_INET,SOCK_DGRAM,0);
         if (socket_>=0) {
@@ -224,7 +247,7 @@ public:
             if (n<=0) break;
             if (n==sizeof next && visible_ && next.sampled_ms>=frame_.sampled_ms &&
                 next.sampled_ms<=now && next.rpm>=-1 && next.rpm<=16383 &&
-                next.kph>=-1 && next.kph<=255) {
+                next.kph>=-1 && next.kph<=255 && valid_tpms(next,now)) {
                 if (next.rpm!=frame_.rpm) {
                     const bool continuous=next.rpm>=0 && frame_.rpm>=0 && frame_.sampled_ms &&
                                           now-frame_.sampled_ms<DRIVE_STALE_MS;

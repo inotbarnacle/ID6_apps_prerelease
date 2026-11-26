@@ -126,9 +126,24 @@ class DriveAppsTest(unittest.TestCase):
             listener.settimeout(2)
             self.run_worker("shift-deck", ["--cycles", "1", "--udp-port", str(listener.getsockname()[1])],
                             [("010c", ["410c61a8"]), ("010d", ["410d64"])])
-            sampled_ms, rpm, kph = struct.unpack("=Qii", listener.recv(64))
+            sampled_ms, rpm, kph, tpms_ms, *tpms = struct.unpack("=QiiQiiii", listener.recv(64))
             self.assertGreater(sampled_ms, 0)
             self.assertEqual((rpm,kph), (6250,100))
+            self.assertEqual((tpms_ms, tpms), (0, [-1,-1,-1,-1]))
+
+    def test_shift_worker_reads_tpms_with_rdc_flag(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as listener:
+            listener.bind(("127.0.0.1", 0))
+            listener.settimeout(2)
+            self.run_worker("shift-deck", ["--rdc", "--cycles", "1", "--udp-port", str(listener.getsockname()[1])],
+                            [("010c", ["410c61a8"]), ("010d", ["410d64"]),
+                             ("220000", ["62000009c409d60a280a3c"])],
+                            targets=["12", "12", "00"])
+            sampled_ms, rpm, kph, tpms_ms, *tpms = struct.unpack("=QiiQiiii", listener.recv(64))
+            self.assertGreater(sampled_ms, 0)
+            self.assertEqual((rpm,kph), (6250,100))
+            self.assertGreater(tpms_ms, 0)
+            self.assertEqual(tpms, [2500,2518,2600,2620])
 
 
     def test_shift_worker_shares_rpm_with_hud(self):
@@ -159,7 +174,7 @@ class DriveAppsTest(unittest.TestCase):
                     display.recv(64)
                 hud.close()
                 display.settimeout(6)
-                self.assertEqual(struct.unpack("=Qii", display.recv(64))[1], 1726)
+                self.assertEqual(struct.unpack("=QiiQiiii", display.recv(64))[1], 1726)
             finally:
                 codes, errors = self.stop_all([proc])
             self.assertEqual(codes, [0], errors)
@@ -171,7 +186,7 @@ class DriveAppsTest(unittest.TestCase):
             self.run_worker("shift-deck",
                 ["--speed-only", "--cycles", "1", "--udp-port", str(listener.getsockname()[1])],
                 [("010d", ["410d61"])])
-            sampled_ms, rpm, speed = struct.unpack("=Qii", listener.recv(64))
+            sampled_ms, rpm, speed, tpms_ms, *tpms = struct.unpack("=QiiQiiii", listener.recv(64))
             self.assertGreater(sampled_ms, 0)
             self.assertEqual((rpm, speed), (-1, 97))
 
@@ -392,7 +407,8 @@ class DriveAppsTest(unittest.TestCase):
                 [BUILD/"shift-deck", "--host", "127.0.0.1", "--port", str(self.closed_port()),
                  "--udp-port", str(udp.getsockname()[1]), "--cycles", "120"],
                 capture_output=True, text=True, timeout=20, env=self.most_env())
-            _, rpm, kph = struct.unpack("=Qii", udp.recv(64))
+            _, rpm, kph, tpms_ms, *tpms = struct.unpack("=QiiQiiii", udp.recv(64))
+            self.assertEqual((tpms_ms, tpms), (0, [-1,-1,-1,-1]))
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual((rpm, kph), ((0x1A*256+0xF8)//4, 60))
         self.assertIn("transport: MOST", r.stderr)

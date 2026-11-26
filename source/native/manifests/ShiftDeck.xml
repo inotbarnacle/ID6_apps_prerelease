@@ -34,6 +34,10 @@
       <imageIdModel id="70" imageId="55901" />
       <imageIdModel id="71" imageId="55901" />
       <imageIdModel id="72" imageId="55900" />
+      <raDataModel id="73" modelType="Richtext" />
+      <raDataModel id="74" modelType="Richtext" />
+      <raDataModel id="75" modelType="Richtext" />
+      <raDataModel id="76" modelType="Richtext" />
     </models>
     <hmiStates>
       <hmiState id="100" text="ShiftDeck">
@@ -193,6 +197,38 @@
               <property id="3" value="true" />
             </properties>
           </image>
+          <label id="219" model="73">
+            <properties>
+              <property id="20" value="52" />
+              <property id="21" value="386" />
+              <property id="9" value="260" />
+              <property id="10" value="44" />
+            </properties>
+          </label>
+          <label id="220" model="74">
+            <properties>
+              <property id="20" value="328" />
+              <property id="21" value="386" />
+              <property id="9" value="260" />
+              <property id="10" value="44" />
+            </properties>
+          </label>
+          <label id="221" model="75">
+            <properties>
+              <property id="20" value="604" />
+              <property id="21" value="386" />
+              <property id="9" value="260" />
+              <property id="10" value="44" />
+            </properties>
+          </label>
+          <label id="222" model="76">
+            <properties>
+              <property id="20" value="880" />
+              <property id="21" value="386" />
+              <property id="9" value="260" />
+              <property id="10" value="44" />
+            </properties>
+          </label>
         </components>
       </hmiState>
       <hmiState id="101" parentId="100" text="Shift light setting">

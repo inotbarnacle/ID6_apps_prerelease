@@ -3,6 +3,7 @@
 #include "diagnostic_lease.h"
 #include "gauge_coexistence.h"
 #include "diag_link.h"
+#include "tpms.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <math.h>
@@ -36,19 +37,31 @@ static int read_live_pid(struct diag_link *link, unsigned char pid, int width, i
     return 0;
 }
 
+/* Provisional RDC read. Returns 1 decoded, 0 unavailable (NRC, refused, or
+ * failed). Never drops the link: the RPM read owns link health. */
+static int read_tpms(struct diag_link *link, int hpa[4]) {
+    unsigned char req[]={0x22,(TPMS_DID>>8)&0xff,TPMS_DID&0xff}, prefix[]={0x62,req[1],req[2]}, reply[16];
+    unsigned negative;
+    int n=diag_link_request(link,TPMS_ECU,req,sizeof req,prefix,sizeof prefix,reply,sizeof reply,250,&negative);
+    if (n!=11) return 0;
+    return tpms_decode(reply+3,8,hpa);
+}
+
 int main(int argc, char **argv) {
     struct diag_link_cfg cfg={0,6801,DIAG_AUTO,DIAG_LOOP,"shiftdeck",1};
     struct diag_link link;
     unsigned udp_port=DRIVE_PORT, cycles=0, count=0;
     pid_t parent=getppid();
     struct sockaddr_in dest;
-    int sock, active, i, lost, speed_only=0;
-    uint64_t speed_due=0;
+    int sock, active, i, lost, speed_only=0, rdc=0;
+    uint64_t speed_due=0, tpms_due=0, tpms_ms=0;
     int last_speed=-1;
+    int tpms[4]={-1,-1,-1,-1};
     for (i=1;i<argc;++i) {
         if (!strcmp(argv[i],"--host") && i+1<argc && !cfg.host) cfg.host=argv[++i];
         else if (!strcmp(argv[i],"--port") && i+1<argc) cfg.port=number(argv[++i],1,65535);
         else if (!strcmp(argv[i],"--speed-only")) speed_only=1;
+        else if (!strcmp(argv[i],"--rdc")) rdc=1;
         else if (!strcmp(argv[i],"--udp-port") && i+1<argc) udp_port=number(argv[++i],1,65535);
         else if (!strcmp(argv[i],"--cycles") && i+1<argc) cycles=number(argv[++i],1,1000);
         else if (!strcmp(argv[i],"--transport") && i+1<argc && !strcmp(argv[i+1],"auto")) ++i;
@@ -85,12 +98,18 @@ int main(int argc, char **argv) {
                     speed_due=start+65;
                 }
                 kph=last_speed;
+                if (!rc && rdc && start>=tpms_due && !diag_link_on_most(&link)) {
+                    if (read_tpms(&link,tpms)) tpms_ms=bd_mono_ms();
+                    tpms_due=start+TPMS_POLL_MS;
+                }
             }
             if (rc==-1) diag_link_drop(&link);
             else if (!rc) {
                 f.sampled_ms=bd_mono_ms();
                 f.rpm=rpm;
                 f.kph=kph;
+                f.tpms_ms=tpms_ms;
+                memcpy(f.tpms_hpa,tpms,sizeof tpms);
                 if (!speed_only) {
                     struct hud_telemetry sample = { f.sampled_ms, source,
                         rpm >= 0 ? HUD_SAMPLE_RPM : 0, rpm >= 0 ? (unsigned)rpm : 0, 0 };

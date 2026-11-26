@@ -23,6 +23,12 @@ def read_request(value):
     return bytes.fromhex(value)
 
 
+def ecu_address(value):
+    if not re.fullmatch(r"[0-9a-fA-F]{2}", value):
+        raise argparse.ArgumentTypeError("use an explicit 2-digit hex ECU address (12 DME, 18 EGS, 19 VTG, 29 DSC)")
+    return value.lower()
+
+
 def exact(connection, length, deadline):
     data = bytearray()
     while len(data) < length:
@@ -62,7 +68,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--local", required=True, type=enet_address, help="computer's wired ENET IPv4")
     parser.add_argument("--gateway", required=True, type=enet_address, help="diagnostic gateway IPv4")
-    parser.add_argument("--ecu", choices=("12", "18", "19", "29"), default="12", help="12 DME, 18 EGS, 19 transfer case, 29 DSC")
+    parser.add_argument("--ecu", type=ecu_address, default="12",
+                        help="ECU address as 2 hex digits (12 DME, 18 EGS, 19 transfer case, 29 DSC);"
+                             " explicit values support discovery of unverified ECUs such as RDC")
     parser.add_argument("requests", nargs="+", type=read_request)
     args = parser.parse_args()
     if args.local == args.gateway or len(args.requests) > 12:

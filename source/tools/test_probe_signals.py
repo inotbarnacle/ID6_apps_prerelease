@@ -4,7 +4,7 @@ import struct
 import threading
 import unittest
 
-from probe_signals import exchange, read_request
+from probe_signals import ecu_address, exchange, read_request
 
 
 def frame(control, data):
@@ -28,6 +28,13 @@ class ProbeTest(unittest.TestCase):
             thread.join(3)
             self.assertFalse(thread.is_alive())
             self.assertEqual(result, {"reply": "62 43 00 0b f8", "data": "0b f8"})
+
+    def test_ecu_accepts_explicit_hex_for_discovery(self):
+        self.assertEqual(ecu_address("12"), "12")
+        self.assertEqual(ecu_address("AB"), "ab")
+        for text in ("1", "123", "zz", "", "0x12", "1 "):
+            with self.assertRaises(argparse.ArgumentTypeError):
+                ecu_address(text)
 
     def test_refuses_actuation_and_decodes_negative_reply(self):
         for text in ("2f0100", "2e430001", "14ffffff", "2243", "01050c"):

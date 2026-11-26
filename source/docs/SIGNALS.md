@@ -50,3 +50,11 @@ Gasoline rail pressure prefers DME `22 56 D7` and falls back to standard OBD `01
 On the Y22292I M140i in [issue #108](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/108), the transmission temperature returned with the same gateway configuration as soon as ENET was connected. The owner measured unresolved ARP on OMAP with ENET unplugged. The MOST fallback reaches the DME, while this transmission reading and [the reported BEAMer setup](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/111) require a reachable HSFZ gateway. The A90 in [issue #79](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/79) has a reachable EGS that refuses the temperature DID over HSFZ.
 
 BoostDeck can continue collecting if another process occupies its optional HUD sharing port. It logs that condition and uses the diagnostic lease for the session. [Issue #122](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/122)
+
+## TPMS (provisional, unverified)
+
+ShiftDeck can show per-corner tyre pressures (FL, FR, RL, RR) in a footer row, but the RDC request has not been captured from any car yet. The ECU address, DID, and reply layout in [tpms.h](../native/src/common/tpms.h) are placeholders, and the worker only polls them with `--rdc`, which the plugin does not pass. Until verified, every corner shows `--`.
+
+iDrive 7 apps read tyres from the MGU infotainment service `de.bmw.infotainment.vehicle.TPMS`. That service does not exist on NBT Evo, so this project must use UDS service `22` to the RDC ECU over HSFZ, following the body-ECU precedent (BEAMer uses `40`). The assumed layout is one DID returning four big-endian uint16 pressures in hPa. The 10 s poll cadence, 60 s stale limit, and HSFZ-only reads keep RPM sampling (750 ms stale limit) unaffected; the launch timing path never queries RDC.
+
+To verify, while parked over wired ENET use the read-only probe with explicit ECU candidates, for example `probe_signals.py --local <pc> --gateway <gw> --ecu <hex> 22<did>`, and validate each corner against the iDrive Vehicle status reading, including a pressure change. Record the raw request and response. Cars with indirect RPA (no wheel sensors) will refuse the read and keep showing `--`. Enabling after capture means correcting the placeholders, passing `--rdc` from the ShiftDeck plugin, and rebuilding the package.
