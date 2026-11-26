@@ -192,7 +192,7 @@ int main(int argc, char **argv) {
     }
     if (host && demo) { fprintf(stderr, "Choose --host or --demo, never both.\n"); return 2; }
     if (!host && !demo && transport == DIAG_HSFZ) { fprintf(stderr, "--transport hsfz needs --host.\n"); return 2; }
-    if (native_android_auto_installed()) transport = DIAG_HSFZ;
+    if (native_android_auto_running()) transport = DIAG_HSFZ;
     if (transport == DIAG_MOST) host = 0;
     memset(&cfg, 0, sizeof cfg);
     cfg.host = host; cfg.port = port; cfg.transport = transport; cfg.kind = DIAG_LOOP;

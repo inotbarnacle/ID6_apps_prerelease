@@ -8,6 +8,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include "android_auto_process.h"
 
 enum { HUD_TELEMETRY_PORT = 42870, BOOST_ACTIVE_PORT, SHIFT_ACTIVE_PORT, LAUNCH_ACTIVE_PORT,
        GAUGE_MOST_PORT, BOOST_MOST_PORT, SHIFT_MOST_PORT, LAUNCH_MOST_PORT,

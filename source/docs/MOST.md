@@ -23,6 +23,24 @@ Bootmod3 (`bootmod3-qnx`) and xDrive (`xdrive-control-qnx`) stay on HSFZ. They w
 
 The diagnostic workers use automatic fallback by default where supported. The dashboard workers accept a transport override for testing.
 
+## Android Auto and dashboard workers
+
+BoostDeck, ShiftDeck (also used by LaunchDeck), and WarmDeck check for a running
+`nbt-aad` process when the worker starts. A running daemon, or a failed process
+check, keeps the worker on HSFZ. Merely having Android Auto installed no longer
+disables MOST for these workers. HUD Gauges retains its installed-AA restriction.
+
+This is a manual, experimental switching workflow: close the gauge page, stop
+Android Auto, then reopen the gauge page to start a fresh worker. Close the gauge
+page before restarting Android Auto. The startup check does not automatically
+stop Android Auto or prevent it being started while a MOST worker is already
+running. Transmission temperature still requires HSFZ.
+
+The process-list parser is host-tested. A separate, unmodified v0.7.4 collector
+returned DME oil and coolant data through MOST on a parked G01 with Android Auto
+stopped. That observation does not validate this changed QNX build, the gauge UI,
+or operation after a full sleep cycle with ENET disconnected.
+
 ## Packaged controls
 
 - **Bootmod3 Suite** can switch maps, request exhaust flap position, and set Active Sound over MOST on a recognized CustomROM. Burble presets require HSFZ because the complete write is larger than the tunnel limit.
