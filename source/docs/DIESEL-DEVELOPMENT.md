@@ -54,6 +54,31 @@ updates preserve all native, tool and workflow bytes tested at this source
 checkpoint. No actual ECU measurement timestamp, QNX or physical X5 result
 is inferred.
 
+Optional HMI storage evidence is published as draft
+[#218](https://github.com/inotbarnacle/iDriveDeck/pull/218), signed `a5b93c8`.
+[Linux/macOS CI](https://github.com/voioo/iDriveDeck/actions/runs/46071766349)
+passes twelve capture tests. The explicit `--storage` flag adds one documented
+read of the HMI data filesystem, routed to OMAP on a split-node unit. Default
+reads and fields remain unchanged. Wrong units, ambiguous/malformed output,
+unknown processors and command failures remain unavailable; zero free space
+remains data. Device/mount names and error strings are omitted from the storage
+object. Other captured evidence survives an optional-read failure.
+
+Combined source `9cac661` passes the full 154-case tool/resource suite. Its
+native code/tests are byte-identical to validated `61aea75` (47 native programs
+and 190 native-suite Python cases); with four shared fault-resource cases
+counted once, combined coverage is now 340 distinct Python cases. The existing
+public-report allowlist still omits optional storage, preserving prior report
+contracts. The combined
+[storage workflow](https://github.com/voioo/iDriveDeck/actions/runs/46072090629)
+and [discovery workflow](https://github.com/voioo/iDriveDeck/actions/runs/46072090434)
+pass at that source. The other automatic app jobs are running against unchanged
+native code. No native regression run is repeated locally for this metadata-only
+change. Stage C now links the exact
+optional read. The snapshot neither reserves capacity nor assesses whether an
+installation fits, and no storage value or `df` availability on this X5 is
+claimed.
+
 Signed combined branch `diesel/integration-published` reconstructs the tested
 source using the real feature histories. CI at its first head `e8b32b9` caught
 the coexistence test's missing `--session`; older overlap observations used
@@ -90,7 +115,7 @@ tool and workflow bytes tested here.
 | ShiftDeck | Source artwork/preferences retain five gasoline targets while the latest installer release advertises 6000–8000 RPM. Neither establishes an N57 limit. | [Draft #203](https://github.com/inotbarnacle/iDriveDeck/pull/203) adds manually selected diesel targets/display scales, legacy settings migration and asset/plugin tests. No universal diesel redline or physical validation is claimed. |
 | Faults | Worker reads 24-bit UDS codes; the old UI discarded status availability and always used a reference gasoline table. | [Draft #204](https://github.com/inotbarnacle/iDriveDeck/pull/204) preserves status support, adds a DDE/raw view and clear confirmation, plus separate standard confirmed/pending/permanent emissions reads. The counted CAN format is host-tested; target support and licensed DDE descriptions remain open. |
 | DPF | [#196](https://github.com/inotbarnacle/iDriveDeck/issues/196) contributor plans B47 collection once ENET arrives. #201 provides standard evidence collection; draft #216 includes HMI, resources, lifecycle and optional installer integration. | A licensed QNX build and shared captures remain required for validated B47/N57 profiles. No guessed DIDs, soot/ash thresholds or regeneration controls. |
-| Installer / rollback | Desktop installer checks framework pairs and display layouts, inventories/stages managed folders and preserves backups; uninstall is documented in `Installer.md`. | Run compatibility check only after authorized vehicle discovery. No installation or restart is authorized yet. |
+| Installer / rollback | Desktop installer checks framework pairs and display layouts, inventories/stages managed folders and preserves backups; uninstall is documented in `Installer.md`. Optional storage capture #218 adds a filesystem snapshot, not a payload-fit assessment. | Run compatibility check only after authorized vehicle discovery. No installation or restart is authorized yet. |
 | Factory integration | Native Android Auto installation currently disables gauge MOST fallback; [PR #138](https://github.com/inotbarnacle/iDriveDeck/pull/138) proposes a startup process check. This does not establish CarPlay/HUD coexistence. | Keep current guards pending reproducible evidence and maintainer review. |
 
 ## Historical issues, checked 27 November 2026
@@ -726,7 +751,9 @@ This description is not diagnostic confirmation.
   [#216](https://github.com/inotbarnacle/iDriveDeck/pull/216)
   (draft; standard DPFDeck monitoring and optional regeneration status), and
   [#217](https://github.com/inotbarnacle/iDriveDeck/pull/217)
-  (draft; locale-stable Boost packet conversion).
+  (draft; locale-stable Boost packet conversion), and
+  [#218](https://github.com/inotbarnacle/iDriveDeck/pull/218)
+  (draft; optional read-only HMI storage evidence).
 
 ## Combined source validation
 
