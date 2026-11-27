@@ -85,6 +85,11 @@ This description is not diagnostic confirmation.
   alongside native decoder/UI checks, ASan/UBSan, C++98 syntax and static
   analysis. Paired optimized host objects retain the same 48 BMW imports; this
   does not establish QNX ABI. All 906 original image pixels remain intact.
+  The complete local telemetry suite passes 16 native C/C++ programs and 125
+  native-suite Python cases, plus eight resource and eight read-only tool cases.
+  [Telemetry CI](https://github.com/voioo/iDriveDeck/actions/runs/46021924804)
+  passes on exact source `d0b7808a0fc86260eb1ebd54874de30211bde3c7`, including
+  both compilers, C++98 syntax, analysis, resources and sanitizer checks.
   No BMW-specific mapping, physical support or QNX validation is claimed.
 
 - Standard EGR follow-up in [#202](https://github.com/inotbarnacle/iDriveDeck/pull/202): Custom layout adds PID 2C
@@ -352,7 +357,31 @@ Conflicts in `CHANGELOG.md`, `source/README.md` and `source/native/Makefile` wer
 retaining every feature, documentation link and test target. The common MIT
 framework fake is identical across the ShiftDeck, fault and BoostDeck scale branches.
 
-The latest combined revision `4ab39bc` adds #201's explicitly selected v3
+The latest combined revision `8e8dbff` adds optional requested/actual standard
+pressure gauges while preserving the original MAP/rail sources, automatic
+defaults and all older packet/settings bounds. Validation passes **39 native
+C/C++ test programs and 208 distinct Python tests**: 143 native-suite cases
+plus 65 separate tool/resource cases. All 69 tool/resource cases pass locally;
+four fault-resource cases are already counted by the native suite. The increase
+is two pressure native programs, 12 pressure transport cases and one resource
+case. All eight workflows pass on exact source
+`8e8dbfff8255310905e6401f41392b18be280cbd`:
+[diagnostics](https://github.com/voioo/iDriveDeck/actions/runs/46022049069),
+[faults](https://github.com/voioo/iDriveDeck/actions/runs/46022048849),
+[WarmDeck](https://github.com/voioo/iDriveDeck/actions/runs/46022048902),
+[worker ownership](https://github.com/voioo/iDriveDeck/actions/runs/46022049047),
+[record reads](https://github.com/voioo/iDriveDeck/actions/runs/46022048905),
+[ShiftDeck](https://github.com/voioo/iDriveDeck/actions/runs/46022049054),
+[discovery](https://github.com/voioo/iDriveDeck/actions/runs/46022049263), and
+[rail scale](https://github.com/voioo/iDriveDeck/actions/runs/46022048842).
+These are host/simulation results. No physical collection, installation or
+factory-function test was performed. Existing 16/19/22-read discovery profiles
+and v1/v2/v3 reports are unchanged and do not collect the new pressure fields.
+Exact DDE/EGS support, A/B identity, independent values, firmware, QNX and
+standalone transport remain unverified. Later progress-only documentation does
+not change this pinned source.
+
+The earlier combined revision `4ab39bc` adds #201's explicitly selected v3
 EGR/EGT evidence profile and preserved v1/v2 contracts. Validation passes
 **37 native C/C++ test programs and 195 distinct Python tests**: the same 131
 native-suite cases, plus 64 separate tool/resource cases. All 68 tool/resource
