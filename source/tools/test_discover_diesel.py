@@ -1,6 +1,7 @@
 from contextlib import redirect_stdout
 import io
 import json
+from fractions import Fraction
 from pathlib import Path
 import subprocess
 import sys
@@ -12,6 +13,7 @@ import discover_diesel as discovery
 
 TOOL = Path(__file__).with_name("discover_diesel.py")
 V1_FIXTURE = TOOL.parent / "fixtures" / "discovery-standard-v1.json"
+V2_FIXTURE = TOOL.parent / "fixtures" / "discovery-egt-v2.json"
 
 
 def row(request, reply, ecu="12"):
@@ -23,6 +25,13 @@ def egt_rows():
             row("0140", "414000000001"), row("0160", "416000000180"),
             row("0178", "41780b0190ffff000047e0"),
             row("0179", "4179040000000019050000")]
+
+
+def diesel_rows():
+    return [row("0100", "410000000001"), row("0120", "412000180001"),
+            row("0140", "414000000001"), row("0160", "416000800180"),
+            row("0169", "41693f008080ff4000"), row("012c", "412cff"), row("012d", "412dff"),
+            *egt_rows()[4:]]
 
 
 class DiscoveryTest(unittest.TestCase):
@@ -258,7 +267,7 @@ class DiscoveryTest(unittest.TestCase):
         records = discovery.collect("169.254.10.2", "169.254.10.3", profile="standard-egt")
         self.assertEqual([r["request"] for r in records], ["22 f1 50", "22 f1 50", "01 00"])
 
-    def test_both_profiles_reserve_full_transaction_time_inside_45_seconds(self):
+    def test_all_profiles_reserve_full_transaction_time_inside_45_seconds(self):
         for profile in discovery.POLICIES:
             clock = [0.0]
             def advance(seconds):
@@ -307,6 +316,208 @@ class DiscoveryTest(unittest.TestCase):
         self.assertNotIn("f190", encoded)
         self.assertEqual(result["signals"][-2]["sensors"][0]["celsius"], 0)
         self.assertNotIn("reply", result["signals"][-1])
+
+    def test_v2_plan_and_report_remain_identical_to_pinned_source(self):
+        fixture = json.loads(V2_FIXTURE.read_text())
+        records = fixture["input_records"]
+        unsolicited = diesel_rows()[4:7]
+        self.assertEqual(discovery.plan("standard-egt"), fixture["plan"])
+        self.assertEqual(discovery.report(records, profile="standard-egt"), fixture["report"])
+        self.assertEqual(discovery.report(records + unsolicited, profile="standard-egt"), fixture["report"])
+        legacy = json.loads(V1_FIXTURE.read_text())
+        self.assertEqual(discovery.report(legacy["input_records"] + unsolicited), legacy["report"])
+
+    def test_v3_preserves_requested_actual_error_and_unspecified_sources(self):
+        result = discovery.report(diesel_rows(), profile="standard-diesel")
+        self.assertEqual(result["format"], "idrive-diesel-discovery-v3")
+        self.assertEqual(result["profile"], "standard-diesel")
+        entries = {s["pid"]: s for s in result["signals"]}
+        fields = entries["69"]["fields"]
+        self.assertEqual([(f["system"], f["quantity"]) for f in fields],
+                         [(system, quantity) for system in ("A", "B") for quantity in ("requested", "actual", "error")])
+        expected = [0, 12800/255, 0, 100, 6400/255, -100]
+        for field, percent in zip(fields, expected):
+            self.assertEqual(field["capability"], "supported")
+            self.assertEqual(field["percent"], percent)
+            self.assertEqual(field["measurement"], "decoded_requires_independent_validation")
+        self.assertEqual(entries["2C"]["system"], "unspecified")
+        self.assertEqual(entries["2C"]["quantity"], "requested")
+        self.assertEqual(entries["2C"]["percent"], 100)
+        self.assertEqual(entries["2D"]["quantity"], "error")
+        self.assertEqual(entries["2D"]["percent"], 99.21875)
+        self.assertEqual(entries["78"]["sensors"][0]["celsius"], 0)
+        self.assertEqual(entries["69"]["reply"], "41 69 3f 00 80 80 ff 40 00")
+        self.assertTrue(all("record_status" in entry for entry in entries.values()))
+
+    def test_all_egr_support_bytes_and_raw_values_match_exact_rational_scales(self):
+        for flags in range(256):
+            payload = bytes((0x41, 0x69, flags, 0, 255, 128, 128, 0, 255))
+            complete, fields = discovery.egr_fields("advertised", payload)
+            self.assertEqual(complete, flags < 64)
+            for index, field in enumerate(fields):
+                self.assertEqual("percent" in field, flags < 64 and bool(flags & (1 << index)))
+        for raw in range(256):
+            commanded = float(Fraction(raw*100, 255))
+            error = float(Fraction((raw-128)*100, 128))
+            self.assertEqual(discovery.egr_percent(raw), commanded)
+            self.assertEqual(discovery.egr_percent(raw, True), error)
+            complete, fields = discovery.egr_fields("advertised", bytes((0x41, 0x69, 63)) + bytes((raw,))*6)
+            self.assertTrue(complete)
+            self.assertEqual([f["percent"] for f in fields], [commanded, commanded, error]*2)
+
+    def test_actual_fields_require_their_own_flags_even_with_legacy_values(self):
+        records = diesel_rows()
+        records[4]["reply"] = "41692dff00ffff00ff"  # A/B request+error; both actual flags absent
+        result = discovery.report(records, profile="standard-diesel")
+        grouped = next(s for s in result["signals"] if s["pid"] == "69")
+        for index in (1, 4):
+            self.assertEqual(grouped["fields"][index]["capability"], "unsupported")
+            self.assertNotIn("percent", grouped["fields"][index])
+        self.assertEqual(grouped["fields"][0]["percent"], 100)
+        self.assertEqual(grouped["fields"][2]["percent"], 99.21875)
+
+    def test_egr_bank_and_scalar_replies_have_exact_prefix_length_and_flags(self):
+        for reply in ("41693f008080ff4000", "41693f008080ff400000", "4169ff008080ff4000", "416a3f008080ff4000", "7f0131"):
+            records = diesel_rows()
+            records[4]["reply"] = reply
+            signal = discovery.report(records, profile="standard-diesel")["signals"][0]
+            valid = reply == "41693f008080ff4000"
+            self.assertEqual("reply" in signal, valid)
+            self.assertEqual(any("percent" in f for f in signal["fields"]), valid)
+        payload = bytes.fromhex("41693f008080ff400000")
+        for length in range(len(payload)+1):
+            complete, _ = discovery.egr_fields("advertised", payload[:length])
+            self.assertEqual(complete, length == 9)
+        for pid in ("2c", "2d"):
+            for reply in ("41"+pid, "41"+pid+"0000", "410500", "7f0131", "PRIVATE"):
+                records = diesel_rows()
+                next(r for r in records if r["request"] == "01"+pid)["reply"] = reply
+                signal = next(s for s in discovery.report(records, profile="standard-diesel")["signals"] if s["pid"] == pid.upper())
+                self.assertNotIn("percent", signal)
+                self.assertNotIn("reply", signal)
+
+    def test_egr_capability_chain_is_required_and_duplicates_remain_ambiguous(self):
+        for records, capability in ((diesel_rows()[4:], "unknown"),
+                                    ([row("0100", "410000000000"), *diesel_rows()[4:]], "unsupported"),
+                                    ([*diesel_rows(), row("0160", "416000800180")], "unknown")):
+            signal = discovery.report(records, profile="standard-diesel")["signals"][0]
+            self.assertEqual(signal["capability"], capability)
+            self.assertTrue(all(f["capability"] == capability and "percent" not in f for f in signal["fields"]))
+            self.assertNotIn("reply", signal)
+        records = diesel_rows() + [diesel_rows()[4]]
+        signal = discovery.report(records, profile="standard-diesel")["signals"][0]
+        self.assertEqual(signal["record_status"], "ambiguous_duplicate")
+        self.assertTrue(all(f["capability"] == "unknown" and "percent" not in f for f in signal["fields"]))
+
+    def test_v3_record_statuses_distinguish_partial_ambiguous_and_failed_records(self):
+        variants = [(diesel_rows()[:4], "not_present"),
+                    ([*diesel_rows()[:4], {"ecu":"12", "request":"0169", "error":"private failure"}], "present_no_valid_reply"),
+                    ([*diesel_rows()[:4], row("0169", "")], "present_no_valid_reply"),
+                    ([*diesel_rows()[:4], row("0169", "not hex")], "present_no_valid_reply"),
+                    ([*diesel_rows(), diesel_rows()[4]], "ambiguous_duplicate"),
+                    (diesel_rows(), "present_reply_bytes")]
+        for records, expected in variants:
+            signal = discovery.report(records, profile="standard-diesel")["signals"][0]
+            self.assertEqual(signal["record_status"], expected)
+            if expected != "present_reply_bytes":
+                self.assertTrue(all("percent" not in f for f in signal["fields"]))
+        records = diesel_rows()
+        records[4]["reply"] = "7f0131"
+        signal = discovery.report(records, profile="standard-diesel")["signals"][0]
+        self.assertEqual(signal["nrc"], "31")
+        self.assertEqual(signal["capability"], "advertised")
+        self.assertTrue(all("percent" not in f for f in signal["fields"]))
+
+    @patch("discover_diesel.time.sleep")
+    @patch("discover_diesel.exchange")
+    @patch("discover_diesel.socket.create_connection")
+    def test_diesel_policy_is_exactly_22_reads_with_egr_priority_and_no_retries(self, connect, exchange, sleep):
+        replies = {bytes.fromhex(r["request"]): r["reply"] for r in diesel_rows()[4:]}
+        def answer(connection, ecu, request):
+            if request == bytes.fromhex("22f150"): return {"reply":"7f2231"}
+            if request[1] in (0, 0x20, 0x40, 0x60):
+                return {"reply":bytes((0x41,request[1])).hex()+"ffffffff"}
+            if request in replies: return {"reply":replies[request]}
+            return {"reply":bytes((0x41,request[1])).hex()+"00"*discovery.WIDTHS[request[1]]}
+        exchange.side_effect = answer
+        records = discovery.collect("169.254.10.2", "169.254.10.3", profile="standard-diesel")
+        self.assertEqual(len(records), 22)
+        self.assertEqual({(int(r["ecu"],16),bytes.fromhex(r["request"])) for r in records}, discovery.policy("standard-diesel")[3])
+        self.assertEqual([r["request"] for r in records[6:11]], ["01 69", "01 2c", "01 2d", "01 78", "01 79"])
+        self.assertEqual(sum(r["request"] == "01 69" for r in records), 1)
+        self.assertEqual(connect.call_count, 22)
+        self.assertEqual(sleep.call_count, 22)
+        self.assertTrue(all(c.args == (0.2,) for c in sleep.call_args_list))
+        self.assertTrue(all(c.kwargs["source_address"] == ("169.254.10.2",0) for c in connect.call_args_list))
+        self.assertEqual(discovery.plan("standard-diesel")["measurements_if_advertised"][:3], ["01 69","01 2c","01 2d"])
+
+    @patch("discover_diesel.time.sleep")
+    @patch("discover_diesel.exchange")
+    @patch("discover_diesel.socket.create_connection")
+    def test_diesel_policy_does_not_probe_unadvertised_legacy_or_group_fields(self, connect, exchange, sleep):
+        for fourth in ("416000000000", "416000000080", "7f0131", "41600080"):
+            def answer(connection, ecu, request):
+                return {"reply": {"0100":"410000000001", "0120":"412000000001",
+                                  "0140":"414000000001", "0160":fourth,
+                                  "0179":"4179000000000000000000"}.get(request.hex(),"7f2231")}
+            exchange.side_effect = answer
+            records = discovery.collect("169.254.10.2", "169.254.10.3", profile="standard-diesel")
+            self.assertFalse(any(r["request"] in ("01 69", "01 2c", "01 2d") for r in records))
+
+    def test_slow_diesel_session_collects_explicit_egr_first_within_budget(self):
+        clock = [0.0]
+        def advance(seconds): clock[0] += seconds
+        def answer(connection, ecu, request):
+            advance(6)
+            if request == bytes.fromhex("0169"): return {"reply":"41693f008080ff4000"}
+            return {"reply":bytes((0x41,request[1])).hex()+"ffffffff" if request[0] == 1 else "7f2231"}
+        with patch("discover_diesel.time.monotonic", side_effect=lambda:clock[0]), \
+             patch("discover_diesel.time.sleep", side_effect=advance), \
+             patch("discover_diesel.exchange", side_effect=answer), \
+             patch("discover_diesel.socket.create_connection") as connect:
+            records = discovery.collect("169.254.10.2", "169.254.10.3", profile="standard-diesel")
+        self.assertEqual(connect.call_count, 7)
+        self.assertLessEqual(clock[0], 45)
+        self.assertEqual(records[-1]["request"], "01 69")
+        report = discovery.report(records, profile="standard-diesel")
+        self.assertEqual(report["signals"][0]["fields"][2]["percent"], 0)
+        self.assertEqual(report["signals"][1]["record_status"], "not_present")
+
+    def test_v3_privacy_filter_excludes_wrong_ecu_unknown_commands_and_raw_errors(self):
+        secret = "PRIVATE-VIN-SERIAL-CREDENTIAL-NAVIGATION"
+        records = diesel_rows()
+        records[4]["error"] = secret
+        records[4]["metadata"] = secret
+        records += [row("0169", "41693f008080ff4000", "18"), row("22f190", secret.encode().hex()),
+                    row("017a", secret.encode().hex()), {"hostname":secret}]
+        result = discovery.report(records, {"hostname":secret,"vin":secret}, profile="standard-diesel")
+        encoded = json.dumps(result)
+        self.assertNotIn(secret, encoded)
+        self.assertNotIn(secret.encode().hex(), encoded)
+        self.assertNotIn("f190", encoded)
+        records = [*diesel_rows()[:4], row("0169", "41693f008080ff4000", "18"), *diesel_rows()[5:]]
+        grouped = discovery.report(records, profile="standard-diesel")["signals"][0]
+        self.assertEqual(grouped["record_status"], "not_present")
+        self.assertTrue(all("percent" not in f for f in grouped["fields"]))
+
+    def test_diesel_plan_and_replay_are_offline_private_and_exclusive(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            source = path/"synthetic.jsonl"
+            source.write_text("\n".join(json.dumps(r) for r in diesel_rows()))
+            output = path/"public.json"
+            for args in (("--plan",), ("--replay",str(source),"--out",str(output))):
+                with patch.object(sys,"argv",[str(TOOL),"--profile","standard-diesel",*args]), \
+                     patch("discover_diesel.socket.create_connection") as connect, redirect_stdout(io.StringIO()):
+                    discovery.main()
+                connect.assert_not_called()
+            original = output.read_bytes()
+            self.assertEqual(output.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(json.loads(original)["evidence"], "replay_unverified_provenance")
+            with patch.object(sys,"argv",[str(TOOL),"--profile","standard-diesel","--replay",str(source),"--out",str(output)]), \
+                 self.assertRaises(SystemExit):
+                discovery.main()
+            self.assertEqual(output.read_bytes(), original)
 
 
 if __name__ == "__main__":

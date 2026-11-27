@@ -16,6 +16,7 @@ jobs:
         run: |
           python3 -B source/tools/discover_diesel.py --plan
           python3 -B source/tools/discover_diesel.py --plan --profile standard-egt
+          python3 -B source/tools/discover_diesel.py --plan --profile standard-diesel
           python3 -B source/tools/test_discover_diesel.py
           python3 -B source/tools/test_probe_signals.py
           python3 -B source/tools/test_capture_headunit.py

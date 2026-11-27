@@ -18,6 +18,7 @@ PIDS = (0x04, 0x05, 0x0b, 0x0c, 0x0f, 0x10, 0x23, 0x33, 0x42, 0x5c, 0x5e)
 WIDTHS = {pid: 2 if pid in (0x0c, 0x10, 0x23, 0x42, 0x5e) else 1 for pid in PIDS}
 MAX_REQUESTS, MAX_SECONDS = 16, 45
 EGT_PIDS = (0x78, 0x79)
+EGR_PIDS = (0x69, 0x2c, 0x2d)
 FRAMEWORKS = ("libAppFramework.A.so", "libCoreFramework.A.so")
 ALLOWLIST = {(ecu, bytes.fromhex("22f150")) for ecu in (0x12, 0x18)} | {
     (0x12, bytes((1, pid))) for pid in (0, 0x20, 0x40, *PIDS)
@@ -26,6 +27,10 @@ POLICIES = {
     "standard": (PIDS, (0, 0x20, 0x40), MAX_REQUESTS, ALLOWLIST),
     "standard-egt": (PIDS + EGT_PIDS, (0, 0x20, 0x40, 0x60), 19, ALLOWLIST | {
         (0x12, bytes((1, pid))) for pid in (0x60, *EGT_PIDS)
+    }),
+    # Prioritize the explicit A/B EGR block when the bounded session is partial.
+    "standard-diesel": (EGR_PIDS + EGT_PIDS + PIDS, (0, 0x20, 0x40, 0x60), 22, ALLOWLIST | {
+        (0x12, bytes((1, pid))) for pid in (0x60, *EGR_PIDS, *EGT_PIDS)
     }),
 }
 
@@ -160,6 +165,34 @@ def egt_sensors(pid, state, reply):
     return complete, sensors
 
 
+def egr_percent(raw, error=False):
+    return (raw - 128) * 100 / 128 if error else raw * 100 / 255
+
+
+def egr_fields(state, reply):
+    """Decode only explicit PID 69 fields; never derive actual from error.
+
+    Actual is normalized duty/position, not measured EGR flow. A/B hardware
+    applicability and every value still require independent validation.
+    """
+    complete = (state == "advertised" and reply is not None and len(reply) == 9
+                and reply[:2] == bytes((0x41, 0x69)) and not reply[2] & 0xc0)
+    fields = []
+    for index in range(6):
+        quantity = ("requested", "actual", "error")[index % 3]
+        capability = "unsupported" if state == "unsupported" else "unknown"
+        item = {"system": "A" if index < 3 else "B", "quantity": quantity,
+                "capability": capability, "measurement": "unavailable"}
+        if complete:
+            supported = bool(reply[2] & (1 << index))
+            item["capability"] = "supported" if supported else "unsupported"
+            if supported:
+                item.update(percent=egr_percent(reply[3+index], quantity == "error"),
+                            measurement="decoded_requires_independent_validation")
+        fields.append(item)
+    return complete, fields
+
+
 def report(rows, headunit=None, evidence="replay", *, profile="standard"):
     """Export only known fixed requests and validated response shapes.
 
@@ -210,11 +243,26 @@ def report(rows, headunit=None, evidence="replay", *, profile="standard"):
 
     signals = []
     for pid in pids:
-        row = records.get((0x12, bytes((1, pid))))
+        key = (0x12, bytes((1, pid)))
+        row = records.get(key)
         reply = reply_bytes(row)
         state = "unknown" if pid not in checked else "unsupported" if pid not in advertised else "advertised"
         entry = {"pid": f"{pid:02X}", "capability": state, "measurement": "unavailable"}
-        if pid in EGT_PIDS:
+        if profile == "standard-diesel":
+            entry["record_status"] = ("not_present" if key not in records else
+                                      "ambiguous_duplicate" if row is None else
+                                      "present_no_valid_reply" if not reply else "present_reply_bytes")
+        if pid == 0x69:
+            complete, entry["fields"] = egr_fields(state, reply)
+            if complete:
+                entry["reply"] = reply.hex(" ")
+                entry["measurement"] = "field_layout_requires_independent_validation"
+        elif pid in (0x2c, 0x2d):
+            entry.update(system="unspecified", quantity="error" if pid == 0x2d else "requested")
+            if state == "advertised" and reply is not None and len(reply) == 3 and reply[:2] == bytes((0x41, pid)):
+                entry.update(reply=reply.hex(" "), percent=egr_percent(reply[2], pid == 0x2d),
+                             measurement="decoded_requires_independent_validation")
+        elif pid in EGT_PIDS:
             complete, entry["sensors"] = egt_sensors(pid, state, reply)
             if complete:
                 entry["reply"] = reply.hex(" ")
@@ -234,7 +282,8 @@ def report(rows, headunit=None, evidence="replay", *, profile="standard"):
         if reply is not None and len(reply) == 3 and reply[:2] == bytes((0x7f, request[0])):
             hsfz_observed = True
     result = {
-        "format": "idrive-diesel-discovery-v1" if profile == "standard" else "idrive-diesel-discovery-v2",
+        "format": ("idrive-diesel-discovery-v1" if profile == "standard" else
+                   "idrive-diesel-discovery-v2" if profile == "standard-egt" else "idrive-diesel-discovery-v3"),
         "evidence": evidence,
         "vehicle_platform": "not_inferred",
         "ecu_identification": identities,
@@ -252,6 +301,10 @@ def report(rows, headunit=None, evidence="replay", *, profile="standard"):
     if profile != "standard":
         result["profile"] = profile
         result["limitations"].append("EGT bank/sensor fields do not establish physical sensor locations or regeneration")
+    if profile == "standard-diesel":
+        result["limitations"][1] = "No DPF, SCR or BMW-specific oil/EGR mapping is established"
+        result["limitations"].append("EGR A/B actual is reported normalized duty/position, not inferred flow or an independent position measurement")
+        result["limitations"].append("Legacy EGR request/error never establishes A/B actual values")
     return result
 
 
@@ -262,7 +315,7 @@ def main():
     mode.add_argument("--replay", type=Path, help="offline probe JSONL input; no connection")
     mode.add_argument("--collect", action="store_true", help="execute the reviewed parked read-only plan")
     parser.add_argument("--profile", choices=POLICIES, default="standard",
-                        help="standard: unchanged 16-read plan; standard-egt: separately reviewed 19-read plan")
+                        help="standard: 16 reads/v1; standard-egt: 19 reads/v2; standard-diesel: separate 22-read EGR+EGT plan/v3")
     parser.add_argument("--owner-approved-parked", action="store_true", help="owner has explicitly approved this exact collection")
     parser.add_argument("--local", type=enet_address)
     parser.add_argument("--gateway", type=enet_address)

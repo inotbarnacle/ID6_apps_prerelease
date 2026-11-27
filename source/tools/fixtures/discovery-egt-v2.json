@@ -1,0 +1,250 @@
+{
+  "provenance": "Synthetic records; expected outputs generated from c7ab86b37cfc4ca19f2ed3525be669bfb37afe17, not a vehicle capture.",
+  "input_records": [
+    {
+      "ecu": "12",
+      "request": "0100",
+      "reply": "410000000001"
+    },
+    {
+      "ecu": "12",
+      "request": "0120",
+      "reply": "412000000001"
+    },
+    {
+      "ecu": "12",
+      "request": "0140",
+      "reply": "414000000001"
+    },
+    {
+      "ecu": "12",
+      "request": "0160",
+      "reply": "416000000180"
+    },
+    {
+      "ecu": "12",
+      "request": "0178",
+      "reply": "41780b0190ffff000047e0"
+    },
+    {
+      "ecu": "12",
+      "request": "0179",
+      "reply": "4179040000000019050000"
+    }
+  ],
+  "plan": {
+    "transport": "HSFZ TCP 6801, explicit wired link-local endpoint only",
+    "identity": [
+      {
+        "ecu": "12",
+        "request": "22 f1 50"
+      },
+      {
+        "ecu": "18",
+        "request": "22 f1 50"
+      }
+    ],
+    "capabilities": [
+      "01 00",
+      "01 20",
+      "01 40",
+      "01 60"
+    ],
+    "measurements_if_advertised": [
+      "01 04",
+      "01 05",
+      "01 0b",
+      "01 0c",
+      "01 0f",
+      "01 10",
+      "01 23",
+      "01 33",
+      "01 42",
+      "01 5c",
+      "01 5e",
+      "01 78",
+      "01 79"
+    ],
+    "max_requests": 19,
+    "max_duration_seconds": 45,
+    "minimum_gap_seconds": 0.2,
+    "retries": 0,
+    "writes_or_session_changes": false,
+    "ssh_or_most": false,
+    "profile": "standard-egt"
+  },
+  "report": {
+    "format": "idrive-diesel-discovery-v2",
+    "evidence": "replay",
+    "vehicle_platform": "not_inferred",
+    "ecu_identification": {
+      "12": {
+        "sgbd_index_candidate": null,
+        "hardware_software_identifiers": "not_collected",
+        "engine_family": "requires_independent_confirmation"
+      },
+      "18": {
+        "sgbd_index_candidate": null,
+        "hardware_software_identifiers": "not_collected",
+        "engine_family": null
+      }
+    },
+    "obd_bitmaps": [
+      {
+        "pid": "00",
+        "reply": "41 00 00 00 00 01"
+      },
+      {
+        "pid": "20",
+        "reply": "41 20 00 00 00 01"
+      },
+      {
+        "pid": "40",
+        "reply": "41 40 00 00 00 01"
+      },
+      {
+        "pid": "60",
+        "reply": "41 60 00 00 01 80"
+      }
+    ],
+    "signals": [
+      {
+        "pid": "04",
+        "capability": "unsupported",
+        "measurement": "unavailable"
+      },
+      {
+        "pid": "05",
+        "capability": "unsupported",
+        "measurement": "unavailable"
+      },
+      {
+        "pid": "0B",
+        "capability": "unsupported",
+        "measurement": "unavailable"
+      },
+      {
+        "pid": "0C",
+        "capability": "unsupported",
+        "measurement": "unavailable"
+      },
+      {
+        "pid": "0F",
+        "capability": "unsupported",
+        "measurement": "unavailable"
+      },
+      {
+        "pid": "10",
+        "capability": "unsupported",
+        "measurement": "unavailable"
+      },
+      {
+        "pid": "23",
+        "capability": "unsupported",
+        "measurement": "unavailable"
+      },
+      {
+        "pid": "33",
+        "capability": "unsupported",
+        "measurement": "unavailable"
+      },
+      {
+        "pid": "42",
+        "capability": "unsupported",
+        "measurement": "unavailable"
+      },
+      {
+        "pid": "5C",
+        "capability": "unsupported",
+        "measurement": "unavailable"
+      },
+      {
+        "pid": "5E",
+        "capability": "unsupported",
+        "measurement": "unavailable"
+      },
+      {
+        "pid": "78",
+        "capability": "advertised",
+        "measurement": "sensor_layout_requires_independent_validation",
+        "sensors": [
+          {
+            "bank": 1,
+            "sensor": 1,
+            "capability": "supported",
+            "measurement": "decoded_requires_independent_validation",
+            "celsius": 0.0
+          },
+          {
+            "bank": 1,
+            "sensor": 2,
+            "capability": "supported",
+            "measurement": "outside_app_plausibility_range"
+          },
+          {
+            "bank": 1,
+            "sensor": 3,
+            "capability": "unsupported",
+            "measurement": "unavailable"
+          },
+          {
+            "bank": 1,
+            "sensor": 4,
+            "capability": "supported",
+            "measurement": "decoded_requires_independent_validation",
+            "celsius": 1800.0
+          }
+        ],
+        "reply": "41 78 0b 01 90 ff ff 00 00 47 e0"
+      },
+      {
+        "pid": "79",
+        "capability": "advertised",
+        "measurement": "sensor_layout_requires_independent_validation",
+        "sensors": [
+          {
+            "bank": 2,
+            "sensor": 1,
+            "capability": "unsupported",
+            "measurement": "unavailable"
+          },
+          {
+            "bank": 2,
+            "sensor": 2,
+            "capability": "unsupported",
+            "measurement": "unavailable"
+          },
+          {
+            "bank": 2,
+            "sensor": 3,
+            "capability": "supported",
+            "measurement": "decoded_requires_independent_validation",
+            "celsius": 600.5
+          },
+          {
+            "bank": 2,
+            "sensor": 4,
+            "capability": "unsupported",
+            "measurement": "unavailable"
+          }
+        ],
+        "reply": "41 79 04 00 00 00 00 19 05 00 00"
+      }
+    ],
+    "headunit": null,
+    "transport": {
+      "hsfz": "response_observed",
+      "gateway": "explicit_endpoint_not_exported",
+      "most": "not_tested"
+    },
+    "firmware_approval": "not_established",
+    "physical_installation": "not_performed_by_this_tool",
+    "limitations": [
+      "SGBD tail is a candidate index, not a full ECU identity",
+      "No DPF, EGR, SCR or BMW-specific oil mapping is established",
+      "No standalone, QNX ABI or factory-function compatibility is established",
+      "EGT bank/sensor fields do not establish physical sensor locations or regeneration"
+    ],
+    "profile": "standard-egt"
+  }
+}

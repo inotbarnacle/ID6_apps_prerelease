@@ -109,6 +109,86 @@ bad lengths and duplicate records, privacy filtering, both fixed request
 policies, continuation gating, exclusive 0600 output and the complete time
 reservation at slow transaction deadlines. CI runs without vehicle access.
 
+### Optional EGR and EGT evidence profile
+
+The existing 16-read `standard` and 19-read `standard-egt` plans retain their
+request sets, ordering and v1/v2 report contracts. A third, separately selected
+`standard-diesel` plan adds EGR evidence while also retaining EGT and the
+original standard channels:
+
+```sh
+python3 tools/discover_diesel.py --plan --profile standard-diesel
+python3 tools/discover_diesel.py --replay /private/probe.jsonl \
+  --profile standard-diesel --out /private/diesel-public-v3.json
+```
+
+Its limit is **22 requests**: two F150 candidates, up to four supported-PID
+pages and sixteen measurements. After identification and capabilities, the
+measurement order begins with `01 69`, `01 2C`, `01 2D`, then `01 78/79` and the
+original eleven measurements. This lets a slow, partial session prioritize
+the explicit EGR A/B layout. The same 45-second budget, six-second transaction
+reservation, 200-ms gaps, separate wired connections and no-retry rule apply.
+Every measurement still needs its advertised capability. No engine family is
+inferred from choosing the profile.
+
+Print and review this exact plan, then obtain explicit approval for it before
+adding `--profile standard-diesel` to any parked collection. Permission for an
+older plan does not include these additional requests. Planning, replaying and
+passing an approval flag do not grant physical-vehicle authorization.
+
+The `idrive-diesel-discovery-v3` report carries `profile: standard-diesel` and
+all sixteen signal entries. EGT sensors retain their prior layout. EGR entries
+keep unspecified legacy sources separate from A/B fields:
+
+| PID | v3 fields | Interpretation |
+| --- | --- | --- |
+| `2C` | `system: unspecified`, `quantity: requested`, optional `percent` | Exact one-data-byte request value, raw × 100 / 255. |
+| `2D` | `system: unspecified`, `quantity: error`, optional `percent` | Exact one-data-byte error, (raw − 128) × 100 / 128. Not actual position. |
+| `69` | `fields` array: A request/actual/error, then B request/actual/error | Exactly seven data bytes; six independent support flags in the first byte, then six values. |
+
+PID 69 rejects reserved flag bits 6/7. Each supported request/actual value uses
+raw × 100 / 255 percent; each error uses (raw − 128) × 100 / 128 percent.
+Unsupported, unknown, malformed or ambiguous fields have no `percent` property.
+A supported zero retains `percent: 0.0`. A/B actual is reported normalized
+duty/position; the reporter never reconstructs it from legacy request/error,
+labels it as independently measured flow, or infers hardware position, a
+regeneration state or an emissions fault. Every decoded value still requires
+independent validation.
+
+Protocol/scaling provenance and limitations match the independently implemented
+[native EGR decoder documentation](https://github.com/voioo/iDriveDeck/blob/5f5e35f688f3536434f8d50607bc9b8c231afcd2/source/docs/STANDARD-EGR.md):
+the vendor's public CSS reference for scalar conversions, the
+[pinned OBDb definitions](https://github.com/OBDb/SAEJ1979/blob/1abdef6ae0c1b9134c8f2a10911a9daa1354649d/signalsets/v3/default.json)
+for the complete PID 69 layout, and Bosch's semantic labels. OBDb's related
+Pelican documentation is the same vendor source, not a second independent
+confirmation. No vendor database entries, descriptions or logs are vendored;
+the arithmetic and synthetic fixtures are project source. No exact N57/B47
+support, ECU identity or QNX/physical result is established.
+
+V3 also adds a fixed `record_status` for each signal:
+
+| Value | Input-record evidence |
+| --- | --- |
+| `not_present` | No allowlisted record for this ECU/request. |
+| `ambiguous_duplicate` | Multiple records; none is selected as authoritative. |
+| `present_no_valid_reply` | A record exists but supplies no valid hex reply bytes. |
+| `present_reply_bytes` | Hex bytes exist; this does not assert correct format, capability, value or physical provenance. |
+
+These states describe the input stream, not why a read was skipped or proof that
+a physical request occurred. Capability and measurement validation remain
+separate. A 45-second partial collection can therefore distinguish uncollected
+fields from valid zero without exporting raw error strings. Accepted exact
+EGR replies are retained; malformed or unadvertised positives are omitted.
+Negative response codes remain separate evidence and do not establish support.
+
+The frozen `tools/fixtures/discovery-egt-v2.json` contains synthetic inputs and
+old outputs from `c7ab86b`; the original v1 fixture remains unchanged. Tests
+compare both old contracts, cover every EGR support/raw byte, unknown and
+unsupported capabilities, per-field absence, duplicate evidence, wrong ECU and
+format, privacy filtering, exact request policy, EGR priority during a partial
+session, offline paths and exclusive 0600 output. Replay provenance remains
+unverified and output still needs local review before sharing.
+
 ## Stage A — non-invasive parked discovery
 
 1. Obtain the owner's explicit approval for the printed bounded collection
