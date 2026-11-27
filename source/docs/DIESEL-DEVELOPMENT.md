@@ -20,7 +20,7 @@ application ZIPs are separate maintainer build artifacts.
 | Pressure | PID 23 is direct-injection rail gauge pressure, 0.1 bar per count. MAP PID 0B is limited to 255 kPa absolute; subtracting barometric pressure does not extend that range. The original graphic fills at only 250 bar. | #202 blanks saturated diesel MAP/boost. [Draft #205](https://github.com/inotbarnacle/iDriveDeck/pull/205) adds a configurable diesel rail display scale, not an ECU pressure limit. Requested rail/boost require separate evidence. |
 | WarmDeck | Three temperatures expire independently and trend estimates require all three. Main queries oil unconditionally and displays generic RPM guidance. Thresholds 85/75/40 C are application choices. | #202 gates oil by advertised support. [Draft #209](https://github.com/inotbarnacle/iDriveDeck/pull/209) adds independent target states, measured estimates and advisory vehicle-guidance text, with production UDP/UI and resource tests. |
 | ShiftDeck | Source artwork/preferences retain five gasoline targets while the latest installer release advertises 6000–8000 RPM. Neither establishes an N57 limit. | [Draft #203](https://github.com/inotbarnacle/iDriveDeck/pull/203) adds manually selected diesel targets/display scales, legacy settings migration and asset/plugin tests. No universal diesel redline or physical validation is claimed. |
-| Faults | Worker reads 24-bit UDS codes; the old UI discarded status availability and always used a reference gasoline table. | [Draft #204](https://github.com/inotbarnacle/iDriveDeck/pull/204) preserves supported status bits, adds a DDE/raw view and backend clear confirmation. Licensed DDE descriptions and OBD-format validation remain open. |
+| Faults | Worker reads 24-bit UDS codes; the old UI discarded status availability and always used a reference gasoline table. | [Draft #204](https://github.com/inotbarnacle/iDriveDeck/pull/204) preserves status support, adds a DDE/raw view and clear confirmation, plus separate standard confirmed/pending/permanent emissions reads. The counted CAN format is host-tested; target support and licensed DDE descriptions remain open. |
 | DPF | [#196](https://github.com/inotbarnacle/iDriveDeck/issues/196) offers B47 capture and DPFDeck development; no verified DPF mapping in this checkout. | Coordinate with the contributor before a separate DPFDeck implementation. No guessed DIDs, thresholds or regeneration controls. |
 | Installer / rollback | Desktop installer checks framework pairs and display layouts, inventories/stages managed folders and preserves backups; uninstall is documented in `Installer.md`. | Run compatibility check only after authorized vehicle discovery. No installation or restart is authorized yet. |
 | Factory integration | Native Android Auto installation currently disables gauge MOST fallback; [PR #138](https://github.com/inotbarnacle/iDriveDeck/pull/138) proposes a startup process check. This does not establish CarPlay/HUD coexistence. | Keep current guards pending reproducible evidence and maintainer review. |
@@ -57,6 +57,7 @@ This description is not diagnostic confirmation.
 | Firmware, framework hashes, architecture, active screen | Unverified | Authorized read-only head-unit capture. No approved F15 profile added. |
 | Gateway, HSFZ, MOST, standalone operation | Unverified | Parked transport observations with equipment attached and detached. |
 | Standard OBD signals | Simulation / host tests only | Supported bitmaps and independently compared readings from this vehicle. |
+| Standard emissions fault codes | Simulation / host tests only | Confirm that the exact DDE/gateway supports services 03/07/0A and the counted CAN reply format. A category's zero count does not clear other categories. |
 | Fixed BMW diesel, DPF, EGR, SCR, oil pressure | Unsupported in this effort | Credible ECU-specific definitions and repeatable sanitized captures. |
 | Physical installation / factory regression / rollback | Not performed | Separate owner-authorized milestone; staged plan in [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201). |
 
@@ -116,6 +117,27 @@ This description is not diagnostic confirmation.
   GCC/Clang, static and sanitizer checks. Ten native test programs and 89 Python
   tests cover the fault branch, including mocked read/clear boundaries and
   native resource preservation. No new DDE dictionary is imported.
+- Standard fault-format follow-up in #204: source `e8ab51f`, followed by the
+  follow-ups through `208c21a`, adds explicit 03/07/0A emissions reads
+  using the shared lease and deadline. Strict counted CAN responses become
+  separate five-character P/C/B/U codes; BMW 24-bit records are never shortened.
+  Missing, refused and malformed results remain unavailable; standard operations
+  cannot request clearing, session changes or another format. The default BMW
+  read and confirmed-clear flow remain unchanged. The category belongs to the
+  active request, including during repeated clicks and description-profile
+  changes. Permanent-code rows explain that the ECU controls removal. HSFZ
+  requests wait 1.8 seconds; MOST uses a two-second nominal wait with pending
+  waits capped at five seconds, excluding setup/cleanup. Unsupported, busy and
+  security refusals do not retry or change session. Eleven native programs and
+  98 Python cases pass locally, including
+  eight new HSFZ/MOST cases and four resource checks. The new decoder/UI tests
+  pass ASan/UBSan; production C++98 syntax and Clang analysis pass; all 44 BMW
+  host imports match the previous fault branch. Original artwork is staged
+  unchanged. Protocol evidence comes from AUTOSAR DCM and the ELM327 datasheet,
+  not an N57 capture. No new dictionary or proprietary diagnostic input is added.
+  [Current fork CI](https://github.com/voioo/iDriveDeck/actions/runs/46000950947)
+  passes GCC/Clang, production analysis and all fault sanitizer checks on
+  `208c21a`.
 - BoostDeck rail display ranges are implemented in [draft PR #205](https://github.com/inotbarnacle/iDriveDeck/pull/205),
   independent branch `diesel/boost-rail-scale`, commit `1f2682a`. The Diesel
   profile uses a selectable 1000/1600/2000/2500-bar graphic range, default 2000;
@@ -203,7 +225,7 @@ This description is not diagnostic confirmation.
   [#203](https://github.com/inotbarnacle/iDriveDeck/pull/203)
   (draft; configurable ShiftDeck diesel profile, persistence and resources), and
   [#204](https://github.com/inotbarnacle/iDriveDeck/pull/204)
-  (draft; supported fault statuses, raw view and clear confirmation), and
+  (draft; supported fault statuses, DDE/raw and standard emissions reads, clear confirmation), and
   [#205](https://github.com/inotbarnacle/iDriveDeck/pull/205)
   (draft; configurable diesel rail display scale and preserved settings/assets),
   [#208](https://github.com/inotbarnacle/iDriveDeck/pull/208)
@@ -220,6 +242,25 @@ combines the source contributions without merging any upstream PR.
 Conflicts in `CHANGELOG.md`, `source/README.md` and `source/native/Makefile` were resolved by
 retaining every feature, documentation link and test target. The common MIT
 framework fake is identical across the ShiftDeck, fault and BoostDeck scale branches.
+
+The latest combined revision `6ca7162` includes the standard emissions-code
+follow-up in #204. Validation passes **33 native C/C++ programs and 147 distinct
+Python tests**: 110 native-suite cases (36 app, 24 one-shot MOST, eight standard
+OBD faults, 26 transport, 12 capability and four fault-resource cases), plus
+37 separate discovery/capture/asset/resource cases. All 41 tool/resource tests
+pass; four are already included in the native-suite total. The existing worker
+ownership fix and all previous diesel features remain covered. All eight CI
+workflows pass on exact commit `6ca71627df1bd22955ad9c2a3cf95d8e025d0409`:
+[diagnostics](https://github.com/voioo/iDriveDeck/actions/runs/46000954234),
+[faults](https://github.com/voioo/iDriveDeck/actions/runs/46000954324),
+[WarmDeck](https://github.com/voioo/iDriveDeck/actions/runs/46000954228),
+[worker ownership](https://github.com/voioo/iDriveDeck/actions/runs/46000954330),
+[record reads](https://github.com/voioo/iDriveDeck/actions/runs/46000954254),
+[ShiftDeck](https://github.com/voioo/iDriveDeck/actions/runs/46000954350),
+[discovery](https://github.com/voioo/iDriveDeck/actions/runs/46000954259), and
+[rail scale](https://github.com/voioo/iDriveDeck/actions/runs/46000954242).
+These are host/simulation results. Target DDE format support, licensed
+descriptions, QNX loading and physical vehicle behavior remain unverified.
 
 At integration code commit `ab6e1dd`, `make -C source/native test` passes all
 13 native C/C++ test programs and 97 Python cases (36 app, 24 one-shot MOST,
@@ -309,8 +350,9 @@ raw fault parsing/status improvements can proceed without importing that data.
 
 The overall N57 objective remains active. These drafts do not complete it.
 Still required: ShiftDeck QNX/runtime validation; licensed, ECU-scoped DDE fault
-descriptions and validated standard OBD fault formats; verified ECU-specific
-signals and ECU-specific profiles beyond the standard PID/default pool; DPFDeck decision
+descriptions and exact-target validation of the counted CAN standard fault path;
+verified ECU-specific signals and profiles beyond the standard PID/default pool;
+DPFDeck decision
 after contributor coordination; reproducible F15/F16 fixes coordinated with
 existing PRs; exact target vehicle identification/firmware/transport evidence;
 and any applicable QNX and separately authorized physical validation.
