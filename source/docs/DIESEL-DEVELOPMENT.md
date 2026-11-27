@@ -66,6 +66,37 @@ This description is not diagnostic confirmation.
 
 ## Progress and next actions
 
+- Host EGT/EGR/pressure test receivers now avoid project IPC ports. A CI failure
+  was reproduced by forcing the receiver onto HUD port 42870: the worker
+  correctly detected a HUD listener and delivered a 24-byte binary HUD sample
+  to the text-frame test. The new regression forces HUD, diagnostic-lease and
+  activity-marker assignments, verifies rejection/cleanup, and keeps strict
+  frame decoding. The fix changes test socket allocation only. All 12 EGT,
+  ten EGR and 12 pressure transport cases pass locally.
+  [Telemetry CI](https://github.com/voioo/iDriveDeck/actions/runs/46027879340)
+  passes on exact source `c0a9115b69637f1dac9ce74aa6edaf9f4465fc5d`. The isolated
+  branch now passes 16 native programs and 126 native-suite Python cases, plus
+  eight resource and eight read-only tool cases. Runtime C/C++ is unchanged.
+
+- Pressure evidence follow-up in [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201):
+  a separately selected 24-read
+  `standard-pressure` plan and v4 report prioritize PID 6D/70 while retaining
+  EGR, EGT and the original measurements. All earlier 16/19/22-read plans and
+  v1/v2/v3 reports remain unchanged, checked against frozen synthetic fixtures.
+  Requested/actual A/B fields carry explicit pressure reference and units;
+  unknown, unsupported, malformed and ambiguous fields have no numeric value.
+  Supported zero is retained. The unchanged 45-second budget, full transaction
+  reservation, 200-ms gaps and no-retry/advertisement gates remain enforced.
+  All 47 discovery, four probe and six capture tests pass locally. A local
+  native/Python differential check passes 131,609 cases covering the complete
+  unsigned pressure domain in every field, every support byte and strict
+  lengths. [Discovery CI](https://github.com/voioo/iDriveDeck/actions/runs/46026051677)
+  passes all 57 tool cases on exact source
+  `f18cf1c53b36e7cc008d7477fd765b927f921e39`. All 83 combined tool/resource
+  cases also pass locally. These are host/simulation results only. This new
+  plan needs its own review and explicit owner approval before physical use.
+  No vehicle command or installation occurred.
+
 - Standard pressure follow-up in [#202](https://github.com/inotbarnacle/iDriveDeck/pull/202): eight
   optional Custom gauges retain separate requested/actual A/B fields. Exact
   11-byte PID 6D data supplies rail gauge pressure in bar; exact ten-byte PID 70
@@ -326,12 +357,13 @@ This description is not diagnostic confirmation.
   passes 33 discovery, four probe and six capture tests. All 68 combined tool
   and resource cases also pass locally. This new plan needs its own review and
   owner approval before any physical use.
-- Next offline work: prepare a separately reviewable pressure evidence profile
-  while freezing #201's existing 16/19/22-read plans and v1/v2/v3 reports. Do not
-  infer that selecting any profile authorizes a physical run. Retain exact-target
-  capture, standalone EGS and licensed DDE-description requirements, plus the
-  remaining transmission/DPF/SCR investigation. ENET is still unavailable and
-  the owner instructed this effort to continue offline.
+- Next offline work: corroborate the remaining standard DPF/SCR/transmission
+  candidate definitions below and their complete response formats. Reads above
+  PID 80 need a separately tested bounded capability-cache extension and a new
+  reviewed request policy. Do not infer that choosing a profile authorizes a
+  physical run. Retain exact-target capture, standalone EGS, verified fixed oil
+  and licensed DDE-description requirements. ENET remains unavailable; the owner
+  instructed this effort to continue offline.
 - Pull requests opened by this effort: [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201)
   (draft; discovery/reporting and validation plan) and
   [#202](https://github.com/inotbarnacle/iDriveDeck/pull/202)
@@ -357,7 +389,29 @@ Conflicts in `CHANGELOG.md`, `source/README.md` and `source/native/Makefile` wer
 retaining every feature, documentation link and test target. The common MIT
 framework fake is identical across the ShiftDeck, fault and BoostDeck scale branches.
 
-The latest combined revision `8e8dbff` adds optional requested/actual standard
+The latest combined revision `f12c30a` adds #201's separately selected 24-read
+pressure evidence profile and a forced-IPC-port host regression. Validation
+passes **39 native C/C++ test programs and 223 distinct Python tests**: 144
+native-suite cases plus 79 separate tool/resource cases. All 83 tool/resource
+cases pass locally; four fault-resource cases are already counted by the native
+suite. Compared with `8e8dbff`, the increase is 14 discovery cases and one UDP
+receiver regression. Runtime C/C++, existing 16/19/22-read plans and v1/v2/v3
+report contracts remain unchanged. All eight workflows pass on exact source
+`f12c30a556c5c542236762a03fd82a35d019c1f6`:
+[diagnostics](https://github.com/voioo/iDriveDeck/actions/runs/46027904024),
+[faults](https://github.com/voioo/iDriveDeck/actions/runs/46027903887),
+[WarmDeck](https://github.com/voioo/iDriveDeck/actions/runs/46027903943),
+[worker ownership](https://github.com/voioo/iDriveDeck/actions/runs/46027903869),
+[record reads](https://github.com/voioo/iDriveDeck/actions/runs/46027904023),
+[ShiftDeck](https://github.com/voioo/iDriveDeck/actions/runs/46027904225),
+[discovery](https://github.com/voioo/iDriveDeck/actions/runs/46027904060), and
+[rail scale](https://github.com/voioo/iDriveDeck/actions/runs/46027903907).
+These are host/simulation results. The new 24-read plan needs its own review and
+owner approval before a physical run. Exact DDE/EGS, A/B identity, independent
+values, firmware, QNX and standalone operation remain unverified. Later
+progress-only documentation does not change this pinned source.
+
+The earlier combined revision `8e8dbff` adds optional requested/actual standard
 pressure gauges while preserving the original MAP/rail sources, automatic
 defaults and all older packet/settings bounds. Validation passes **39 native
 C/C++ test programs and 208 distinct Python tests**: 143 native-suite cases
@@ -602,6 +656,32 @@ sensor's accuracy or an ECU-family-specific mapping.
 | EGR requested/actual/error | Standard 2C/2D and explicit PID 69 A/B fields are host/simulation tested; actual is normalized duty/position and is not reconstructed from error. | Exact DDE support, A/B applicability and independent comparisons; any fixed BMW-specific mapping needs separate evidence. |
 | SCR/AdBlue | No verified diesel mapping implemented. | Review credible standard/OEM definitions and exact ECU applicability before adding a signal. |
 | DDE fault descriptions | Raw BMW codes/status and separate standard emissions categories are host-tested; no new DDE dictionary imported. | Licensed, ECU-applicable descriptions and exact-target fault-format validation. |
+
+## Candidate standard emissions and transmission references
+
+Offline reference review found additional candidates in the vendor's
+[pinned SAE J1979 definitions](https://github.com/OBDb/SAEJ1979/blob/1abdef6ae0c1b9134c8f2a10911a9daa1354649d/signalsets/v3/default.json).
+These are research leads from one vendor, not implemented mappings, independent
+corroboration or evidence of this X5's support. No database descriptions or
+entries are copied into project code and no collector plan gains these reads.
+
+| Candidate | Distinction required before implementation |
+| --- | --- |
+| 7A/7B particulate-filter pressures | Separate delta, inlet and outlet fields. The reference's delta is signed 16-bit / 100 kPa; inlet/outlet are unsigned / 100 kPa. Negative delta cannot be silently clamped or converted to a soot estimate. Field support and pressure-reference semantics need corroboration. |
+| 7C particulate-filter temperatures | Explicit bank/inlet/outlet fields differ from the generic bank/sensor labels in 78/79. Neither format alone proves regeneration or the physical N57 sensor location. |
+| 85 reagent data | Reported average consumption, demanded average consumption, tank level and time with a NOx warning are separate quantities. None alone establishes SCR health, a DPF state or remaining driving range. |
+| 8B particulate-filter regeneration data | Status/type are distinct from the normalized trigger and average interval/distance. Those averages are not time/distance since the last regeneration; the normalized trigger is not completion percentage or measured soot mass. No universal threshold should be inferred. |
+| 8F particulate-sensor data | Sensor regeneration/measurement status must not be relabelled as DPF regeneration. |
+| A4 transmission data | Actual gear and gear ratio are separate fields. The reference allows ambiguity between first and reverse; it does not establish selected P/R/N/D mode or torque-converter state. Preserve uncertainty rather than infer either from a ratio. |
+
+The current native capability cache deliberately has four pages through 60 and
+rejects measurement PIDs above 80. A future 85/8B/8F read would first require
+verified continuation through bitmap 80; A4 requires bitmap A0 as well. Extend
+the bounded cache, capability tests and a separately reviewed request policy
+before considering those reads. Do not add them to an existing reviewed plan.
+Full response layouts, flags, units, invalid states, exact DDE applicability,
+independent readings and the agreed #196 evidence path remain required before
+using these candidates in a monitoring application.
 
 ## Outstanding scope
 

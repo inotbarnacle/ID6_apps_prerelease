@@ -88,8 +88,9 @@ support. PID `23` is **rail gauge pressure** in 0.1 bar/count (for example synth
 N57/DDE741 oil source `4517` and temporary `F303` evidence in
 [#21](https://github.com/inotbarnacle/iDriveDeck/issues/21) and #162 does not
 establish a fixed read-only oil DID. The worker never defines or reads `F303` for
-diesel oil. DPF, requested boost/rail and SCR need independently validated
-ECU-specific definitions. See the [diesel investigation](DIESEL-DEVELOPMENT.md)
+diesel oil. Fixed BMW diesel oil, DPF and SCR need independently validated
+ECU-specific definitions. The optional standard requested/actual pressure fields
+below still need exact DDE support and independent comparisons. See the [diesel investigation](DIESEL-DEVELOPMENT.md)
 for the evidence matrix and overlapping upstream work.
 
 ### Optional standard EGR

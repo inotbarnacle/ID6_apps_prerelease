@@ -104,5 +104,8 @@ geometry and 906 image pixels are retained.
 The owner's exact DDE support, hardware identities, independent pressure
 comparisons, QNX loading and physical HMI behavior remain unverified. The
 16/19/22-read discovery profiles in #201 are unchanged and do not collect these
-new pressure PIDs. Any future pressure capture needs its own reviewed plan and
-explicit owner approval before use on the physical vehicle.
+new pressure PIDs. Its separate 24-read `standard-pressure` plan and v4 report
+can gather that evidence; see the
+[pressure capture guide](https://github.com/voioo/iDriveDeck/blob/f18cf1c53b36e7cc008d7477fd765b927f921e39/source/docs/DIESEL-VALIDATION.md#optional-requestedactual-pressure-evidence-profile).
+Review that exact plan and obtain explicit owner approval before any physical
+use. Planning or replaying it grants no authorization.
