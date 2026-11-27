@@ -6,6 +6,13 @@ CI workflow was present at that baseline. Follow `source/AGENTS.md` and the host
 checks in [BUILD.md](BUILD.md). Changes below are source contributions; published
 application ZIPs are separate maintainer build artifacts.
 
+Publication update, 27 November: the configured 1Password signer is available
+again. The DPFDeck HMI and optional status commits are signed, with final source
+`7a27e22` pushed to the fork and exact-source CI running. The aftertreatment,
+SCR and private-identity source commits are signed and being combined into
+#201; the reagent gauge commit is signed for #202. Earlier references below
+to waiting for the signer describe their local checkpoint at that time.
+
 ## Current gaps and overlapping work
 
 | Area | Current evidence and gap | Action |
@@ -21,7 +28,7 @@ application ZIPs are separate maintainer build artifacts.
 | WarmDeck | Three temperatures expire independently and trend estimates require all three. Main queries oil unconditionally and displays generic RPM guidance. Thresholds 85/75/40 C are application choices. | #202 gates oil by advertised support. [Draft #209](https://github.com/inotbarnacle/iDriveDeck/pull/209) adds independent target states, measured estimates and advisory vehicle-guidance text, with production UDP/UI and resource tests. |
 | ShiftDeck | Source artwork/preferences retain five gasoline targets while the latest installer release advertises 6000–8000 RPM. Neither establishes an N57 limit. | [Draft #203](https://github.com/inotbarnacle/iDriveDeck/pull/203) adds manually selected diesel targets/display scales, legacy settings migration and asset/plugin tests. No universal diesel redline or physical validation is claimed. |
 | Faults | Worker reads 24-bit UDS codes; the old UI discarded status availability and always used a reference gasoline table. | [Draft #204](https://github.com/inotbarnacle/iDriveDeck/pull/204) preserves status support, adds a DDE/raw view and clear confirmation, plus separate standard confirmed/pending/permanent emissions reads. The counted CAN format is host-tested; target support and licensed DDE descriptions remain open. |
-| DPF | [#196](https://github.com/inotbarnacle/iDriveDeck/issues/196) contributor confirms no implementation branch yet and plans B47 collection once ENET hardware arrives. #201 provides standard pressure/temperature evidence collection; a separate native backend is in development. | Complete DPFDeck HMI/resources/installer work. Shared captures remain required for validated B47/N57 profiles. No guessed DIDs, soot/ash thresholds or regeneration controls. |
+| DPF | [#196](https://github.com/inotbarnacle/iDriveDeck/issues/196) contributor plans B47 collection once ENET arrives. #201 provides standard pressure/temperature evidence collection; separate DPFDeck source now includes HMI, resources, lifecycle and optional installer integration. | Publish the focused draft after exact-source CI. A licensed QNX build and shared captures remain required for validated B47/N57 profiles. No guessed DIDs, soot/ash thresholds or regeneration controls. |
 | Installer / rollback | Desktop installer checks framework pairs and display layouts, inventories/stages managed folders and preserves backups; uninstall is documented in `Installer.md`. | Run compatibility check only after authorized vehicle discovery. No installation or restart is authorized yet. |
 | Factory integration | Native Android Auto installation currently disables gauge MOST fallback; [PR #138](https://github.com/inotbarnacle/iDriveDeck/pull/138) proposes a startup process check. This does not establish CarPlay/HUD coexistence. | Keep current guards pending reproducible evidence and maintainer review. |
 
@@ -94,56 +101,209 @@ This description is not diagnostic confirmation.
 
 | Item | Evidence level | Remaining evidence |
 | --- | --- | --- |
-| Exact engine subvariant, DDE HW/SW and EGS | Unverified | Bounded ECU identification and independent corroboration. |
+| Exact engine subvariant, DDE HW/SW and EGS | Unverified | The local six-read standard identity tool can collect private HW/SW evidence after separate approval; an authorized inventory, record-codec review and independent corroboration are still required. |
 | Firmware, framework hashes, architecture, active screen | Unverified | Authorized read-only head-unit capture. No approved F15 profile added. |
 | Gateway, HSFZ, MOST, standalone operation | Unverified | Parked transport observations with equipment attached and detached. |
 | Standard OBD signals | Simulation / host tests only | Supported bitmaps and independently compared readings from this vehicle. |
 | Standard EGT bank/sensor channels | Simulation / host tests only | Exact DDE support for PID 78/79, sensor bits, physical sensor locations and independently compared temperatures. No regeneration inference. |
 | Standard EGR request, actual and error channels | Simulation / host tests only | Exact DDE support for PID 2C/2D/69, per-field bits and independent comparisons. Actual is reported normalized duty/position, not inferred flow or a value reconstructed from error. |
 | Standard requested/actual rail and boost | Simulation / host tests only | Exact DDE support for PID 6D/70, per-field bits, physical A/B identity and independent comparisons. Rail is gauge pressure; boost is absolute. |
-| Standard DPF bank pressure and inlet/outlet temperature | Simulation / host tests only, discovery #201 and the separate DPFDeck backend | Exact DDE support for PID 7A/7B/7C, field support, physical layout and independent comparisons. The native app is incomplete; no regeneration, soot or ash mapping is established. |
+| Standard DPF bank pressure and inlet/outlet temperature | Simulation / host tests only, discovery #201 and separate DPFDeck source app | Exact DDE support for PID 7A/7B/7C, field support, physical layout and independent comparisons. QNX, firmware and parked validation remain open; no regeneration, soot or ash mapping is established. |
+| Standard DPF regeneration progress/type | Simulation / host tests only, local optional DPFDeck follow-up | Exact DDE advertisement and independent progress/type comparisons for PID 8B. Hidden by default, with no threshold, completion estimate, command or physical N57 support claim. |
+| Standard SCR reagent/inducement evidence | Simulation / host tests only, local v6/v7 discovery and optional native PID 85 gauges | Exact DDE advertisement and independent comparisons for PID 85/88. Current state, causes, history and counters remain separate; no SCR health, remaining-range or native vehicle compatibility claim. |
 | Standard emissions fault codes | Simulation / host tests only | Confirm that the exact DDE/gateway supports services 03/07/0A and the counted CAN reply format. A category's zero count does not clear other categories. |
 | Fixed BMW diesel, DPF, SCR, oil pressure | Unsupported in this effort | Credible ECU-specific definitions and repeatable sanitized captures. Standard EGR support does not establish a BMW-specific mapping. |
 | Physical installation / factory regression / rollback | Not performed | Separate owner-authorized milestone; staged plan in [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201). |
 
 ## Progress and next actions
 
-- DPFDeck native development has started on the separate
-  [fork branch](https://github.com/voioo/iDriveDeck/tree/6f9176ced52678b3c1c0b48eb93753e5143e1c6a),
-  based on unchanged upstream `8567aba`. The documented standard formats permit
-  a generic capability-gated backend to be developed offline; B47/N57 captures
-  remain necessary to validate any vehicle profile. This is an unfinished app,
-  with no upstream DPFDeck PR or installable package yet. Native HMI/resources,
-  production callback/UDP ownership checks and installer/rollback integration
-  are the next work, followed by a focused draft PR.
+- The first local DPFDeck HMI checkpoint includes the native six-tile dashboard, bank/units OPTIONS,
+  production callback/UDP ownership tests, original resources and optional
+  installer packaging/rollback integration on the separate
+  [fork branch](https://github.com/voioo/iDriveDeck/tree/diesel/dpfdeck-standard).
+  Publication is awaiting the configured 1Password signer, then exact-source
+  CI and a focused upstream draft. No QNX build, native archive, approved
+  firmware or physical X5 validation is claimed.
 
-  The backend reads only advertised 05/7A/7B/7C after the exact supported-PID
-  chain. It reuses #202's capability helper and #213's receiver allocator
-  unchanged. Eleven independent fields retain signed pressure, explicit sensor
-  support and conservative sample ages. Its 1800 C temperature envelope is an
-  application plausibility choice, not a BMW/regeneration limit; #201's evidence
-  report still retains the full protocol range. Unknown, unsupported,
-  unavailable, stale and valid remain distinct. No soot/ash, regeneration or
-  completion estimate is implemented.
+  Only advertised standard 05/7A/7B/7C are read after supported-PID bitmaps.
+  The capability helper and private host receiver allocator remain identical
+  to #202/#213. Signed pressure, field flags, conservative sample ages and
+  independent unknown/unsupported/unavailable/stale/valid states are preserved.
+  The 1800 C app envelope is not a BMW/regeneration limit; #201 retains full
+  protocol-domain evidence. Regeneration stays unknown; soot, ash and last
+  regeneration stay unavailable. No control or completion estimate is added.
 
-  The separate locale-independent DPF1 packet avoids BoostDeck ID/wire
-  collisions. Data/activity/MOST ports 42867/42868/42869 occupy unused roles
-  within the existing host-test exclusion range. The new MOST marker joins
-  HUD handoff checks, and projection-hook installation disables this worker's
-  MOST fallback. A project lease still cannot exclude an external tester.
-  Group reads are spaced at least two seconds from actual requests, failures
-  back off five seconds and the worker sends at most one request per 250-ms
-  tick. SIGTERM, parent exit and normal shutdown use the shared cleanup path.
+  DPF1 is separate from BoostDeck IDs/wire/settings. Ports 42867/42868/42869
+  retain data/activity/MOST roles and HUD handoff checks. The HMI checks live
+  owned PID/token, source address/port, monotonic age, sequence and generation,
+  drains at most eight packets and retains the worker across OPTIONS. It
+  requests stop once and reuses #143's process-existence ownership rule.
+  Actual worker-parent death and socket release are exercised by a Linux
+  guardian. A project lease still cannot exclude an external tester.
 
-  Local checks and [exact-source CI](https://github.com/voioo/iDriveDeck/actions/runs/46039335802)
-  pass nine native programs and 93 Python cases, including 13 new production-
-  worker transport cases. Both GCC/Clang jobs pass; core ASan/UBSan, static
-  analysis, C++98 header syntax and a generated German comma-decimal locale
-  check also pass. Ownership is inspected while the mock worker is alive, then
-  checked for release after termination; queued final datagrams do not imply
-  continuing ownership. No QNX build or physical X5 validation
-  is claimed; [backend scope and limits](https://github.com/voioo/iDriveDeck/blob/6f9176ced52678b3c1c0b48eb93753e5143e1c6a/source/docs/DPFDECK.md)
-  describe the outstanding app work.
+  DPFDeck is an unchecked optional installer selection, enabled only with a
+  separately staged payload. Wide 1280×480, 1440×540 and 1920×720 geometries
+  are supplied; compact/unknown panels are rejected before mutation. Defaults
+  and firmware profiles are unchanged. The packager checks ARM ELF/resource
+  shape and emits sanitized checksums, not ABI/vehicle approval. Explicit host
+  installer fixtures disable DPF installation and block release builds. The
+  marker now precedes the first synthetic native file and survives both initial
+  and subsequent interrupted staging.
+
+  Local validation passes ten native programs, 96 Python transport/regression
+  cases, seven resource/package cases and all 26 top-level Go installer tests.
+  Core/plugin ASan/UBSan, static analysis, C++98 syntax and the comma-decimal
+  protocol check pass. The plugin's 45 host BMW imports are covered by the
+  existing Warm/Boost import union; this is not QNX ABI proof. A labeled
+  [host preview and validation/rollback guide](https://github.com/voioo/iDriveDeck/blob/diesel/dpfdeck-standard/source/docs/DPFDECK.md)
+  are included. Combining #211 requires reviewing its changed MOST ownership
+  name map/ports; connector 123 avoids its PowerDeck connector 121.
+  Two additional real-worker handoff cases pass both on the standalone DPF
+  source and the combined diesel source: DPF/Boost make progress against one
+  loopback gateway, requests are serialized while both are live, and Boost
+  continues after DPF terminates or is killed. Activity/lease sockets release
+  after exit. These are host observations, not physical coexistence evidence.
+
+- A local `diesel/dpf-regeneration-status` follow-up adds an optional standard
+  8B status display, hidden by default. The default worker still has no 80/8B
+  reads. Showing status follows all continuation bits, then checks advertised
+  8B support through a separate bitmap-80 cache; the shared four-page helper
+  and other apps' policies remain unchanged. Progress and type flags are
+  independent. False progress means not in progress, while type alone cannot
+  assert progress. Only fresh supported fields show Active or Passive; no
+  bank-specific status, completion estimate, alert or control is invented.
+
+  DPF2 appends fields 11/12 without changing earlier meanings. A frozen DPF1
+  fixture from published `6f9176c` checks legacy reads, with new fields unknown.
+  Strict D2 settings preserve bank/units from D1 with status hidden. Changing
+  the request set stops the old worker once and retains ownership until its
+  exit is established before relaunching with a new token. Save failures keep
+  the prior choice and worker. Default and optional-status host previews use
+  actual production model callbacks and remain labeled synthetic.
+
+  Local checks pass eleven native programs and 107 distinct Python cases
+  (the full 106-case suite plus the new optional-status coexistence case),
+  seven resource/package cases and seven focused DPF installer tests.
+  Core/plugin/capability ASan/UBSan, static analysis, C++98 syntax and a comma
+  decimal locale pass. All eight captured dashboard states fit their labels.
+  Comparing host objects built with the same flags confirms an unchanged BMW
+  framework import set; this is not QNX ABI proof.
+  The additional real-worker overlap test observes bitmap 80 and PID 8B while
+  Boost continues, at most one in-flight request, and continued Boost reads
+  after DPF exits. This remains host evidence, not physical coexistence proof.
+  A new isolated combined tree preserves the earlier integration checkpoint
+  and passes 43 native programs and 305 distinct Python cases: 175 native-suite
+  cases plus 134 tool/resource cases, with four shared fault-resource cases
+  counted once. All fourteen production plugins pass strict GNU C++98 syntax.
+  The shared capability helper and private UDP allocator remain byte-identical
+  across the standalone and combined sources. Publication still awaits
+  the configured signer and exact-source CI. No QNX or vehicle result is added.
+
+- A local `diesel/reagent-telemetry` follow-up adds optional BoostDeck custom
+  gauges for PID 85 reagent level, average consumption and average demand.
+  IDs 55–57 append to the existing 0–54 meanings. Detected defaults and older
+  selections keep their request sets. A separate bitmap-80 cache follows the
+  complete continuation chain, while the shared four-page helper is unchanged.
+  Full ten-byte replies and independent bits 2/0/1 are required. Valid zero
+  and the full raw domains remain data, with no inferred range, SCR health,
+  warning or DPF state and no new alerts or controls.
+
+  New data uses NBG11/58 fields; NBG10 remains 55 fields/1536 bytes and has a
+  frozen fixture from published `0c2938a`. B6 retains the old assignment file
+  size and allows IDs below 58; B1–B5 retain their own bounds and old-only
+  layouts keep their older revision. Current support flags, two-second actual
+  request periods, five-second failure backoff and conservative 3.5-second
+  ages are exercised. The native callback test verifies B2–B6 migration,
+  zero/stale states, units and precision. A labeled host preview uses actual
+  captured model updates, production XML/images and host fonts; its extreme
+  value checks text width and visual clamping, not a vehicle measurement.
+
+  Standalone checks pass 19 native programs, 140 Python cases and nine resource
+  cases. New core/capability/plugin sanitizers, static analysis and C++98 syntax
+  pass; the BMW framework import set is unchanged on the host. The focused
+  combined tool suite passes 148 cases. A real-worker overlap case observes
+  DPF PID 8B and reagent PID 85 under one serialized gateway lease, followed by
+  continued reagent reads after DPF exits. The complete combined native run
+  passes 46 programs and 186 Python cases; together with the 148 tool cases,
+  that is 330 distinct Python cases (four shared fault-resource cases counted
+  once). All fourteen production plugins pass strict GNU C++98 syntax. No
+  QNX, exact-ECU or physical result is claimed.
+
+  A separate host reproduction found an inherited numeric-locale constraint
+  at published `0c2938a`: canonical Boost packets parse in the C locale, but
+  those same bytes fail under a comma-decimal process locale. This is not an
+  observation of the actual head unit. The shared codec needs an independent
+  fix and regression coverage before that environment can be claimed to work;
+  the new reagent guide records the limitation.
+
+- A local `diesel/scr-evidence` follow-up adds the optional `standard-scr`
+  31-read/v7 profile. Only advertised PID 88 is added to v6, prioritized before
+  8B/85. All six earlier plans, allowlists and report contracts remain frozen;
+  a synthetic v6 fixture records source tree `65afc573` before this change.
+  The same 45-second budget, complete-transaction reserve, 200-ms gap,
+  no-retry policy and separate parked approval gate apply. Nothing has been
+  sent to the owner's vehicle.
+
+  The exact thirteen-byte payload keeps current inducement-active and cause
+  bits separate from four historical cause blocks and five distance counters.
+  It has no per-field support flags: valid false/zero remains supported data.
+  Reserved current-state bits, malformed lengths/prefixes, unknown support,
+  duplicates and wrong ECUs cannot authorize values. Full unsigned counters
+  are retained as evidence, with values above the documented 10000-km block
+  range explicitly flagged. No ratio, remaining range, odometer or DPF state
+  is inferred. Manufacturer and pinned OBDb layouts agree with the official
+  J1699-3 archive's thirteen-byte shape and five independent counter offsets;
+  its reference implementation is neither copied nor executed.
+
+  All 90 discovery cases (77 prior plus 13 new), four probe and six head-unit
+  capture cases pass. New cases cover all current/history status bytes, the
+  full counter domain, endian offsets, privacy, frozen contracts, actual
+  31-read HSFZ framing over local stream pairs and slow/partial sessions.
+  The combined tool/resource suite passes 147 cases. Its native files are
+  unchanged from the prior 43-program/175-case native run, giving 318 distinct
+  Python cases across that evidence (four fault-resource cases counted once).
+  This is local host evidence; signing, exact-source CI and exact-ECU/physical
+  validation remain open. No native signal, firmware profile or control is added.
+
+- A separate local `diesel/aftertreatment-evidence` branch now implements an
+  opt-in `standard-aftertreatment` 30-read/v6 evidence profile. It starts with
+  the continuation-checked bitmap 80, then prioritizes advertised 8B/85. Earlier
+  16/19/22/24/27-read plans and v1–v5 reports remain frozen. The 45-second budget,
+  six-second transaction reserve, 200-ms gap, no retries and explicit parked
+  approval gate are unchanged. This is not an app mapping or permission to run
+  a collector; nothing has been sent to the owner's vehicle.
+
+  Standard regeneration in-progress/type, NOx-adsorber states, normalized
+  trigger, average interval/distance and four reagent quantities retain their
+  separate flags/units. Passive type alone does not imply regeneration;
+  trigger is not completion/soot, averages are not since-last values, and
+  reagent data does not establish SCR health or remaining range. No DPFDeck
+  state, native cache or packet format is changed.
+
+  All 77 discovery, four probe and six capture cases pass locally, including
+  15 new cases, all support/status bytes, complete 16-bit domains, 32-bit
+  boundaries, privacy, real HSFZ stream pairs and slow-session limits. A pinned
+  v5 fixture records unchanged `683e9c2` synthetic output. The changes await
+  signing and exact-source CI before adding them to #201; they are not yet
+  published or vehicle-validated.
+
+- A separate local `diesel/ecu-identity-evidence` branch adds the companion
+  `collect_ecu_identity.py` tool and `ECU-IDENTITY.md`. It has a fixed six-read
+  plan: standard F191 hardware, F188 software number and F189 software version,
+  once each at addresses 12/18. There are no arbitrary identifiers, VIN/serial
+  or programming-fingerprint reads, session/security changes, retries, SSH or
+  MOST. Physical execution requires approval of this separate parked plan;
+  the owner's earlier offline-only instruction remains in effect.
+
+  Raw bounded replies go to a new 0700 directory with 0600 private records.
+  The shareable summary contains only statuses, positive lengths and NRCs;
+  neither raw identity values nor their hashes are exported. The manufacturer
+  codec and exact ECU identity remain unverified, even for positive replies.
+  Replays are explicitly unverified. This provides private identity evidence
+  for comparison with an authorized inventory, not a guessed BMW HWEL/SWFL or
+  engine-family mapping. Fourteen new tests and all 72 earlier discovery/probe/
+  capture cases pass, including six real HSFZ exchanges over local stream pairs.
+  Existing PID plans/reports are unchanged. Publication awaits signing and CI.
 
 - Standard DPF evidence follow-up in
   [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201): the separately
@@ -164,7 +324,7 @@ This description is not diagnostic confirmation.
   16-bit domains, every support byte and a 27-read real HSFZ exchange over local
   stream pairs with heartbeat, pending and wrong-ECU/PID replies. Those pairs
   cannot reach a vehicle. This supports the agreed #196 evidence path; exact
-  B47/N57 support, independent measurements and a DPFDeck decision remain open.
+  B47/N57 support, independent measurements and QNX/parked DPFDeck validation remain open.
   This plan needs separate review and explicit owner approval before any
   physical use. No vehicle command, installation or firmware approval occurred.
 
@@ -506,6 +666,35 @@ This description is not diagnostic confirmation.
 
 ## Combined source validation
 
+A new local worktree, `diesel/integration-dpf`, combines the previously published
+`00d5fe1` integration with DPF backend `6f9176c`, the staged native DPF app and
+the staged discovery v5/v6 and private identity-evidence changes. It is
+uncommitted and unpushed while signing
+access is pending; the older published integration/CI evidence below is retained.
+The merge resolves the shared Makefile and fake MOST mode inventory, reuses
+one capability test binary and expands lifecycle inventory to 14 plugins.
+The original 13 baseline plugins still fail the lost-live-PID check, and all
+four duplicate-launch controls reproduce the original bug. DPF did not exist
+at that baseline and is explicitly reported as absent; its candidate ownership
+matrix, owned-child cleanup and retry controller pass, including ASan/UBSan.
+
+The reconciled full native run passes **42 C/C++ test programs and 162 Python
+cases**. Two additional DPF/Boost handoff cases then pass, for **164 native-suite
+Python cases**. All **134 tool/resource cases** pass; four fault-resource cases
+are already included in the native total, giving **294 distinct Python cases**.
+All 14 plugin sources pass Clang C++98 syntax checks and DPF static analysis.
+The Go source remains unchanged from the standalone passing 26 top-level
+suite. After fixing fixture-marker ordering, seven resource/package tests and
+the two Go fixture selection/release guards pass again. The combined
+host preview also renders from actual plugin model updates. The new identity
+tool changes only host collection/reporting; native production source remains
+byte-identical to the full native run.
+
+This local result has no new GitHub CI run or QNX/vehicle validation. Source
+snapshot hashes and logs are kept privately under `/tmp/idrive-dpf-integration-*`;
+they are not presented as a signed commit or physical diagnostic capture.
+
+
 The isolated [fork integration branch](https://github.com/voioo/iDriveDeck/tree/diesel/integration)
 combines the source contributions without merging any upstream PR.
 Conflicts in `CHANGELOG.md`, `source/README.md` and `source/native/Makefile` were resolved by
@@ -798,7 +987,8 @@ sensor's accuracy or an ECU-family-specific mapping.
 | Transmission temperature | Existing positive-read EGS/HSFZ candidate; host-tested decoding and independent WarmDeck state. | Exact EGS applicability/calibration and standalone transport validation. EGS-over-MOST is pending separate work. |
 | Current gear, selected transmission mode, torque-converter status | No verified diesel mapping implemented. | ECU-scoped format and repeatable evidence; coordinate overlapping EGS work. |
 | DPF regeneration active/requested/inhibited and reasons | No verified mapping implemented. Temperature alone is insufficient. | Shared B47/N57 evidence, contributor coordination and identity-scoped states. |
-| DPF soot/ash mass, differential pressure, time/distance since regeneration | No verified mapping or universal thresholds implemented. | Licensed/documented formats, units and repeatable exact-ECU evidence before a DPFDeck decision. |
+| DPF differential/inlet/outlet pressure and filter temperatures | Standard 7A/7B/7C discovery and DPFDeck source are host/simulation tested; no BMW-specific mapping. | Exact DDE advertisement, field/bank/position identity and independent comparison. |
+| DPF soot/ash mass and time/distance since regeneration | No verified mapping or universal thresholds implemented. | Licensed/documented formats, units and repeatable exact-ECU evidence. |
 | EGR requested/actual/error | Standard 2C/2D and explicit PID 69 A/B fields are host/simulation tested; actual is normalized duty/position and is not reconstructed from error. | Exact DDE support, A/B applicability and independent comparisons; any fixed BMW-specific mapping needs separate evidence. |
 | SCR/AdBlue | No verified diesel mapping implemented. | Review credible standard/OEM definitions and exact ECU applicability before adding a signal. |
 | DDE fault descriptions | Raw BMW codes/status and separate standard emissions categories are host-tested; no new DDE dictionary imported. | Licensed, ECU-applicable descriptions and exact-target fault-format validation. |
@@ -810,38 +1000,89 @@ Offline reference review found additional candidates in the vendor's
 The 7A/7B/7C layouts now have independent corroboration in
 [DashLogic's PID reference](https://www.dashlogic.com/docs/technical/obdii_pids)
 and host-tested decoding in #201's separately selected v5 evidence profile.
-The other rows remain research leads from one vendor, without implemented
-mappings or independent corroboration. No row establishes this X5's support.
+Offline follow-up also corroborates the 85/8B field layouts against DashLogic;
+a separate local evidence profile now decodes them, awaiting publication. The
+8F remains a single-vendor lead. A4 now has independent format evidence with
+unresolved gear interpretation, described below. No row establishes this X5's support.
 No database entries or descriptions are copied into project code; earlier
-collector plans are unchanged, and higher-page reads are not added.
+published collector plans are unchanged. Higher-page reads are isolated to the
+new opt-in local profile pending signing and CI.
 
 | Candidate | Distinction required before implementation |
 | --- | --- |
-| 7A/7B particulate-filter pressures | #201 v5 retains separate delta, inlet and outlet fields. Delta is signed 16-bit / 100 kPa; inlet/outlet are unsigned / 100 kPa with no assumed absolute/atmospheric reference. Field support is required. No soot estimate or native app is added. |
+| 7A/7B particulate-filter pressures | #201 v5 retains separate delta, inlet and outlet fields. Delta is signed 16-bit / 100 kPa; inlet/outlet are unsigned / 100 kPa with no assumed absolute/atmospheric reference. Field support is required. No soot estimate is inferred; the separate DPFDeck source uses these standard fields. |
 | 7C particulate-filter temperatures | #201 v5 retains explicitly supported bank/inlet/outlet fields, separate from generic EGT 78/79. The full unsigned / 10 - 40 C protocol domain is evidence, not a BMW plausibility limit. Neither format proves regeneration or the physical N57 sensor location. |
-| 85 reagent data | Reported average consumption, demanded average consumption, tank level and time with a NOx warning are separate quantities. None alone establishes SCR health, a DPF state or remaining driving range. |
-| 8B particulate-filter regeneration data | Status/type are distinct from the normalized trigger and average interval/distance. Those averages are not time/distance since the last regeneration; the normalized trigger is not completion percentage or measured soot mass. No universal threshold should be inferred. |
+| 85 reagent data | Ten data bytes: low-four support bits, separate average/demanded consumption (u16 / 200 L/h), tank fraction (u8 × 100 / 255 percent) and NOx-warning runtime (u32 seconds). Per-field support is essential; none establishes SCR health or remaining driving range. The local v6 profile collects evidence only; no app mapping is added. |
+| 8B particulate-filter regeneration data | Seven data bytes: support byte, independently supported status/type bits, normalized trigger, average interval and average distance. The two u16 averages are minutes/km between events, not time/distance since the last regeneration. Trigger is not completion percentage or measured soot. The local v6 profile collects evidence only; no app state is added. |
 | 8F particulate-sensor data | Sensor regeneration/measurement status must not be relabelled as DPF regeneration. |
 | A4 transmission data | Actual gear and gear ratio are separate fields. The reference allows ambiguity between first and reverse; it does not establish selected P/R/N/D mode or torque-converter state. Preserve uncertainty rather than infer either from a ratio. |
 
-The current native capability cache deliberately has four pages through 60 and
-rejects measurement PIDs above 80. A future 85/8B/8F read would first require
-verified continuation through bitmap 80; A4 requires bitmap A0 as well. Extend
-the bounded cache, capability tests and a separately reviewed request policy
-before considering those reads. Do not add them to an existing reviewed plan.
-For the unimplemented candidates, full response layouts, flags, units and
-invalid states still need corroboration. All readings require exact DDE
+A4 follow-up recovered the official
+[J1699-3 release 17.00.00](https://sourceforge.net/projects/j1699-3/files/j1699/j1699-17.00.00/j1699-ver-17.00.00.zip/download)
+with its published SHA-256
+`fa7f6349a5fd57f20295c7b3a01a144f160d1715ffc1bf211a6da20838a4fd39`.
+Its GPL-v2-or-later source requires four data bytes, checks A bits 0/1 with
+high bits reserved, extracts B's high nibble and scales unsigned C-D / 1000.
+This corroborates request shape/flags/arithmetic; no GPL file or binary is
+copied into the project or executed.
+
+The [MODALES D4.1 report](https://ec.europa.eu/research/participants/documents/downloadPublic?appId=PPGMS&documentIds=080166e5dff5f327)
+was recovered through the European Commission archive after the project-site
+fetch failed (SHA-256
+`0e235c67ec0424978a4931992477b1f96022a0297454a6226340ccaec7266bf9`).
+Its page 15 table was inspected visually. It corroborates the support flags
+and ratio, but labels gear as byte B with 1 meaning reverse; J1699 extracts a
+nibble, while OBDb retains first/reverse ambiguity. Page 31 reports no tested
+car supplying A4. These references do not resolve a safe complete gear mapping
+or establish this X5's support. No gear decoder, collector read or selected
+P/R/N/D/torque-converter inference is added from them.
+
+The shared native capability cache deliberately retains four pages through 60
+and rejects measurement PIDs above 80. DPFDeck's local optional 8B follow-up
+uses a separate bounded extension after verified continuation through bitmap
+80, with its own tests and default-off request policy. Native 85/8F would need
+their own reviewed policies; A4 requires bitmap A0 as well. Do not add reads to
+an existing reviewed plan. The local 85/8B evidence profile and boundary/flag
+tests await publication; exact-ECU comparisons remain necessary before any
+physical app trial. For 8F, range/sentinel policies and complete fixtures still
+need review; A4 still needs resolved
+gear semantics, invalid/reserved states and exact-ECU evidence. All readings require exact DDE
 applicability, independent comparisons and the agreed #196 evidence path before
 use in a monitoring application.
+
+Further reference inspection distinguishes PID 8F's PM **sensor** regeneration
+from DPF system regeneration. [DashLogic](https://www.dashlogic.com/docs/technical/obdii_pids)
+and the same pinned OBDb source separate per-sensor operating states and signed
+normalized outputs. J1699-3's `SidSaveResponseData.c` requires seven data bytes;
+`VerifyDiagnosticSupportAndData.c` checks the independent flags/status masks and
+uses signed 16-bit / 100 output. Its additional minimum-value conformance check
+does not establish a BMW operating limit. No 8F read, decoder or DPF-state alias
+is added here.
+
+PID 88 now has the local optional v7 evidence policy described above. J1699-3's
+thirteen-byte shape and all five counter offsets agree with the manufacturer
+and pinned OBDb layouts. A historical cause or reagent level must not become
+a current DPF regeneration state. The full counter domain remains explicit
+evidence, with out-of-block values flagged rather than clamped or given an
+invented sentinel. This establishes a generic reply decoder and bounded plan,
+not exact-ECU support, a BMW plausibility limit or a native app mapping.
 
 ## Outstanding scope
 
 The overall N57 objective remains active. These drafts do not complete it.
+Next: finish publishing the signed focused branches and verify exact-source CI,
+then open/update the draft PRs with concise reviewer-focused descriptions.
+Address the reproduced numeric-locale issue as a separate codec change.
+Native SCR use still requires exact-ECU comparison and separately authorized
+parked validation. Remaining transmission signals still need fully
+corroborated layouts/semantics and request policies before implementation. Continue
+offline review without promoting any host result to physical N57 validation.
+
 Still required: ShiftDeck QNX/runtime validation; licensed, ECU-scoped DDE fault
 descriptions and exact-target validation of the counted CAN standard fault path;
 verified ECU-specific signals and profiles beyond the standard PID/default pool;
-DPFDeck HMI/resources, lifecycle and installer/rollback integration, followed by
-vehicle-profile validation from the agreed shared evidence collection;
+DPFDeck QNX/ABI, actual rendering, vehicle-profile and standalone validation
+from the agreed shared evidence collection;
 reproducible F15/F16 fixes coordinated with
 existing PRs; exact target vehicle identification/firmware/transport evidence;
 and any applicable QNX and separately authorized physical validation.
