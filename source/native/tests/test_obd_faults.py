@@ -36,8 +36,9 @@ class ObdFaultsTest(unittest.TestCase):
     def test_refusals_and_pending_deadlines_do_not_change_session_or_retry(self):
         for service, flag, state in MODES:
             with self.subTest(category=flag):
-                rejected = self.run_worker("engine-codes", [f"--obd-{flag}"], [(service, [f"7f{service}11"])])
-                self.assertEqual(rejected, f"OBD {state} read rejected (NRC 11)\n")
+                for nrc in ("11", "21", "33"):
+                    rejected = self.run_worker("engine-codes", [f"--obd-{flag}"], [(service, [f"7f{service}{nrc}"])])
+                    self.assertEqual(rejected, f"OBD {state} read rejected (NRC {nrc})\n")
                 pending = self.run_worker("engine-codes", [f"--obd-{flag}"], [(service, [f"7f{service}78"])])
                 self.assertIn("read unavailable", pending)
 

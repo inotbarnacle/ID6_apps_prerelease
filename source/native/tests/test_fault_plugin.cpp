@@ -110,7 +110,8 @@ int main() {
             snprintf(output,sizeof output,"OBD emissions: 1 code\nOBD%02X P0133\n",obd[i].service);
             result(app,output);
             assert(last(81)==std::string("P0133 ")+obd[i].state);
-            assert(last(91)=="Standard emissions; description unavailable");
+            assert(last(91)==(obd[i].service==10 ? "No description; ECU controls permanent-code removal" :
+                             "Standard emissions; description unavailable"));
             assert(last(80).find("OBD ")!=std::string::npos && last(80).find("DDE/raw")==std::string::npos);
             action(31); // description preference cannot reinterpret standard results
             assert(last(81)==std::string("P0133 ")+obd[i].state);

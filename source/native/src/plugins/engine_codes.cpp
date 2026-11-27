@@ -20,7 +20,8 @@ void format_code_line(char* text, size_t size, const char* line, int length, cha
         char code[6];
         if (parseObdFaultLine(line,static_cast<size_t>(length),obd,code)) {
             snprintf(text,size,"%s %s",code,obd_fault_state(obd));
-            snprintf(detail,detail_size,"Standard emissions; description unavailable");
+            snprintf(detail,detail_size,"%s",obd==10 ? "No description; ECU controls permanent-code removal" :
+                     "Standard emissions; description unavailable");
         } else snprintf(text,size,"%.*s",length,line);
         return;
     }

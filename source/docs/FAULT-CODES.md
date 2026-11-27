@@ -68,7 +68,8 @@ read. Each standard choice sends one read to the existing engine ECU address:
 These categories follow [AUTOSAR DCM R22-11 §7.6.3.5,
 SWS_Dcm_00289/00412/00330](https://www.autosar.org/fileadmin/standards/R22-11/CP/AUTOSAR_SWS_DiagnosticCommunicationManager.pdf).
 Confirmed or permanent does not establish a current failure. A zero result
-applies only to the selected category, not all fault memory.
+applies only to the selected category, not all fault memory. Permanent-code
+removal is ECU-managed; the standard-read display states this explicitly.
 
 The parser accepts the CAN-counted form: positive service, one count byte,
 then that many two-byte codes. Its P/C/B/U formatting and CAN count are
@@ -79,8 +80,11 @@ whole-pair zero filler is allowed. Older uncounted formats are unsupported;
 the parser never guesses a format from plausible digits.
 
 CLI choices are `--obd-confirmed`, `--obd-pending`, and `--obd-permanent`.
-They use the shared diagnostic lease and a 1.8-second request deadline, without
-retry, session change, clear, or automatic fallback. Mixing these choices with
+They use the shared diagnostic lease and transport timeouts: a 1.8-second HSFZ
+request wait and a two-second nominal MOST wait, with MOST response-pending
+waits bounded at five seconds. Link
+setup and cleanup are separate. There is no retry, session change, clear, or
+automatic fallback. Mixing these choices with
 clearing, a status-mask request or tracing is rejected before connecting.
 Refusals, lost replies and malformed data stay unavailable. The worker reports
 the full category count but sends at most 128 records to the bounded UI pipe.
