@@ -4,6 +4,7 @@
 #include "gauge_coexistence.h"
 #include "diag_link.h"
 #include "obd_capabilities.h"
+#include "boost_defaults.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <math.h>
@@ -21,6 +22,15 @@ static unsigned number(const char *s, unsigned lo, unsigned hi) {
     char *end; unsigned long n = strtoul(s, &end, 10);
     if (!*s || *end || n < lo || n > hi) { fprintf(stderr, "Invalid number: %s\n", s); exit(2); }
     return (unsigned)n;
+}
+
+static uint64_t capability_token(const char *text) {
+    char *end;
+    unsigned long long value;
+    if (*text<'0' || *text>'9') { fputs("Invalid capability token\n",stderr); exit(2); }
+    errno=0; value=strtoull(text,&end,10);
+    if (!value || *end || errno==ERANGE) { fputs("Invalid capability token\n",stderr); exit(2); }
+    return (uint64_t)value;
 }
 
 
@@ -108,8 +118,9 @@ static int read_pid(struct diag_link *link, unsigned char pid, double *value) {
     return decoded;
 }
 
-static int send_frame(int sock, struct sockaddr_in *dest, bd_frame *f, uint64_t *observed) {
-    char packet[BD_MAX_PACKET];
+static int send_frame(int sock, struct sockaddr_in *dest, bd_frame *f, uint64_t *observed,
+                      uint64_t auto_token, const struct obd_capabilities *caps, int trans_observed) {
+    char packet[BD_AUTO_PACKET];
     uint64_t now = bd_mono_ms();
     unsigned i;
     int len;
@@ -118,7 +129,12 @@ static int send_frame(int sock, struct sockaddr_in *dest, bd_frame *f, uint64_t 
         uint64_t age = now - observed[i];
         f->age_ms[i] = age > 999999 ? 999999 : (unsigned)age;
     }
-    len = bd_encode(f, packet, sizeof packet);
+    if (auto_token) {
+        bd_cap_frame report;
+        report.token=auto_token; report.worker_pid=(uint32_t)getpid(); report.sent_ms=now;
+        bd_diesel_masks(caps,trans_observed,&report.known,&report.supported);
+        len=bd_auto_encode(&report,f,packet,sizeof packet);
+    } else len = bd_encode(f, packet, BD_MAX_PACKET);
     return len > 0 && sendto(sock, packet, (size_t)len, 0,
         (struct sockaddr *)dest, sizeof *dest) == len;
 }
@@ -151,6 +167,8 @@ int main(int argc, char **argv) {
     uint64_t failed_until[sizeof dids/sizeof dids[0]] = {0};
     int ethanol=0, diesel=0;
     struct obd_capabilities capabilities = {{0}, {0}, 0};
+    uint64_t auto_token=0;
+    int trans_observed=0, explicit_signals=0;
     uint64_t next_hud=0;
     unsigned selected=(1u << 8) - 1;
     uint64_t next_ethanol=0;
@@ -161,8 +179,12 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "--ethanol")) ethanol = 1;
         else if (!strcmp(argv[i], "--extended")) selected |= (1u << BD_OIL_TEMP) | (1u << BD_BATTERY);
         else if (!strcmp(argv[i], "--diesel")) diesel=1;
-        else if (!strcmp(argv[i], "--signals") && i+1 < (unsigned)argc)
-            selected=number(argv[++i],1,(1u << BD_COUNT)-1);
+        else if (!strcmp(argv[i], "--auto-diesel") && i+1 < (unsigned)argc) {
+            auto_token=capability_token(argv[++i]); diesel=1;
+        }
+        else if (!strcmp(argv[i], "--signals") && i+1 < (unsigned)argc) {
+            selected=number(argv[++i],1,(1u << BD_COUNT)-1); explicit_signals=1;
+        }
         else if (!strcmp(argv[i], "--session")) session = 1;
         else if (!strcmp(argv[i], "--trace")) trace_reads = 1;
         else if (!strcmp(argv[i], "--no-trans")) no_trans = 1;
@@ -173,7 +195,11 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "--transport") && i+1 < (unsigned)argc && !strcmp(argv[i+1], "auto")) ++i;
         else if (!strcmp(argv[i], "--transport") && i+1 < (unsigned)argc && !strcmp(argv[i+1], "hsfz")) { transport = DIAG_HSFZ; ++i; }
         else if (!strcmp(argv[i], "--transport") && i+1 < (unsigned)argc && !strcmp(argv[i+1], "most")) { transport = DIAG_MOST; ++i; }
-        else { fprintf(stderr, "Usage: %s (--host IPv4 | --demo) [--transport auto|hsfz|most] [--port 6801] [--udp-port 42860] [--cycles N] [--no-trans] [--trace] [--session]\n", argv[0]); return 2; }
+        else { fprintf(stderr, "Usage: %s (--host IPv4 | --demo) [--auto-diesel TOKEN | --signals MASK] [--diesel] [--transport auto|hsfz|most] [--port 6801] [--udp-port 42860] [--cycles N] [--no-trans] [--trace] [--session]\n", argv[0]); return 2; }
+    }
+    if (auto_token && (demo || explicit_signals)) {
+        fputs("Automatic diesel gauges require live read-only transport and no --signals override.\n",stderr);
+        return 2;
     }
     if (host && demo) { fprintf(stderr, "Choose --host or --demo, never both.\n"); return 2; }
     if (!host && !demo && transport == DIAG_HSFZ) { fprintf(stderr, "--transport hsfz needs --host.\n"); return 2; }
@@ -199,11 +225,22 @@ int main(int argc, char **argv) {
     memset(&dest,0,sizeof dest); dest.sin_family=AF_INET; dest.sin_port=htons((uint16_t)udp_port);
     inet_pton(AF_INET,"127.0.0.1",&dest.sin_addr); /* local process IPC only */
     memset(&f,0,sizeof f); f.demo=(unsigned)demo;
-    fprintf(stderr, "%s: 2016 340i candidate profile; validate against ISTA/logger.\n",
-        demo ? "DEMO / NO VEHICLE CONNECTION" : host ? "READ ONLY / HSFZ" : "READ ONLY / MOST");
+    fprintf(stderr, "%s: %s\n",
+        demo ? "DEMO / NO VEHICLE CONNECTION" : host ? "READ ONLY / HSFZ" : "READ ONLY / MOST",
+        diesel ? "standard OBD capability profile; EGS candidate requires validation." :
+                 "2016 340i candidate profile; validate against ISTA/logger.");
     while (diag_running && (!cycles || count < cycles) && (!session || getppid() == parent)) {
         uint64_t start = bd_mono_ms();
         f.seq++;
+        if (auto_token) {
+            unsigned known, supported;
+            unsigned char slots[BD_DEFAULT_SLOTS];
+            bd_diesel_masks(&capabilities,trans_observed,&known,&supported);
+            bd_diesel_slots(supported,slots);
+            /* Keep unknown candidates eligible for bounded discovery. A missing
+             * measurement is never used to classify its PID as unsupported. */
+            selected=bd_slots_mask(slots) | (bd_diesel_candidates() & ~known);
+        }
         if (demo) {
             double t = count * (tick_ms / 1000.0);
             f.value[0]=12+8*sin(t); f.value[1]=13.2+.6*sin(t);
@@ -276,6 +313,7 @@ int main(int argc, char **argv) {
                     continue;
                 }
                 if (!rc) continue;
+                if (dids[i]==0xda12) trans_observed=1;
                 if (i == 1) {
                     if (!have_ambient || bd_mono_ms()-ambient_time > 1800) continue;
                     v = (v-ambient) * .145037738; /* kPa absolute - measured ambient -> gauge psi */
@@ -284,7 +322,7 @@ int main(int argc, char **argv) {
                 did_values |= 1u << (i-1);
                 f.value[i-1]=v; observed[i-1]=bd_mono_ms(); f.valid |= 1u << (i-1);
                 /* A tunnel read is slow, so each new value goes out at once. */
-                if (diag_link_on_most(&link) && !send_frame(sock,&dest,&f,observed)) { perror("send frame"); diag_running=0; }
+                if (diag_link_on_most(&link) && !send_frame(sock,&dest,&f,observed,auto_token,&capabilities,trans_observed)) { perror("send frame"); diag_running=0; }
             }
             for (i=0; up && !stopped && diag_running &&
                       i < sizeof obd_pids / sizeof obd_pids[0]; ++i) {
@@ -338,7 +376,7 @@ int main(int argc, char **argv) {
                     v=(v-f.value[BD_BARO])*.145037738;
                 }
                 f.value[k]=v; observed[k]=bd_mono_ms(); f.valid |= 1u << k;
-                if (diag_link_on_most(&link) && !send_frame(sock,&dest,&f,observed)) { perror("send frame"); diag_running=0; }
+                if (diag_link_on_most(&link) && !send_frame(sock,&dest,&f,observed,auto_token,&capabilities,trans_observed)) { perror("send frame"); diag_running=0; }
             }
             // Supply RPM over the existing HSFZ connection only while HUD needs it.
             // Boost is shared from the dashboard's selected signals, with the same freshness rule.
@@ -346,7 +384,8 @@ int main(int argc, char **argv) {
                 next_hud = bd_mono_ms() + 150;
                 if (link.fd >= 0 && diag_running && gauge_active(HUD_TELEMETRY_PORT)) {
                     double rpm;
-                    int read = read_pid(&link, 0x0c, &rpm);
+                    int read = diesel ? obd_pid_advertised(&capabilities,&link,0x0c) : 1;
+                    if (read==1) read=read_pid(&link, 0x0c, &rpm);
                     struct hud_telemetry sample = { bd_mono_ms(), BOOST_ACTIVE_PORT, 0, 0, 0 };
                     if (read == 1) {
                         sample.rpm = (unsigned)rpm;
@@ -385,7 +424,7 @@ int main(int argc, char **argv) {
                 (void)diag_link_should_yield(&link,bd_mono_ms());
             }
         }
-        if (!send_frame(sock,&dest,&f,observed)) { perror("send frame"); diag_running=0; }
+        if (!send_frame(sock,&dest,&f,observed,auto_token,&capabilities,trans_observed)) { perror("send frame"); diag_running=0; }
         ++count;
         {
             uint64_t elapsed = bd_mono_ms()-start;

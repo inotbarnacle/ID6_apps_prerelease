@@ -121,7 +121,7 @@ def update_xml():
             radio(options, 700 + offset, 2000 + offset, 5000 + offset,
                   text_model=700 + offset)
     for model, target, title in ((110, 104, "Gauge color"), (360, 501, "Engine profile"),
-                                  (None, 500, "Configure gauges")):
+                                  (361, 505, "Diesel gauges"), (None, 500, "Configure custom gauges")):
         goto(actions, target, target)
         if model is not None:
             richtext(models, model)
@@ -136,7 +136,14 @@ def update_xml():
         radio_model(models, 5210 + i)
         choose(actions, 2210 + i, 502 + i, 3010 + i, 520)
         radio(profile, 591 + i, 2210 + i, 5210 + i, caption)
-    config = page(states, 500, 520, "Configure gauges")
+    mode = page(states, 505, 520, "Diesel gauges")
+    for i, caption in enumerate(("Detected defaults", "Custom layout")):
+        radio_model(models, 5212+i)
+        choose(actions, 2212+i, 506+i, 3012+i, 520)
+        radio(mode, 593+i, 2212+i, 5212+i, caption)
+    config = page(states, 500, 520, "Configure custom gauges")
+    richtext(models, 362)
+    ET.SubElement(config, "label", id="362", model="362")
     for signal in range(len(SIGNALS)):
         radio_model(models, 5300 + signal)
         choose(actions, 3500 + signal, 600 + signal, 4500 + signal, 500)

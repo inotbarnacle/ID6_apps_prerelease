@@ -12,11 +12,30 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        compiler: [gcc, clang]
+        include:
+          - cc: gcc
+            cxx: g++
+          - cc: clang
+            cxx: clang++
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Build and test workers against simulated HSFZ and MOST
-        run: make -C source/native test CC=${{ matrix.compiler }}
+        run: make -C source/native test CC=${{ matrix.cc }} CXX=${{ matrix.cxx }}
+      - name: Production BoostDeck syntax
+        run: ${{ matrix.cxx }} -std=gnu++98 -Wall -Wextra -Werror -Isource/native/sdk -Isource/native/src/common -Isource/native/src/ipc -fsyntax-only source/native/src/plugins/boost_deck.cpp
+      - name: Capability and plugin static analysis
+        if: matrix.cc == 'clang'
+        run: |
+          clang --analyze -Xanalyzer -analyzer-output=text -std=c99 -Isource/native/src/common source/native/src/common/boost_defaults.c
+          clang --analyze -Xanalyzer -analyzer-output=text -std=c99 -DMOST_HOST -Isource/native/src/common -Isource/native/src/ipc -Isource/native/src/workers source/native/src/workers/boost_deck_worker.c
+          clang++ --analyze -Xanalyzer -analyzer-output=text -std=gnu++98 -Isource/native/sdk -Isource/native/src/common -Isource/native/src/ipc source/native/src/plugins/boost_deck.cpp
+      - name: Generated default-mode menu and unchanged dashboard geometry
+        run: |
+          python3 -m pip install Pillow==13.0.0
+          python3 -B source/tools/test_boost_defaults_resources.py
       - name: Read-only collection tool tests
         run: |
           python3 -B source/tools/test_probe_signals.py
@@ -26,7 +45,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Decoder and capability memory checks
+        env:
+          ASAN_OPTIONS: detect_leaks=1
+          UBSAN_OPTIONS: halt_on_error=1
         run: |
           make -C source/native build/test-core build/test-obd-capabilities CC=clang CFLAGS='-O1 -g -std=c99 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer'
           source/native/build/test-core
           source/native/build/test-obd-capabilities
+          make -C source/native test-boost-defaults CC=clang CXX=clang++ CFLAGS='-O1 -g -std=c99 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer' CXXFLAGS='-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'

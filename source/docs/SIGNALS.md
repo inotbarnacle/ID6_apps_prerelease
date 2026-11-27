@@ -42,6 +42,12 @@ The Diesel profile uses `01 05` coolant, `01 0F` intake air, `01 23` direct-inje
 
 ### Diesel capabilities and pressure limits
 
+New installations can use [Detected defaults](AUTO-DIESEL-GAUGES.md): only
+advertised standard channels, plus an existing EGS temperature channel after a
+valid positive reply, can occupy automatic slots. Unknown capabilities leave
+slots empty. Existing saved layouts remain in Custom mode unless the owner
+selects Detected defaults. This identifies available channels, not an N57 family.
+
 BoostDeck's Diesel profile now checks Mode 01 supported-PID bitmaps before
 polling a selected standard channel. Oil temperature and fuel rate use the same
 gate in the gasoline profile; other gasoline DIDs and fallbacks retain their

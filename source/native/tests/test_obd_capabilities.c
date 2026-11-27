@@ -27,6 +27,7 @@ int main(void) {
     struct obd_capabilities caps;
     memset(&link,0,sizeof link);
     memset(&caps,0,sizeof caps);
+    assert(obd_pid_status(&caps,0x5c)==OBD_CAPABILITY_PENDING);
     assert(obd_pid_advertised(&caps,&link,0x5c) == OBD_CAPABILITY_PENDING);
     expected_page = response[1] = 0x20;
     assert(obd_pid_advertised(&caps,&link,0x5c) == OBD_CAPABILITY_PENDING);
@@ -44,7 +45,8 @@ int main(void) {
             caps.bits[0] = caps.bits[1] = caps.bits[2] = 1;
             caps.bits[page] |= UINT32_C(1) << (32-bit);
             for (unsigned pid = 1; pid < 32; ++pid)
-                assert(obd_pid_advertised(&caps,&link,page*32+pid) == (pid == bit));
+                assert(obd_pid_advertised(&caps,&link,page*32+pid) == (pid == bit) &&
+                       obd_pid_status(&caps,page*32+pid)==(pid==bit));
         }
     }
     assert(calls == 3);

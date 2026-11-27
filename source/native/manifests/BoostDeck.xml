@@ -241,6 +241,7 @@
       </combinedAction>
       <hmiAction id="104" target="104" />
       <hmiAction id="501" target="501" />
+      <hmiAction id="505" target="505" />
       <hmiAction id="500" target="500" />
       <combinedAction id="2200">
         <actions>
@@ -306,6 +307,18 @@
         <actions>
           <raAction id="503" />
           <hmiAction id="3011" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2212">
+        <actions>
+          <raAction id="506" />
+          <hmiAction id="3012" target="520" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="2213">
+        <actions>
+          <raAction id="507" />
+          <hmiAction id="3013" target="520" />
         </actions>
       </combinedAction>
       <combinedAction id="3500">
@@ -593,6 +606,7 @@
       <raBoolModel id="5145" />
       <raDataModel id="110" modelType="Richtext" />
       <raDataModel id="360" modelType="Richtext" />
+      <raDataModel id="361" modelType="Richtext" />
       <raBoolModel id="5200" />
       <raBoolModel id="5201" />
       <raBoolModel id="5202" />
@@ -604,6 +618,9 @@
       <raBoolModel id="5208" />
       <raBoolModel id="5210" />
       <raBoolModel id="5211" />
+      <raBoolModel id="5212" />
+      <raBoolModel id="5213" />
+      <raDataModel id="362" modelType="Richtext" />
       <raBoolModel id="5300" />
       <raBoolModel id="5301" />
       <raBoolModel id="5302" />
@@ -1054,7 +1071,8 @@
           <button id="127" action="528" text="" model="127" />
           <button id="654" action="104" text="" model="110" />
           <button id="1051" action="501" text="" model="360" />
-          <button id="1050" action="500" text="Configure gauges" />
+          <button id="1055" action="505" text="" model="361" />
+          <button id="1050" action="500" text="Configure custom gauges" />
         </components>
       </hmiState>
       <hmiState id="521" parentId="520" text="Pressure">
@@ -1145,8 +1163,15 @@
           <radiobutton id="592" action="2211" model="5211" text="Diesel (standard OBD PIDs)" />
         </components>
       </hmiState>
-      <hmiState id="500" parentId="520" text="Configure gauges">
+      <hmiState id="505" parentId="520" text="Diesel gauges">
         <components>
+          <radiobutton id="593" action="2212" model="5212" text="Detected defaults" />
+          <radiobutton id="594" action="2213" model="5213" text="Custom layout" />
+        </components>
+      </hmiState>
+      <hmiState id="500" parentId="520" text="Configure custom gauges">
+        <components>
+          <label id="362" model="362" />
           <button id="540" action="510" text="" model="340" />
           <button id="541" action="511" text="" model="341" />
           <button id="542" action="512" text="" model="342" />

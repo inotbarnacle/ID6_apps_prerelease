@@ -84,7 +84,7 @@ class DieselCapabilitiesTest(unittest.TestCase):
             bytes.fromhex("1822da12"): bytes.fromhex("62da120058"),
         }
 
-    def run_boost(self, responses, selected=None, diesel=True):
+    def run_boost(self, responses, selected=None, diesel=True, automatic=False):
         if selected is None:
             selected = (1 << 9) | (1 << 7) | (1 << 5) | (1 << 3)
         with ecu_server(responses) as (port, requests), socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:
@@ -93,8 +93,9 @@ class DieselCapabilitiesTest(unittest.TestCase):
             env = dict(os.environ)
             env.pop("ID6_FAKE_MOST", None)
             args = [BUILD/"boost-deck", "--host", "127.0.0.1", "--transport", "hsfz",
-                    "--port", str(port), "--signals", str(selected), "--cycles", "80",
+                    "--port", str(port), "--cycles", "80",
                     "--udp-port", str(udp.getsockname()[1])]
+            args += ["--auto-diesel", "1234"] if automatic else ["--signals", str(selected)]
             if diesel:
                 args.append("--diesel")
             process = subprocess.Popen(args, stderr=subprocess.PIPE, text=True, env=env)
@@ -107,6 +108,57 @@ class DieselCapabilitiesTest(unittest.TestCase):
                     process.kill()
                     process.communicate()
         return packets, requests
+
+    def test_automatic_report_matches_ecu_advertisement_and_valid_transmission(self):
+        packets, requests = self.run_boost(self.responses(), automatic=True)
+        for packet in packets:
+            self.assertEqual(packet[0], "NBC1")
+            self.assertEqual(packet[1], "1234")
+            self.assertGreater(int(packet[2]), 0)
+            self.assertEqual(packet[6], "NBG7")
+            self.assertEqual(packet[3], packet[10])  # capability and measurement timestamps match
+            self.assertEqual(int(packet[5]) & ~int(packet[4]), 0)
+        known, supported = map(int, packets[-1][4:6])
+        self.assertTrue(known & (1 << 9))
+        self.assertFalse(supported & (1 << 9))
+        self.assertEqual(supported, (1 << 7) | (1 << 4) | (1 << 5) | (1 << 3))
+        self.assertNotIn(bytes.fromhex("12015c"), requests)
+        self.assertEqual(requests.count(bytes.fromhex("120100")), 1)
+        self.assertEqual(requests.count(bytes.fromhex("120120")), 1)
+        self.assertEqual(requests.count(bytes.fromhex("120140")), 1)
+        self.assertTrue(all(r[1] in (1, 0x22) for r in requests))
+
+    def test_automatic_unknown_bitmap_and_refused_transmission_never_become_support(self):
+        responses = self.responses(oil=True)
+        responses[bytes.fromhex("120140")] = bytes.fromhex("4140000010")
+        responses[bytes.fromhex("1822da12")] = bytes.fromhex("7f2231")
+        packets, requests = self.run_boost(responses, automatic=True)
+        for packet in packets:
+            known, supported = map(int, packet[4:6])
+            self.assertFalse(known & ((1 << 9) | (1 << 4)))
+            self.assertFalse(supported & ((1 << 9) | (1 << 4)))
+        self.assertTrue(int(packets[-1][5]) & (1 << 7))
+        self.assertNotIn(bytes.fromhex("12015c"), requests)
+        self.assertEqual(requests.count(bytes.fromhex("120140")), 1)
+        self.assertLessEqual(requests.count(bytes.fromhex("1822da12")), 2)
+
+    def test_automatic_advertisement_does_not_fabricate_a_measurement(self):
+        responses = self.responses(oil=True)
+        responses[bytes.fromhex("12015c")] = bytes.fromhex("7f0122")
+        packets, requests = self.run_boost(responses, automatic=True)
+        self.assertTrue(int(packets[-1][5]) & (1 << 9))
+        self.assertFalse(int(packets[-1][9]) & (1 << 9))  # embedded NBG7 valid mask
+        self.assertIn(bytes.fromhex("12015c"), requests)
+        self.assertTrue(int(packets[-1][9]) & (1 << 7))
+
+    def test_automatic_token_and_mode_errors_exit_before_transport(self):
+        for token in ("0", "-1", "+1", "1x", "18446744073709551616"):
+            with self.subTest(token=token):
+                result = subprocess.run([BUILD/"boost-deck", "--auto-diesel", token], capture_output=True, timeout=2)
+                self.assertEqual(result.returncode, 2)
+        for options in (["--demo"], ["--signals", "1"]):
+            result = subprocess.run([BUILD/"boost-deck", "--auto-diesel", "1", *options], capture_output=True, timeout=2)
+            self.assertEqual(result.returncode, 2)
 
     def run_warm(self, responses):
         with ecu_server(responses) as (port, requests), socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:

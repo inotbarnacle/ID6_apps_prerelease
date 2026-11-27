@@ -67,12 +67,24 @@ This description is not diagnostic confirmation.
   investigation, source architecture audit and compatibility gap analysis.
 - Development branch: `diesel/obd-capabilities`.
 - Implemented: shared OBD capability gate, BoostDeck/WarmDeck integration,
-  saturated diesel MAP handling and unsupported/malformed/timeout regressions.
-  `make -C source/native test` passes: eight C/C++ test programs and
-  88 Python tests (31 app, 23 one-shot MOST, 26 transport, 8 capability tests).
+  saturated diesel MAP handling, capability-based automatic diesel layouts,
+  preserved custom layouts and unsupported/malformed/timeout regressions.
+  `make -C source/native test` passes: ten C/C++ test programs and
+  92 Python tests (31 app, 23 one-shot MOST, 26 transport, 12 capability tests).
+  Four additional generator/menu tests pass. The automatic layout is limited
+  to advertised existing standard channels and the EGS temperature candidate
+  after a valid positive reply; no new BMW signal definition is added. Unknown
+  capability slots stay empty. Automatic frames carry worker identity/launch
+  token, capability masks and existing measurements in one bounded envelope;
+  wrong-worker, old/future/stale and capability-regressing frames are rejected.
+  Legacy G1/G2 and B1/B2 formats stay readable, existing valid layouts default
+  to Custom mode, and a separate atomic D1 sidecar persists the mode choice.
+  See [automatic diesel gauges](AUTO-DIESEL-GAUGES.md) for semantics and limits.
   Existing probe/head-unit tests (2 + 6) pass. Clang AddressSanitizer and
   UndefinedBehaviorSanitizer checks pass for core decoders and capability
-  logic; Clang static analysis reports no finding in the new helper.
+  logic, automatic-layout/protocol and production plugin tests; Clang static
+  analysis reports no finding in the new helper, worker or plugin. All 906
+  regenerated image dimensions/pixels and the 49 host BMW imports are unchanged.
 - Discovery and staged F15 validation are in [draft PR #201](https://github.com/inotbarnacle/iDriveDeck/pull/201)
   on independent branch `diesel/read-only-discovery`; 11 new discovery tests and
   8 existing tool tests pass, including privacy and live-request bounds.
@@ -112,8 +124,8 @@ This description is not diagnostic confirmation.
   of QNX compatibility. [Fork CI](https://github.com/voioo/iDriveDeck/actions/runs/45985869445)
   passed GCC/Clang, static, resource and sanitizer jobs on the exact pushed
   source commit. No diagnostic worker or decoder changed.
-- Next: improve capability-aware
-  default gauge assignments. Keep lifecycle/MOST work coordinated
+- Next: integrate the expanded capability/default-layout contribution and
+  continue reproducible lifecycle work. Keep lifecycle/MOST work coordinated
   with #143/#138/#141 rather than replacing their pending fixes.
 - Vehicle status: no vehicle connection, SSH, ECU requests, installation,
   head-unit restart or QNX build has been performed.
@@ -169,11 +181,12 @@ change the tested source at `a05e023`. No upstream PR has been merged.
 The rail display gap found in this combined tree is addressed separately by
 #205: a correctly decoded synthetic 1000-bar value previously filled the
 250-bar graphic. The optional diesel range changes presentation without
-assuming an ECU maximum or expanding sensor support. Capability-aware default
-assignments still need work: the current PID gate suppresses unsupported
-polling, but a valid-sample mask is not an explicit supported-capability report
-to the UI. Do not infer permanent support/absence from a transient blank sample
-or replace the owner's saved gauge selections automatically.
+assuming an ECU maximum or expanding sensor support. PR #202 now also supplies
+an explicit capability envelope and automatic/default policy; it does not infer
+permanent support/absence from transient blank samples or replace saved gauge
+choices. The earlier combined test counts above predate that expansion and
+must not be cited as its integration evidence. Re-run the combined source and
+record its exact revision before proposing any candidate build.
 
 ## Fault-data licensing finding
 
