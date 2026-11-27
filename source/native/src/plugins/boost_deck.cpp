@@ -535,10 +535,11 @@ void BoostDeck::loadAssignments() {
     fclose(file);
     if (!complete || length<3 || data[0]!='B' || data[2]>1) return;
     unsigned stride=0;
-    if ((data[1]==2 || data[1]==3 || data[1]==4) && length==3+sizeof signals_) stride=kBarCount;
+    if ((data[1]==2 || data[1]==3 || data[1]==4 || data[1]==5) && length==3+sizeof signals_) stride=kBarCount;
     if (data[1]==1 && length==3+2*previousSlots) stride=previousSlots;
     if (!stride) return;
-    const unsigned channels=data[1]==4 ? static_cast<unsigned>(BD_WIRE9_COUNT) :
+    const unsigned channels=data[1]==5 ? static_cast<unsigned>(BD_WIRE10_COUNT) :
+        data[1]==4 ? static_cast<unsigned>(BD_WIRE9_COUNT) :
         data[1]==3 ? static_cast<unsigned>(BD_WIRE8_COUNT) : static_cast<unsigned>(BD_LEGACY_COUNT);
     for (unsigned profile=0;profile<2;++profile)
         for (unsigned i=0;i<kBarCount;++i)
@@ -574,7 +575,8 @@ bool BoostDeck::saveAssignments() {
     unsigned char revision=2;
     for (unsigned profile=0;profile<2;++profile)
         for (unsigned i=0;i<kBarCount;++i)
-            if (signals_[profile][i]>=BD_WIRE8_COUNT) revision=4;
+            if (signals_[profile][i]>=BD_WIRE9_COUNT) revision=5;
+            else if (signals_[profile][i]>=BD_WIRE8_COUNT && revision<4) revision=4;
             else if (signals_[profile][i]>=BD_LEGACY_COUNT && revision<3) revision=3;
     unsigned char data[3+sizeof signals_]={'B',revision,static_cast<unsigned char>(diesel_)};
     memcpy(data+3,signals_,sizeof signals_);

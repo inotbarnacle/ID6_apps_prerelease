@@ -103,6 +103,15 @@ No exact N57 support or A/B physical assignment is established. These gauges do
 not expand the automatic diesel default pool or send actuator commands.
 
 
+### Optional requested and actual pressure
+
+Custom layout can select separate rail A/B request/actual gauge pressures
+(`01 6D`) and boost A/B request/actual absolute pressures (`01 70`). Each field
+requires advertised PID and field support. [Standard pressure](STANDARD-PRESSURE.md)
+records the exact layouts, conversions, source provenance and limitations.
+These manual choices do not replace MAP or infer atmospheric pressure, sensor
+location, DDE identity or physical vehicle support. Default gauges stay unchanged.
+
 ## MHD+ setting display
 
 MHD+ returns a matching echo for accepted map and Max Cooling commands. The menu shows those last accepted choices in the current app session, with **Unknown** until each command is accepted. [MHD documents a Current Map logging channel](https://mhd-tuning.atlassian.net/wiki/spaces/MFS2/pages/11763743/MHD%2BSuite). Its documentation does not publish the request, response layout, or ROM applicability. The [current iDrive7 implementation](https://github.com/cauliflowermossgrape/idrive7-apps/blob/35bca28bc82b30482d73782877ebaf92c69dcb8c/apps/live_adjustments/README.md) checks command echoes and found no changes in its sampled DIDs across a two-slot comparison. The [published map-switch and Max Cooling captures](https://github.com/cauliflowermossgrape/idrive7-apps/pull/23#issuecomment-6520952752) contain the set commands and their replies. They do not include the monitor reading the current setting. [pymhd's Current Map definition](https://github.com/whatotter/pymhd/blob/cad5f80fb6c9526ce161ebff9a37d1bec4266cbe/core/parameters.py#L53) comes from an older I8A0S/N54 logger and does not establish a mapping for the F/G-series DME. A parked capture of the official MHD Monitor while selecting map 1, map 2, then map 1 would identify which field tracks the active slot on that DME. Repeat separately for cooling if MHD exposes it on the vehicle. Changes made from the phone app or steering-wheel controls are invisible to this display. Max Cooling can also reset at engine shutdown. [Upstream MHD command captures](https://github.com/cauliflowermossgrape/idrive7-apps/blob/main/apps/live_adjustments/README.md)

@@ -45,12 +45,12 @@ int main(void) {
     assert(n==(int)strlen(legacy_egt_packet) && !memcmp(wire,legacy_egt_packet,(size_t)n));
     assert(bd_parse(wire,(size_t)n,&frame) && frame.valid==old.valid);
     assert(!frame.value[BD_EGR_REQUEST] && !frame.age_ms[BD_EGR_B_ERROR]);
-    memset(&frame,0,sizeof frame); frame.sent_ms=12345; frame.valid=BD_ALL_MASK;
+    memset(&frame,0,sizeof frame); frame.sent_ms=12345; frame.valid=BD_WIRE9_MASK;
     frame.value[BD_EGR_REQUEST]=100; frame.value[BD_EGR_ERROR]=-100;
     frame.value[BD_EGR_A_ACTUAL]=0; frame.value[BD_EGR_B_ERROR]=99.21875;
     n=bd_encode(&frame,wire,sizeof wire);
     assert(n>0 && n<BD_MAX_PACKET && !memcmp(wire,"NBG9 ",5));
-    assert(bd_parse(wire,(size_t)n,&old) && old.valid==BD_ALL_MASK);
+    assert(bd_parse(wire,(size_t)n,&old) && old.valid==BD_WIRE9_MASK);
     assert(old.value[BD_EGR_A_ACTUAL]==0 && old.value[BD_EGR_B_ERROR]==99.21875);
     assert(bd_is_fresh(&old,BD_EGR_B_ERROR,3499) && !bd_is_fresh(&old,BD_EGR_B_ERROR,3500));
     assert(bd_display_value(BD_EGR_A_ACTUAL,50,0)==50 && !strcmp(bd_unit(BD_EGR_ERROR,0),"%"));

@@ -17,7 +17,7 @@ application ZIPs are separate maintainer build artifacts.
 | Ownership / lifecycle | Loopback leases coordinate project workers, not external tools. The original reapers can forget a live PID on `ECHILD`, permitting duplicate workers after retry deadlines and losing the PID needed for close. | Reuse PR #143's existing process-existence fix. [Fork test review #1](https://github.com/voioo/iDriveDeck/pull/1) adds production-plugin/baseline/owned-child regressions. Hidden polling changes in #143/#50 and actual vehicle cleanup remain separate. |
 | Diesel telemetry | Explicit Diesel selection substitutes standard OBD coolant, IAT, rail and boost for unverified gasoline DIDs. Only fuel-rate polling currently checks a supported-PID bitmap. No automatic ECU-specific verified N57 profile exists on main. | Add shared capability checks first. Preserve fixed gasoline decoders and persisted signal IDs. |
 | Oil temperature | [#21](https://github.com/inotbarnacle/iDriveDeck/issues/21), [#162](https://github.com/inotbarnacle/iDriveDeck/issues/162): DDE741 rejects fixed reads and does not advertise PID 5C. Temporary F303 is reused for different signals. | Leave unavailable without a verified fixed source. Never define or poll somebody else's dynamic DID. |
-| Pressure | PID 23 is direct-injection rail gauge pressure, 0.1 bar per count. MAP PID 0B is limited to 255 kPa absolute; subtracting barometric pressure does not extend that range. The original graphic fills at only 250 bar. | #202 blanks saturated diesel MAP/boost. [Draft #205](https://github.com/inotbarnacle/iDriveDeck/pull/205) adds a configurable diesel rail display scale, not an ECU pressure limit. Requested rail/boost require separate evidence. |
+| Pressure | PID 23 is direct-injection rail gauge pressure, 0.1 bar per count. MAP PID 0B is limited to 255 kPa absolute; subtracting barometric pressure does not extend that range. The original graphic fills at only 250 bar. | #202 blanks saturated diesel MAP/boost and adds optional PID 6D rail gauge / PID 70 absolute boost request/actual fields. Physical support remains unverified. [Draft #205](https://github.com/inotbarnacle/iDriveDeck/pull/205) changes the original rail channel's display scale only. |
 | WarmDeck | Three temperatures expire independently and trend estimates require all three. Main queries oil unconditionally and displays generic RPM guidance. Thresholds 85/75/40 C are application choices. | #202 gates oil by advertised support. [Draft #209](https://github.com/inotbarnacle/iDriveDeck/pull/209) adds independent target states, measured estimates and advisory vehicle-guidance text, with production UDP/UI and resource tests. |
 | ShiftDeck | Source artwork/preferences retain five gasoline targets while the latest installer release advertises 6000–8000 RPM. Neither establishes an N57 limit. | [Draft #203](https://github.com/inotbarnacle/iDriveDeck/pull/203) adds manually selected diesel targets/display scales, legacy settings migration and asset/plugin tests. No universal diesel redline or physical validation is claimed. |
 | Faults | Worker reads 24-bit UDS codes; the old UI discarded status availability and always used a reference gasoline table. | [Draft #204](https://github.com/inotbarnacle/iDriveDeck/pull/204) preserves status support, adds a DDE/raw view and clear confirmation, plus separate standard confirmed/pending/permanent emissions reads. The counted CAN format is host-tested; target support and licensed DDE descriptions remain open. |
@@ -59,11 +59,33 @@ This description is not diagnostic confirmation.
 | Standard OBD signals | Simulation / host tests only | Supported bitmaps and independently compared readings from this vehicle. |
 | Standard EGT bank/sensor channels | Simulation / host tests only | Exact DDE support for PID 78/79, sensor bits, physical sensor locations and independently compared temperatures. No regeneration inference. |
 | Standard EGR request, actual and error channels | Simulation / host tests only | Exact DDE support for PID 2C/2D/69, per-field bits and independent comparisons. Actual is reported normalized duty/position, not inferred flow or a value reconstructed from error. |
+| Standard requested/actual rail and boost | Simulation / host tests only | Exact DDE support for PID 6D/70, per-field bits, physical A/B identity and independent comparisons. Rail is gauge pressure; boost is absolute. |
 | Standard emissions fault codes | Simulation / host tests only | Confirm that the exact DDE/gateway supports services 03/07/0A and the counted CAN reply format. A category's zero count does not clear other categories. |
 | Fixed BMW diesel, DPF, SCR, oil pressure | Unsupported in this effort | Credible ECU-specific definitions and repeatable sanitized captures. Standard EGR support does not establish a BMW-specific mapping. |
 | Physical installation / factory regression / rollback | Not performed | Separate owner-authorized milestone; staged plan in [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201). |
 
 ## Progress and next actions
+
+- Standard pressure follow-up in [#202](https://github.com/inotbarnacle/iDriveDeck/pull/202): eight
+  optional Custom gauges retain separate requested/actual A/B fields. Exact
+  11-byte PID 6D data supplies rail gauge pressure in bar; exact ten-byte PID 70
+  data supplies absolute boost in kPa. PID advertisement and current per-field
+  support are mandatory, including in Gasoline. No MAP, derived boost, legacy
+  rail source or automatic candidate pool is replaced. Polling is grouped per
+  PID at two seconds from the actual request, with five-second backoff and
+  3.5-second freshness. Unsupported fields remain blank; supported zero and the
+  full unsigned domain retain their defined conversions. Fixed 2000-bar rail
+  and 500-kPa absolute boost graphics clamp independently of numeric readings;
+  these are app scales, not BMW limits or pressure targets. Existing IDs 0–46,
+  NBG7/NBG8/NBG9 bytes/bounds and B1–B4 bounds remain stable. New IDs 47–54 use
+  explicit NBG10/B5 extensions. The shared receive buffer is bounded at 1696
+  bytes. [Protocol provenance and limitations](STANDARD-PRESSURE.md) distinguish
+  the vendor layout evidence from independent preOBD encoder corroboration.
+  The 12 focused pressure transport and eight resource cases pass locally,
+  alongside native decoder/UI checks, ASan/UBSan, C++98 syntax and static
+  analysis. Paired optimized host objects retain the same 48 BMW imports; this
+  does not establish QNX ABI. All 906 original image pixels remain intact.
+  No BMW-specific mapping, physical support or QNX validation is claimed.
 
 - Standard EGR follow-up in [#202](https://github.com/inotbarnacle/iDriveDeck/pull/202): Custom layout adds PID 2C
   request, 2D error and six independent requested/actual/error A/B fields from
@@ -299,20 +321,16 @@ This description is not diagnostic confirmation.
   passes 33 discovery, four probe and six capture tests. All 68 combined tool
   and resource cases also pass locally. This new plan needs its own review and
   owner approval before any physical use.
-- Next offline work: review and implement justified standard pressure fields
-  without conflating requested/actual, manifold/boost, or absolute/gauge values.
-  A pinned [vendor reference](https://github.com/OBDb/SAEJ1979/blob/1abdef6ae0c1b9134c8f2a10911a9daa1354649d/signalsets/v3/default.json)
-  describes PID 6D rail-pressure pairs relative to atmosphere. Independent
-  [preOBD tests](https://github.com/preobd/preOBD/blob/45b371e2fd0edf0001971c0768754c237de7b2ce/test/test_obd_encode/test_obd_encode.cpp)
-  corroborate PID 70's ten-byte payload, sensor-A support bit, absolute reading
-  position and 1/32-kPa scale. These are protocol references, not N57 evidence.
-  Do not adopt the simulator's fallback atmosphere as a missing vehicle reading
-  or silently expand NBG9/B4 when adding channels. Retain target-capture,
-  standalone EGS and licensed DDE-description requirements.
+- Next offline work: prepare a separately reviewable pressure evidence profile
+  while freezing #201's existing 16/19/22-read plans and v1/v2/v3 reports. Do not
+  infer that selecting any profile authorizes a physical run. Retain exact-target
+  capture, standalone EGS and licensed DDE-description requirements, plus the
+  remaining transmission/DPF/SCR investigation. ENET is still unavailable and
+  the owner instructed this effort to continue offline.
 - Pull requests opened by this effort: [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201)
   (draft; discovery/reporting and validation plan) and
   [#202](https://github.com/inotbarnacle/iDriveDeck/pull/202)
-  (draft; capability-gated telemetry, supported defaults, pressure saturation and standard EGT/EGR), and
+  (draft; capability-gated telemetry, supported defaults, pressure saturation and standard EGT/EGR/pressure), and
   [#203](https://github.com/inotbarnacle/iDriveDeck/pull/203)
   (draft; configurable ShiftDeck diesel profile, persistence and resources), and
   [#204](https://github.com/inotbarnacle/iDriveDeck/pull/204)
@@ -543,7 +561,7 @@ sensor's accuracy or an ECU-family-specific mapping.
 | RPM, coolant, intake air, MAP, barometric pressure | Standard PID decoders, capability gates and host/simulation tests in #202. | Exact DDE advertisements and independent measurements. |
 | Derived turbo boost | Standard MAP minus measured barometric pressure; saturated MAP is unavailable. | A verified higher-range source for full N57 boost monitoring. |
 | Rail pressure | Standard direct-injection rail gauge pressure, host-tested scaling; #205 changes display range only. | Exact DDE support and independent comparison. |
-| Requested versus actual boost and rail | No verified requested-value mapping implemented. Existing MAP/rail readings must not be labelled requested. | Credible ECU-scoped definitions, units and paired captures. |
+| Requested versus actual boost and rail | Optional PID 6D gauge rail / PID 70 absolute boost fields, with format/flag/unit provenance and host/simulation tests; no substitution for existing readings. | Exact DDE advertisement, per-field support, A/B identity and independently compared paired captures. No BMW-specific mapping claimed. |
 | Oil temperature | Advertised standard 5C only; unsupported reads skipped. No fixed BMW diesel source implemented. | Verify this DDE's support or a legitimate fixed source. Temporary F303 remains outside the default scope. |
 | Oil pressure | Existing gasoline reference source does not establish diesel support. | Verified diesel identifier, format, scale and meaning. |
 | MAF, calculated load, fuel rate, module voltage | Selectable standard channels with host/simulation coverage. Fuel rate is not a measured fuel-consumption total. | Exact DDE support and independently compared values; any consumption calculation needs a defined method and evidence. |

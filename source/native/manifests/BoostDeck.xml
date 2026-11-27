@@ -603,6 +603,54 @@
           <hmiAction id="4546" target="500" />
         </actions>
       </combinedAction>
+      <combinedAction id="3547">
+        <actions>
+          <raAction id="647" />
+          <hmiAction id="4547" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3548">
+        <actions>
+          <raAction id="648" />
+          <hmiAction id="4548" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3549">
+        <actions>
+          <raAction id="649" />
+          <hmiAction id="4549" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3550">
+        <actions>
+          <raAction id="650" />
+          <hmiAction id="4550" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3551">
+        <actions>
+          <raAction id="651" />
+          <hmiAction id="4551" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3552">
+        <actions>
+          <raAction id="652" />
+          <hmiAction id="4552" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3553">
+        <actions>
+          <raAction id="653" />
+          <hmiAction id="4553" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3554">
+        <actions>
+          <raAction id="654" />
+          <hmiAction id="4554" target="500" />
+        </actions>
+      </combinedAction>
       <hmiAction id="510" target="510" />
       <hmiAction id="511" target="511" />
       <hmiAction id="512" target="512" />
@@ -764,6 +812,14 @@
       <raBoolModel id="5344" />
       <raBoolModel id="5345" />
       <raBoolModel id="5346" />
+      <raBoolModel id="5347" />
+      <raBoolModel id="5348" />
+      <raBoolModel id="5349" />
+      <raBoolModel id="5350" />
+      <raBoolModel id="5351" />
+      <raBoolModel id="5352" />
+      <raBoolModel id="5353" />
+      <raBoolModel id="5354" />
       <raDataModel id="300" modelType="Richtext" />
       <raDataModel id="340" modelType="Richtext" />
       <raDataModel id="370" modelType="Richtext" />
@@ -1344,6 +1400,14 @@
           <radiobutton id="3544" action="3544" model="5344" text="EGR B requested duty/position" />
           <radiobutton id="3545" action="3545" model="5345" text="EGR B actual duty/position" />
           <radiobutton id="3546" action="3546" model="5346" text="EGR B error" />
+          <radiobutton id="3547" action="3547" model="5347" text="Rail A requested gauge pressure" />
+          <radiobutton id="3548" action="3548" model="5348" text="Rail A actual gauge pressure" />
+          <radiobutton id="3549" action="3549" model="5349" text="Rail B requested gauge pressure" />
+          <radiobutton id="3550" action="3550" model="5350" text="Rail B actual gauge pressure" />
+          <radiobutton id="3551" action="3551" model="5351" text="Boost A requested absolute pressure" />
+          <radiobutton id="3552" action="3552" model="5352" text="Boost A actual absolute pressure" />
+          <radiobutton id="3553" action="3553" model="5353" text="Boost B requested absolute pressure" />
+          <radiobutton id="3554" action="3554" model="5354" text="Boost B actual absolute pressure" />
         </components>
       </hmiState>
       <hmiState id="511" parentId="500" text="Gauge 2">
@@ -1395,6 +1459,14 @@
           <radiobutton id="3584" action="3544" model="5344" text="EGR B requested duty/position" />
           <radiobutton id="3585" action="3545" model="5345" text="EGR B actual duty/position" />
           <radiobutton id="3586" action="3546" model="5346" text="EGR B error" />
+          <radiobutton id="3587" action="3547" model="5347" text="Rail A requested gauge pressure" />
+          <radiobutton id="3588" action="3548" model="5348" text="Rail A actual gauge pressure" />
+          <radiobutton id="3589" action="3549" model="5349" text="Rail B requested gauge pressure" />
+          <radiobutton id="3590" action="3550" model="5350" text="Rail B actual gauge pressure" />
+          <radiobutton id="3591" action="3551" model="5351" text="Boost A requested absolute pressure" />
+          <radiobutton id="3592" action="3552" model="5352" text="Boost A actual absolute pressure" />
+          <radiobutton id="3593" action="3553" model="5353" text="Boost B requested absolute pressure" />
+          <radiobutton id="3594" action="3554" model="5354" text="Boost B actual absolute pressure" />
         </components>
       </hmiState>
       <hmiState id="512" parentId="500" text="Gauge 3">
@@ -1446,6 +1518,14 @@
           <radiobutton id="3624" action="3544" model="5344" text="EGR B requested duty/position" />
           <radiobutton id="3625" action="3545" model="5345" text="EGR B actual duty/position" />
           <radiobutton id="3626" action="3546" model="5346" text="EGR B error" />
+          <radiobutton id="3627" action="3547" model="5347" text="Rail A requested gauge pressure" />
+          <radiobutton id="3628" action="3548" model="5348" text="Rail A actual gauge pressure" />
+          <radiobutton id="3629" action="3549" model="5349" text="Rail B requested gauge pressure" />
+          <radiobutton id="3630" action="3550" model="5350" text="Rail B actual gauge pressure" />
+          <radiobutton id="3631" action="3551" model="5351" text="Boost A requested absolute pressure" />
+          <radiobutton id="3632" action="3552" model="5352" text="Boost A actual absolute pressure" />
+          <radiobutton id="3633" action="3553" model="5353" text="Boost B requested absolute pressure" />
+          <radiobutton id="3634" action="3554" model="5354" text="Boost B actual absolute pressure" />
         </components>
       </hmiState>
       <hmiState id="513" parentId="500" text="Gauge 4">
@@ -1497,6 +1577,14 @@
           <radiobutton id="3664" action="3544" model="5344" text="EGR B requested duty/position" />
           <radiobutton id="3665" action="3545" model="5345" text="EGR B actual duty/position" />
           <radiobutton id="3666" action="3546" model="5346" text="EGR B error" />
+          <radiobutton id="3667" action="3547" model="5347" text="Rail A requested gauge pressure" />
+          <radiobutton id="3668" action="3548" model="5348" text="Rail A actual gauge pressure" />
+          <radiobutton id="3669" action="3549" model="5349" text="Rail B requested gauge pressure" />
+          <radiobutton id="3670" action="3550" model="5350" text="Rail B actual gauge pressure" />
+          <radiobutton id="3671" action="3551" model="5351" text="Boost A requested absolute pressure" />
+          <radiobutton id="3672" action="3552" model="5352" text="Boost A actual absolute pressure" />
+          <radiobutton id="3673" action="3553" model="5353" text="Boost B requested absolute pressure" />
+          <radiobutton id="3674" action="3554" model="5354" text="Boost B actual absolute pressure" />
         </components>
       </hmiState>
       <hmiState id="514" parentId="500" text="Gauge 5">
@@ -1548,6 +1636,14 @@
           <radiobutton id="3704" action="3544" model="5344" text="EGR B requested duty/position" />
           <radiobutton id="3705" action="3545" model="5345" text="EGR B actual duty/position" />
           <radiobutton id="3706" action="3546" model="5346" text="EGR B error" />
+          <radiobutton id="3707" action="3547" model="5347" text="Rail A requested gauge pressure" />
+          <radiobutton id="3708" action="3548" model="5348" text="Rail A actual gauge pressure" />
+          <radiobutton id="3709" action="3549" model="5349" text="Rail B requested gauge pressure" />
+          <radiobutton id="3710" action="3550" model="5350" text="Rail B actual gauge pressure" />
+          <radiobutton id="3711" action="3551" model="5351" text="Boost A requested absolute pressure" />
+          <radiobutton id="3712" action="3552" model="5352" text="Boost A actual absolute pressure" />
+          <radiobutton id="3713" action="3553" model="5353" text="Boost B requested absolute pressure" />
+          <radiobutton id="3714" action="3554" model="5354" text="Boost B actual absolute pressure" />
         </components>
       </hmiState>
       <hmiState id="515" parentId="500" text="Gauge 6">
@@ -1599,6 +1695,14 @@
           <radiobutton id="3744" action="3544" model="5344" text="EGR B requested duty/position" />
           <radiobutton id="3745" action="3545" model="5345" text="EGR B actual duty/position" />
           <radiobutton id="3746" action="3546" model="5346" text="EGR B error" />
+          <radiobutton id="3747" action="3547" model="5347" text="Rail A requested gauge pressure" />
+          <radiobutton id="3748" action="3548" model="5348" text="Rail A actual gauge pressure" />
+          <radiobutton id="3749" action="3549" model="5349" text="Rail B requested gauge pressure" />
+          <radiobutton id="3750" action="3550" model="5350" text="Rail B actual gauge pressure" />
+          <radiobutton id="3751" action="3551" model="5351" text="Boost A requested absolute pressure" />
+          <radiobutton id="3752" action="3552" model="5352" text="Boost A actual absolute pressure" />
+          <radiobutton id="3753" action="3553" model="5353" text="Boost B requested absolute pressure" />
+          <radiobutton id="3754" action="3554" model="5354" text="Boost B actual absolute pressure" />
         </components>
       </hmiState>
       <hmiState id="516" parentId="500" text="Gauge 7">
@@ -1650,6 +1754,14 @@
           <radiobutton id="3784" action="3544" model="5344" text="EGR B requested duty/position" />
           <radiobutton id="3785" action="3545" model="5345" text="EGR B actual duty/position" />
           <radiobutton id="3786" action="3546" model="5346" text="EGR B error" />
+          <radiobutton id="3787" action="3547" model="5347" text="Rail A requested gauge pressure" />
+          <radiobutton id="3788" action="3548" model="5348" text="Rail A actual gauge pressure" />
+          <radiobutton id="3789" action="3549" model="5349" text="Rail B requested gauge pressure" />
+          <radiobutton id="3790" action="3550" model="5350" text="Rail B actual gauge pressure" />
+          <radiobutton id="3791" action="3551" model="5351" text="Boost A requested absolute pressure" />
+          <radiobutton id="3792" action="3552" model="5352" text="Boost A actual absolute pressure" />
+          <radiobutton id="3793" action="3553" model="5353" text="Boost B requested absolute pressure" />
+          <radiobutton id="3794" action="3554" model="5354" text="Boost B actual absolute pressure" />
         </components>
       </hmiState>
       <hmiState id="517" parentId="500" text="Gauge 8">
@@ -1701,6 +1813,14 @@
           <radiobutton id="3824" action="3544" model="5344" text="EGR B requested duty/position" />
           <radiobutton id="3825" action="3545" model="5345" text="EGR B actual duty/position" />
           <radiobutton id="3826" action="3546" model="5346" text="EGR B error" />
+          <radiobutton id="3827" action="3547" model="5347" text="Rail A requested gauge pressure" />
+          <radiobutton id="3828" action="3548" model="5348" text="Rail A actual gauge pressure" />
+          <radiobutton id="3829" action="3549" model="5349" text="Rail B requested gauge pressure" />
+          <radiobutton id="3830" action="3550" model="5350" text="Rail B actual gauge pressure" />
+          <radiobutton id="3831" action="3551" model="5351" text="Boost A requested absolute pressure" />
+          <radiobutton id="3832" action="3552" model="5352" text="Boost A actual absolute pressure" />
+          <radiobutton id="3833" action="3553" model="5353" text="Boost B requested absolute pressure" />
+          <radiobutton id="3834" action="3554" model="5354" text="Boost B actual absolute pressure" />
         </components>
       </hmiState>
       <hmiState id="518" parentId="500" text="Gauge 9">
@@ -1752,6 +1872,14 @@
           <radiobutton id="3864" action="3544" model="5344" text="EGR B requested duty/position" />
           <radiobutton id="3865" action="3545" model="5345" text="EGR B actual duty/position" />
           <radiobutton id="3866" action="3546" model="5346" text="EGR B error" />
+          <radiobutton id="3867" action="3547" model="5347" text="Rail A requested gauge pressure" />
+          <radiobutton id="3868" action="3548" model="5348" text="Rail A actual gauge pressure" />
+          <radiobutton id="3869" action="3549" model="5349" text="Rail B requested gauge pressure" />
+          <radiobutton id="3870" action="3550" model="5350" text="Rail B actual gauge pressure" />
+          <radiobutton id="3871" action="3551" model="5351" text="Boost A requested absolute pressure" />
+          <radiobutton id="3872" action="3552" model="5352" text="Boost A actual absolute pressure" />
+          <radiobutton id="3873" action="3553" model="5353" text="Boost B requested absolute pressure" />
+          <radiobutton id="3874" action="3554" model="5354" text="Boost B actual absolute pressure" />
         </components>
       </hmiState>
     </hmiStates>

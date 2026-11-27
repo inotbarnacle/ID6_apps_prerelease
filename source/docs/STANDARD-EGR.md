@@ -71,7 +71,8 @@ valid EGR keeps the exact prior NBG7 or NBG8 encoding; a synthetic old-core
 fixture verifies EGT byte compatibility. NBG8 retains 39 fields, its 1024-byte
 bound and mandatory final newline. NBG7 and earlier formats retain their bounds.
 Valid EGR uses NBG9 with 47 fields, a mandatory final newline and a 1280-byte
-bound. The bounded UI receive buffer is 1440 bytes; it still drains at most
+bound. The bounded UI receive buffer is 1696 bytes to also accommodate optional
+[pressure](STANDARD-PRESSURE.md) frames; it still drains at most
 eight packets per tick. New EGR ranges are validated before display.
 
 B1/B2 retain IDs 0–30 and B3 retains IDs 0–38. Layouts containing EGR use B4;

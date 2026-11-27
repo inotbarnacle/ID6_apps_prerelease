@@ -52,4 +52,4 @@ jobs:
           make -C source/native build/test-core build/test-obd-capabilities CC=clang CFLAGS='-O1 -g -std=c99 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer'
           source/native/build/test-core
           source/native/build/test-obd-capabilities
-          make -C source/native test-egr test-egt test-boost-defaults CC=clang CXX=clang++ CFLAGS='-O1 -g -std=c99 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer' CXXFLAGS='-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'
+          make -C source/native test-pressure test-egr test-egt test-boost-defaults CC=clang CXX=clang++ CFLAGS='-O1 -g -std=c99 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer' CXXFLAGS='-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'

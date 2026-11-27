@@ -68,7 +68,7 @@ class BoostDefaultsResources(unittest.TestCase):
             match = re.match(r'SIGNAL\((\w+), "([^"]+)"', line)
             if match:
                 names.append(match.groups())
-        self.assertEqual(len(names), 47)
+        self.assertEqual(len(names), 55)
         self.assertEqual(names[30][0], "THROTTLE_TARGET")
         for index in range(31, 39):
             bank, sensor = divmod(index - 31, 4)
@@ -86,6 +86,18 @@ class BoostDefaultsResources(unittest.TestCase):
                     "EGR A requested duty/position", "EGR A actual duty/position", "EGR A error",
                     "EGR B requested duty/position", "EGR B actual duty/position", "EGR B error"]
         for index, name in enumerate(expected, 39):
+            action = self.current.find(f".//combinedAction[@id='{3500+index}']/actions/raAction")
+            self.assertEqual(action.get("id"), str(600+index))
+            for slot in range(9):
+                radio = self.current.find(f".//hmiState[@id='{510+slot}']/components/radiobutton[@model='{5300+index}']")
+                self.assertEqual(radio.get("text"), name)
+                self.assertEqual(radio.get("action"), str(3500+index))
+
+    def test_pressure_choices_keep_requested_actual_and_reference_distinct(self):
+        expected = [f"{source} {side} {kind} {reference} pressure"
+                    for source, reference in (("Rail", "gauge"), ("Boost", "absolute"))
+                    for side in ("A", "B") for kind in ("requested", "actual")]
+        for index, name in enumerate(expected, 47):
             action = self.current.find(f".//combinedAction[@id='{3500+index}']/actions/raAction")
             self.assertEqual(action.get("id"), str(600+index))
             for slot in range(9):

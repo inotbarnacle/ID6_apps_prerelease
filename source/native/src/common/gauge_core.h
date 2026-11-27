@@ -14,13 +14,14 @@ enum {
 typedef uint64_t bd_mask;
 #define BD_BIT(signal) (UINT64_C(1) << (signal))
 #define BD_ALL_MASK (BD_BIT(BD_COUNT)-1)
-enum { BD_LEGACY_COUNT=31, BD_WIRE8_COUNT=39, BD_WIRE9_COUNT=47,
-       BD_LEGACY_PACKET=768, BD_WIRE8_PACKET=1024 };
+enum { BD_LEGACY_COUNT=31, BD_WIRE8_COUNT=39, BD_WIRE9_COUNT=47, BD_WIRE10_COUNT=55,
+       BD_LEGACY_PACKET=768, BD_WIRE8_PACKET=1024, BD_WIRE9_PACKET=1280 };
 #define BD_LEGACY_MASK (BD_BIT(BD_LEGACY_COUNT)-1)
 #define BD_WIRE8_MASK (BD_BIT(BD_WIRE8_COUNT)-1)
-typedef char bd_channels_fit_mask[BD_COUNT < 64 && (int)BD_COUNT == BD_WIRE9_COUNT ? 1 : -1];
+#define BD_WIRE9_MASK (BD_BIT(BD_WIRE9_COUNT)-1)
+typedef char bd_channels_fit_mask[BD_COUNT < 64 && (int)BD_COUNT == BD_WIRE10_COUNT ? 1 : -1];
 const char *bd_name(unsigned i);
-enum { BD_MAX_PACKET = 1280, BD_STALE_MS = 2500, BD_TEMP_STALE_MS = 3500,
+enum { BD_MAX_PACKET = 1536, BD_STALE_MS = 2500, BD_TEMP_STALE_MS = 3500,
        BD_UDP_PORT = 42860 };
 typedef struct {
     uint32_t seq;

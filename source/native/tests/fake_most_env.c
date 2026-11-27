@@ -53,7 +53,7 @@ int most_fake_bind(void)
     if (strcmp(mode, "up") && strcmp(mode, "drop") && strcmp(mode, "mhd-refuse") &&
         strcmp(mode, "codes-512") && strcmp(mode, "codes-513") &&
         strcmp(mode, "bm3-unknown") && strcmp(mode, "gauge-mismatch") && strcmp(mode,"egt-up") &&
-        strcmp(mode,"egr-up")) return -1;
+        strcmp(mode,"egr-up") && strcmp(mode,"pressure-up")) return -1;
     fake_dme_start(FAKE_UP);
     if (delay && atoi(delay) > 0 && atoi(delay) <= 2000) fake_dme_hold_ms(atoi(delay));
     if (!strcmp(mode, "drop")) fake_dme_drop_link_after(5);
@@ -114,6 +114,15 @@ int most_fake_bind(void)
         fake_dme_raw("0140",third,sizeof third); fake_dme_raw("0160",fourth,sizeof fourth);
         fake_dme_raw("012C",command,sizeof command); fake_dme_raw("012D",error,sizeof error);
         fake_dme_raw("0169",grouped,sizeof grouped);
+    }
+    if (!strcmp(mode,"pressure-up")) {
+        static const uint8_t first[]={0x41,0,0,0,0,1}, second[]={0x41,0x20,0,0,0,1};
+        static const uint8_t third[]={0x41,0x40,0,0,0,1}, fourth[]={0x41,0x60,0,9,0,0};
+        static const uint8_t rail[]={0x41,0x6d,0x12,0,0,0x27,0x10,0xff,0,0,0,0,0xff};
+        static const uint8_t boost[]={0x41,0x70,0x12,0,0,0x19,0,0,0,0,0,0xff};
+        fake_dme_raw("0100",first,sizeof first); fake_dme_raw("0120",second,sizeof second);
+        fake_dme_raw("0140",third,sizeof third); fake_dme_raw("0160",fourth,sizeof fourth);
+        fake_dme_raw("016D",rail,sizeof rail); fake_dme_raw("0170",boost,sizeof boost);
     }
     return 0;
 }

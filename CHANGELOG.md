@@ -2,6 +2,7 @@
 
 ## Unreleased source changes
 
+- BoostDeck adds optional PID 6D rail gauge and PID 70 absolute boost requested/actual A/B gauges, gated by PID and per-field support. Existing sources/defaults and NBG9/B4 contracts stay unchanged; pressure IDs use NBG10/B5. This is host-tested source, with exact N57/QNX validation pending.
 - BoostDeck adds optional read-only EGR request/error and A/B request/actual/error gauges. PID and per-field support gates, grouped polling and explicit labels keep error separate from actual duty/position. Automatic diesel defaults are unchanged.
 - Existing EGT packets and B3 channel bounds are preserved. EGR uses appended IDs, NBG9 and B4 assignments; older binaries need their backed-up settings restored on rollback.
 - BoostDeck adds standard EGT bank/sensor gauges with PID and sensor-support gating, independent freshness and bounded polling. Detected defaults choose at most one EGT. No exhaust-location or regeneration inference is added.

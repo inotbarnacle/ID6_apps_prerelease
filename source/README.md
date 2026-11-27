@@ -13,3 +13,8 @@ channel IDs and ordinary packets. Exact N57 support still needs vehicle evidence
 reported actual duty/position and error. They use explicit advertised and
 per-field support, retain existing defaults, and do not infer actual values
 from error or issue EGR control commands.
+
+[Optional standard pressure gauges](docs/STANDARD-PRESSURE.md) keep requested and
+actual A/B values separate, distinguish rail gauge from absolute boost pressure,
+and require advertised PID and per-field support. Existing sources and detected
+defaults remain unchanged; exact vehicle and QNX validation remain pending.

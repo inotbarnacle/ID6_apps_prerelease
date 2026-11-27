@@ -63,8 +63,8 @@ rejected. Older `NBG2`–`NBG7` parsing and bounds remain intact.
 
 Automatic reports retain `NBC1` for legacy capability masks and use `NBC2` for
 extended evidence. The same token, PID, matching timestamp, freshness and
-immutable capability checks apply. The shared receive buffer is bounded at 1440 bytes
-to accommodate optional [EGR](STANDARD-EGR.md) frames; NBG8 retains its 1024-byte bound.
+immutable capability checks apply. The shared receive buffer is bounded at 1696 bytes
+to accommodate optional [pressure](STANDARD-PRESSURE.md) frames; NBG8 retains its 1024-byte bound.
 The UI drains at most eight datagrams per tick. The matching collector, plugin
 and manifests must be built and deployed together. This source contribution
 does not update the packaged QNX binaries.

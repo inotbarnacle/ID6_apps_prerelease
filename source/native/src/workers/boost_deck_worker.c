@@ -6,6 +6,7 @@
 #include "obd_capabilities.h"
 #include "boost_defaults.h"
 #include "obd_egr.h"
+#include "obd_pressure.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <math.h>
@@ -167,6 +168,24 @@ static int read_egr(struct diag_link *link, struct obd_egr_sample *sample) {
     return decoded;
 }
 
+static int read_pressure(struct diag_link *link, unsigned pid, struct obd_pressure_sample *sample) {
+    const unsigned char request[]={1,(unsigned char)pid}, prefix[]={0x41,(unsigned char)pid};
+    unsigned char reply[16];
+    unsigned negative;
+    const int n=diag_link_request(link,0x12,request,2,prefix,2,reply,sizeof reply,500,&negative);
+    if (n==-2) { fprintf(stderr,"ECU 12 PID %02X NRC %02X\n",pid,negative); return 0; }
+    if (n==-3) return -3;
+    if (n<0) return -1;
+    const int decoded=n>=2 && obd_pressure_decode(pid,reply+2,(size_t)n-2,sample);
+    if (trace_reads) {
+        fprintf(stderr,"RAW mono_ms=%llu ecu=12 pid=%02X payload=",(unsigned long long)bd_mono_ms(),pid);
+        for (int i=2;i<n;++i) fprintf(stderr,"%02X",reply[i]);
+        if (decoded) fprintf(stderr," present=%X\n",sample->present);
+        else fputs(" unavailable reason=invalid-layout\n",stderr);
+    }
+    return decoded;
+}
+
 static int send_frame(int sock, struct sockaddr_in *dest, bd_frame *f, uint64_t *observed,
                       uint64_t auto_token, const struct obd_capabilities *caps, int trans_observed,
                       const struct obd_egt_evidence *egt) {
@@ -222,6 +241,7 @@ int main(int argc, char **argv) {
     struct obd_egt_evidence egt = {0,{0}};
     uint64_t egt_due[OBD_EGT_BANKS]={0}, egt_failed_until[OBD_EGT_BANKS]={0};
     uint64_t egr_due=0, egr_failed_until=0;
+    uint64_t pressure_due[OBD_PRESSURE_GROUPS]={0}, pressure_failed_until[OBD_PRESSURE_GROUPS]={0};
     uint64_t auto_token=0;
     int trans_observed=0, explicit_signals=0;
     uint64_t next_hud=0;
@@ -317,6 +337,8 @@ int main(int argc, char **argv) {
                 f.value[sensor]=400+10*(sensor-BD_EGT_B1S1)+20*sin(t);
             for (unsigned signal=BD_EGR_REQUEST;signal<=BD_EGR_B_ERROR;++signal)
                 f.value[signal]=signal==BD_EGR_ERROR || signal==BD_EGR_A_ERROR || signal==BD_EGR_B_ERROR ? -12.5 : 40;
+            for (unsigned signal=BD_RAIL_A_REQUEST;signal<=BD_BOOST_B_ACTUAL;++signal)
+                f.value[signal]=signal<=BD_RAIL_B_ACTUAL ? 1200 : 200;
             f.valid=BD_LEGACY_MASK | (selected & ~BD_LEGACY_MASK);
             for (i=0;i<BD_COUNT;++i) observed[i]=bd_mono_ms();
         } else {
@@ -524,6 +546,43 @@ int main(int argc, char **argv) {
                             }
                         }
                     }
+                }
+            }
+            /* Separate pressure groups preserve requested/actual and reference
+             * meanings. Neither replaces MAP, derived boost or legacy rail. */
+            for (unsigned group=0;up && diag_running && group<OBD_PRESSURE_GROUPS;++group) {
+                const unsigned pid=group==0 ? 0x6d : 0x70;
+                const unsigned first=BD_RAIL_A_REQUEST+group*OBD_PRESSURE_FIELDS;
+                const bd_mask group_mask=(BD_BIT(OBD_PRESSURE_FIELDS)-1)<<first;
+                const uint64_t now=bd_mono_ms();
+                if (!(selected & group_mask) || now<pressure_due[group] || now<pressure_failed_until[group]) continue;
+                if (diag_link_lost(&link) || (!diag_link_on_most(&link) && link.fd<0)) break;
+                pressure_due[group]=now+2000;
+                int rc=obd_pid_advertised(&capabilities,&link,pid);
+                if (rc==OBD_CAPABILITY_PENDING) { pressure_due[group]=bd_mono_ms()+100; continue; }
+                struct obd_pressure_sample sample;
+                if (rc==1) {
+                    pressure_due[group]=bd_mono_ms()+2000;
+                    rc=read_pressure(&link,pid,&sample);
+                }
+                if (rc==-3) { pressure_failed_until[group]=bd_mono_ms()+OBD_PRESSURE_RETRY_MS; continue; }
+                f.valid &= ~group_mask;
+                if (rc<0) {
+                    diag_link_drop(&link);
+                    if (diag_link_lost(&link)) { most_lost=1; diag_running=0; }
+                    else if (session) pressure_failed_until[group]=bd_mono_ms()+OBD_PRESSURE_RETRY_MS;
+                    else { f.valid=0; have_ambient=0; }
+                    break;
+                }
+                if (!rc) { pressure_failed_until[group]=bd_mono_ms()+OBD_PRESSURE_RETRY_MS; continue; }
+                for (unsigned field=0;field<OBD_PRESSURE_FIELDS;++field) {
+                    const unsigned signal=first+field;
+                    if (!(selected & BD_BIT(signal)) || !(sample.present & (1u<<field))) continue;
+                    f.value[signal]=sample.value[field]; observed[signal]=bd_mono_ms();
+                    f.valid |= BD_BIT(signal);
+                }
+                if (diag_link_on_most(&link) && !send_frame(sock,&dest,&f,observed,auto_token,&capabilities,trans_observed,&egt)) {
+                    perror("send frame"); diag_running=0;
                 }
             }
             // Supply RPM over the existing HSFZ connection only while HUD needs it.
