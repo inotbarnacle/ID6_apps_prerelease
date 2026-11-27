@@ -18,6 +18,7 @@ struct diag_link {
     unsigned hsfz_fails;              /* failed HSFZ connects in a row */
     uint64_t retry_at, lease_until, most_retry_at;
     uint64_t most_yield_until;        /* a loop worker on MOST waits until then before its next request */
+    unsigned hsfz_timeouts;           /* HSFZ replies missed in a row on a loop link */
 };
 
 extern volatile sig_atomic_t diag_running;          /* cleared by SIGINT and SIGTERM */
@@ -28,7 +29,8 @@ void diag_link_signals(void);
 /* 1 when usable (HSFZ connected or MOST up), 0 not yet. Connects, retries and switches to MOST. */
 int  diag_link_up(struct diag_link *);
 /* The UDS reply length; -1 link lost; -2 negative reply, *negative holding its code; -3 this request failed
-   but the link is kept (MOST only). */
+   but the link is kept (MOST, or a missed HSFZ reply on a loop link: the connection is dropped only after
+   DIAG_HSFZ_TIMEOUTS_TO_DROP misses in a row). */
 int  diag_link_request(struct diag_link *, unsigned ecu, const unsigned char *uds, unsigned n,
                        const unsigned char *prefix, unsigned pn, unsigned char *reply, unsigned cap,
                        unsigned timeout_ms, unsigned *negative);
@@ -48,5 +50,14 @@ int  diag_hsfz_exchange(int fd, unsigned ecu, const unsigned char *uds, unsigned
                         unsigned timeout_ms, unsigned *negative);
 /* One-shot: hold the lease for the run, retrying up to 2000 ms. 0 when not held, errno from the last try. */
 int  diag_link_reserve_oneshot(struct diag_link *);
+
+/* Another tester on the OBD-II port (a dongle, ISTA) makes the gateway answer 7F xx 21 busyRepeatRequest
+   (issues #88, #130). Polling harder only adds to the contention, so loop workers back off: 250 ms,
+   doubling to 4 s, reset by the next positive reply. 7F xx 25 noResponseFromSubnetComponent means the
+   target stayed silent, so it counts as an ordinary failed read of that signal. */
+enum { DIAG_HSFZ_TIMEOUTS_TO_DROP = 3, DIAG_BUSY_MIN_MS = 250, DIAG_BUSY_MAX_MS = 4000 };
+int  diag_nrc_busy(unsigned negative);
+/* Start or double the back-off; *until is when the next request may go out. Returns the delay. */
+unsigned diag_busy_backoff(uint64_t *until, unsigned *backoff);
 
 #endif

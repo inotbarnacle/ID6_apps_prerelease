@@ -25,13 +25,15 @@ static unsigned number(const char *s, unsigned lo, unsigned hi) {
 
 #include "drive_frame.h"
 
-/* The raw PID value, -1 when the ECU refused it. Returns 0 read, -1 link lost, -3 skip this frame. */
+/* The raw PID value, -1 when the ECU refused it. Returns 0 read, -1 link lost, -3 skip this frame,
+ * -4 the gateway is busy with another tester (back off; the last frame stays until it ages out). */
 static int read_live_pid(struct diag_link *link, unsigned char pid, int width, int *value) {
     unsigned char req[]={0x01,pid}, prefix[]={0x41,pid}, reply[4];
     unsigned negative;
     int n=diag_link_request(link,0x12,req,sizeof req,prefix,sizeof prefix,reply,sizeof reply,250,&negative);
     *value=-1;
     if (n==-1 || n==-3) return n;
+    if (n==-2 && diag_nrc_busy(negative)) return -4;
     if (n==width+2) *value=width==1 ? reply[2] : ((unsigned)reply[2]*256+reply[3])/4;
     return 0;
 }
@@ -43,7 +45,8 @@ int main(int argc, char **argv) {
     pid_t parent=getppid();
     struct sockaddr_in dest;
     int sock, active, i, lost, speed_only=0;
-    uint64_t speed_due=0;
+    uint64_t speed_due=0, busy_until=0;
+    unsigned busy_backoff=0;
     int last_speed=-1;
     for (i=1;i<argc;++i) {
         if (!strcmp(argv[i],"--host") && i+1<argc && !cfg.host) cfg.host=argv[++i];
@@ -75,7 +78,7 @@ int main(int argc, char **argv) {
         int rpm=-1,kph=-1,rc;
         uint64_t start=bd_mono_ms(), elapsed;
         int up=diag_link_up(&link);
-        if (up) {
+        if (up && start>=busy_until) {
             if (speed_only) {
                 rc=read_live_pid(&link,0x0d,1,&kph);
             } else {
@@ -87,7 +90,9 @@ int main(int argc, char **argv) {
                 kph=last_speed;
             }
             if (rc==-1) diag_link_drop(&link);
+            else if (rc==-4) (void)diag_busy_backoff(&busy_until,&busy_backoff);
             else if (!rc) {
+                if (rpm >= 0 || kph >= 0) busy_backoff=0;
                 f.sampled_ms=bd_mono_ms();
                 f.rpm=rpm;
                 f.kph=kph;
