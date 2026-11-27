@@ -1,10 +1,12 @@
 """Synthetic standard EGT replies through production workers; no vehicle captures."""
 from pathlib import Path
+from contextlib import contextmanager
 import os
 import socket
 import subprocess
 import time
 import unittest
+from unittest.mock import patch
 
 import test_diesel_capabilities as capabilities
 
@@ -46,12 +48,27 @@ def decode(packet):
     return fields[0], int(fields[3]), [float(value) for value in fields[5::2]], report
 
 
+@contextmanager
+def telemetry_receiver():
+    # A receiver on HUD port 42870 makes the worker publish binary HUD samples
+    # to it. Ephemeral test ports must avoid all project IPC ports, including
+    # the diagnostic lease and activity markers (42860..42879).
+    for _ in range(16):
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:
+            udp.bind(("127.0.0.1", 0))
+            if 42860 <= udp.getsockname()[1] <= 42879:
+                continue
+            udp.settimeout(.05)
+            yield udp
+            return
+    raise RuntimeError("could not allocate telemetry receiver outside project IPC ports")
+
+
 class EgtTransportTest(unittest.TestCase):
     def run_worker(self, replies, selected=ALL_EGT, *, diesel=True, automatic=False, cycles=80, most=False, most_mode="egt-up"):
         env = dict(os.environ)
         env.pop("ID6_FAKE_MOST", None)
-        with capabilities.ecu_server(replies, idle_timeout=8) as (port, requests), socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:
-            udp.bind(("127.0.0.1", 0)); udp.settimeout(.05)
+        with capabilities.ecu_server(replies, idle_timeout=8) as (port, requests), telemetry_receiver() as udp:
             args = [BUILD / "boost-deck", "--cycles", str(cycles), "--udp-port", str(udp.getsockname()[1])]
             args += ["--auto-diesel", "1234"] if automatic else ["--signals", str(selected)]
             if diesel: args.append("--diesel")
@@ -76,6 +93,25 @@ class EgtTransportTest(unittest.TestCase):
                 if process.poll() is None: process.kill(); process.communicate()
             self.assertTrue(packets)
         return packets, requests, error.decode()
+
+    def test_receiver_avoids_hud_lease_and_activity_ports(self):
+        original_socket = socket.socket
+        forced = [42870, 42861, 42871]
+        assignments, receivers = [], []
+        class FirstPortsSocket(original_socket):
+            def bind(self, address):
+                if self.type == socket.SOCK_DGRAM and address[1] == 0:
+                    super().bind((address[0], forced.pop(0) if forced else 0))
+                    assignments.append(self.getsockname()[1])
+                    receivers.append(self)
+                else:
+                    super().bind(address)
+        with patch.object(socket, "socket", FirstPortsSocket):
+            packets, _, _ = self.run_worker(responses((0x20, 0x40, 0x60)), cycles=12)
+        self.assertEqual(assignments[:3], [42870, 42861, 42871])
+        self.assertGreaterEqual(len(assignments), 4)
+        self.assertTrue(all(receiver.fileno() == -1 for receiver in receivers))
+        self.assertTrue(all(packet[0] == "NBG7" and packet[1] == 0 for packet in packets))
 
     def test_two_banks_share_reads_and_preserve_high_sensor_bits(self):
         source = responses()
