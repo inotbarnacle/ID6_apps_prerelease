@@ -1,4 +1,5 @@
 #include "dpf_core.h"
+#include "fixtures/dpf_v1_frame.h"
 #include <assert.h>
 #include <limits.h>
 #include <locale.h>
@@ -39,7 +40,7 @@ static void decoding(void) {
         if (size!=1) { assert(!dpf_decode(0x05,p,size,&s));assert(!memcmp(&s,&before,sizeof s)); }
     }
     for (unsigned pid=0;pid<256;++pid)
-        if (pid!=5 && pid!=0x7a && pid!=0x7b && pid!=0x7c) assert(!dpf_decode(pid,b1,sizeof b1,&s));
+        if (pid!=5 && pid!=0x7a && pid!=0x7b && pid!=0x7c && pid!=0x8b) assert(!dpf_decode(pid,b1,sizeof b1,&s));
     assert(!dpf_decode(0x7a,0,7,&s) && !dpf_decode(0x7a,b1,7,0));
 }
 
@@ -84,6 +85,7 @@ static struct dpf_frame sample(void) {
     for (unsigned i=0;i<DPF_COUNT;++i) { f.value[i]=i+.25;f.age_ms[i]=i*10; }
     f.value[DPF_B1_DELTA]=-.01;f.value[DPF_B2_DELTA]=-327.68;
     f.value[DPF_B1_INLET_TEMP]=0;
+    f.value[DPF_REGEN_PROGRESS]=f.value[DPF_REGEN_TYPE]=1;
     return f;
 }
 
@@ -124,12 +126,15 @@ static void packets(void) {
     replace_word(packet,1,"0");replace_word(packet,1,"4294967296");
     replace_word(packet,2,"0");replace_word(packet,2,"2147483648");
     replace_word(packet,3,"0");replace_word(packet,3,"18446744073709551616");
-    replace_word(packet,4,"0");replace_word(packet,5,"2048");
+    replace_word(packet,4,"0");replace_word(packet,5,"8192");
     replace_word(packet,5,"0");replace_word(packet,6,"0");
     replace_word(packet,8,"-327.69");replace_word(packet,8,"327.68");
     replace_word(packet,10,"-0.01");replace_word(packet,10,"655.36");
     replace_word(packet,20,"-40.01");replace_word(packet,20,"1800.01");
     replace_word(packet,28,"215.01");replace_word(packet,9,"1000000");
+    replace_word(packet,30,"0.5");replace_word(packet,30,"2");
+    replace_word(packet,32,"-1");replace_word(packet,32,"1.01");
+    replace_word(packet,0,"DPF1"); /* thirteen fields must not be relabeled as DPF1 */
     for (unsigned i=0;i<11;++i) {
         static const char *bad[]={"nan","inf","-inf","1e0","0x1p0","1.","+1","--1","1\t2","0.001","0,01"};
         replace_word(packet,8,bad[i]);
@@ -165,11 +170,56 @@ static void availability_and_units(void) {
     near(dpf_display_value(DPF_COOLANT,37,0),98.6);
     assert(!strcmp(dpf_unit(0,1),"mbar") && !strcmp(dpf_unit(0,0),"psi"));
     assert(!strcmp(dpf_unit(6,1),"C") && !strcmp(dpf_unit(10,0),"F"));
+    assert(!strcmp(dpf_unit(DPF_REGEN_PROGRESS,0),""));
+    near(dpf_display_value(DPF_REGEN_TYPE,1,0),1);
     assert(!strcmp(dpf_unit(DPF_COUNT,1),"") && isnan(dpf_display_value(DPF_COUNT,0,1)));
 }
 
+static void regeneration(void) {
+    struct dpf_sample decoded,before;
+    const unsigned mask=DPF_BIT(DPF_REGEN_PROGRESS)|DPF_BIT(DPF_REGEN_TYPE);
+    for (unsigned flags=0;flags<256;++flags)
+        for (unsigned status=0;status<256;++status) {
+            unsigned char data[]={flags,status,255,255,255,255,255};
+            memset(&decoded,0xa5,sizeof decoded);before=decoded;
+            const int valid=flags<128 && status<16;
+            assert(dpf_decode(0x8b,data,sizeof data,&decoded)==valid);
+            if (!valid) { assert(!memcmp(&decoded,&before,sizeof decoded));continue; }
+            assert(decoded.known==mask && decoded.supported==((flags&3)<<DPF_REGEN_PROGRESS));
+            assert(decoded.valid==decoded.supported);
+            for (unsigned i=0;i<2;++i)
+                assert(decoded.value[DPF_REGEN_PROGRESS+i]==((flags & (1u<<i)) ? (status>>i)&1 : 0));
+        }
+    memset(&decoded,0xa5,sizeof decoded);before=decoded;
+    for (unsigned size=0;size<10;++size) {
+        const unsigned char data[10]={3,3};
+        if (size==7) continue;
+        assert(!dpf_decode(0x8b,data,size,&decoded) && !memcmp(&decoded,&before,sizeof decoded));
+    }
+    struct dpf_frame frame=sample();
+    frame.age_ms[DPF_REGEN_PROGRESS]=DPF_STALE_MS-1;
+    frame.age_ms[DPF_REGEN_TYPE]=0;
+    assert(dpf_measurement_state(&frame,DPF_REGEN_PROGRESS,1)==DPF_STALE);
+    assert(dpf_measurement_state(&frame,DPF_REGEN_TYPE,1)==DPF_VALID);
+}
+
+static void frozen_v1(void) {
+    struct dpf_frame frame,again;
+    char packet[DPF_MAX_PACKET];
+    assert(dpf_parse(dpf_v1_frame,sizeof dpf_v1_frame-1,&frame));
+    assert(frame.seq==UINT32_MAX && frame.worker_pid==12345 && frame.token==UINT64_MAX && frame.sent_ms==123456789);
+    assert(frame.known==DPF_LEGACY_ALL && frame.supported==DPF_LEGACY_ALL && frame.valid==DPF_LEGACY_ALL);
+    const double expected[]={-327.68,0,655.35,327.67,.01,123.45,-40,0,1800,900,215};
+    for (unsigned i=0;i<DPF_LEGACY_COUNT;++i) { near(frame.value[i],expected[i]);assert(frame.age_ms[i]==17*i); }
+    assert(dpf_measurement_state(&frame,DPF_REGEN_PROGRESS,0)==DPF_UNKNOWN);
+    assert(dpf_measurement_state(&frame,DPF_REGEN_TYPE,0)==DPF_UNKNOWN);
+    replace_word(dpf_v1_frame,5,"2048");
+    assert(dpf_encode(&frame,packet,sizeof packet)>0 && !memcmp(packet,"DPF2 ",5));
+    assert(dpf_parse(packet,strlen(packet),&again) && again.valid==DPF_LEGACY_ALL);
+}
+
 int main(void) {
-    decoding();flags_and_domains();packets();availability_and_units();
+    decoding();flags_and_domains();packets();availability_and_units();regeneration();frozen_v1();
     {
         static const char *locales[]={"de_DE.UTF-8","cs_CZ.UTF-8","fr_FR.UTF-8"};
         unsigned checked=0;
@@ -182,6 +232,6 @@ int main(void) {
         assert(setlocale(LC_NUMERIC,"C"));
         printf("DPF non-dot numeric locales checked: %u\n",checked);
     }
-    puts("DPF: full raw domains, explicit flags, strict isolated DPF1 packets, independent freshness and units OK");
+    puts("DPF: raw domains, independent regeneration flags, frozen DPF1/strict DPF2, freshness and units OK");
     return 0;
 }

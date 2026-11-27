@@ -54,7 +54,7 @@ static void capture_models(const char *name) {
     char path[512];const int size=snprintf(path,sizeof path,"%s/%s.tsv",directory,name);
     assert(size>0 && static_cast<size_t>(size)<sizeof path);
     FILE *file=fopen(path,"wb");assert(file);
-    for (unsigned model=50;model<60;++model) fprintf(file,"%u\t%s\n",model,last(model).text.c_str());
+    for (unsigned model=50;model<62;++model) fprintf(file,"%u\t%s\n",model,last(model).text.c_str());
     assert(!ferror(file) && fclose(file)==0);
 }
 static void poll_app(DPFDeck &app) {
@@ -100,7 +100,8 @@ int main() {
         assert(app.onInit() && app.socket_>=0 && launches==0);
         assert(fcntl(app.socket_,F_GETFD)&FD_CLOEXEC);
         assert(last(50).text=="Unknown" && last(56).text=="Monitoring stopped");
-        assert(last(59).text.empty());
+        assert(last(59).text.empty() && !app.regen_);
+        assert(last(60).text=="Regeneration: Not shown" && last(61).text=="Regeneration status: hidden");
         shown(100,true);poll_app(app);
         assert(app.child_>0 && launches==1 && app.token_);
         assert(launched.size()==5 && launched[0]==dpfWorker && launched[1]=="--host" && launched[3]=="--token");
@@ -191,6 +192,62 @@ int main() {
         assert(app.socket_<0 && fake_posts.size()==posts && launches==2);
     }
 
+    // Changing the optional request set retains a retiring process until its
+    // exit is established. A stale generation cannot populate the new display.
+    fake_reset();
+    {
+        DPFDeck app(dispatcher,bmw::BasicString<char>("DPFDeck"),1,0,version,bundle,bundle,prefs);
+        assert(app.onInit() && !app.regen_);shown(100,true);poll_app(app);
+        const pid_t child=app.child_;
+        const uint64_t token=app.token_;
+        const unsigned before_launches=launches,before_terms=terms;
+        dpf_frame old=sample(app,1);send_frame(app,source,old);
+        forced_wait_error=ECHILD;forced_probe_error=EPERM;
+        action(440);
+        assert(app.regen_ && app.stopping_ && app.child_==child && terms==before_terms+1);
+        action(440);poll_app(app);send_frame(app,source,old);
+        assert(app.child_==child && launches==before_launches && terms==before_terms+1 && !app.frame_.sent_ms);
+        reap(app);++clock_ms;poll_app(app);
+        assert(app.child_>0 && app.token_!=token && launches==before_launches+1);
+        assert(launched.size()==6 && launched[5]=="--regen-status");
+        send_frame(app,source,old);assert(!app.frame_.sent_ms);
+        assert(last(60).text=="Regeneration: Unknown");
+        const pid_t enabled=app.child_;
+        const uint64_t enabled_token=app.token_;
+        shown(100,false);shown(101,true);action(421);action(431);poll_app(app);
+        assert(app.child_==enabled && app.token_==enabled_token && !app.stopping_ && app.regen_);
+        shown(101,false);shown(100,true);
+        action(420);action(430);
+        dpf_frame f=sample(app,1);
+        f.value[DPF_REGEN_TYPE]=1;send_frame(app,source,f);
+        assert(last(60).text=="Regeneration: Not in progress");
+        capture_models("regen-inactive");
+        f.seq++;f.value[DPF_REGEN_PROGRESS]=1;send_frame(app,source,f);
+        assert(last(60).text=="Regeneration: Active");capture_models("regen-active");
+        f.seq++;f.value[DPF_REGEN_TYPE]=0;send_frame(app,source,f);
+        assert(last(60).text=="Regeneration: Passive");capture_models("regen-passive");
+        f.seq++;f.valid&=~DPF_BIT(DPF_REGEN_TYPE);send_frame(app,source,f);
+        assert(last(60).text=="Regeneration: In progress");
+        f=sample(app,5);f.value[DPF_REGEN_PROGRESS]=1;f.age_ms[DPF_REGEN_TYPE]=DPF_STALE_MS;
+        send_frame(app,source,f);assert(last(60).text=="Regeneration: In progress");
+        f=sample(app,6);f.age_ms[DPF_REGEN_PROGRESS]=DPF_STALE_MS;send_frame(app,source,f);
+        assert(last(60).text=="Regeneration: Stale");capture_models("regen-stale");
+        f=sample(app,7);f.valid&=~DPF_BIT(DPF_REGEN_PROGRESS);send_frame(app,source,f);
+        assert(last(60).text=="Regeneration: Unavailable");
+        f=sample(app,8);f.valid&=~DPF_BIT(DPF_REGEN_PROGRESS);f.supported=f.valid;send_frame(app,source,f);
+        assert(last(60).text=="Regeneration: Unsupported");
+        f=sample(app,9);f.valid&=~DPF_BIT(DPF_REGEN_PROGRESS);f.supported=f.known=f.valid;send_frame(app,source,f);
+        assert(last(60).text=="Regeneration: Unknown"); // type alone cannot assert progress
+        app.preferences_=badprefs;action(441);
+        assert(app.regen_ && app.child_==enabled && !app.stopping_ && terms==before_terms+1);
+        app.preferences_=prefs;action(441);
+        assert(!app.regen_ && app.stopping_ && terms==before_terms+2);
+        reap(app);++clock_ms;poll_app(app);
+        assert(app.child_>0 && launched.size()==5 && app.token_!=enabled_token);
+        assert(last(60).text=="Regeneration: Not shown");
+        assert(app.onFinalize());reap(app);
+    }
+
     fake_reset();
     {
         DPFDeck gone(dispatcher,bmw::BasicString<char>("DPFDeck"),1,0,version,bundle,bundle,prefs);
@@ -213,6 +270,27 @@ int main() {
         DPFDeck invalid(dispatcher,bmw::BasicString<char>("DPFDeck"),1,0,version,bundle,bundle,prefs);
         assert(invalid.onInit() && invalid.bank_==0 && invalid.metric_ && invalid.onFinalize());
     }
+    const unsigned char bad_v2[][6]={{'D',2,2,1,0,0},{'D',2,1,2,0,0},{'D',2,1,1,2,0},
+                                    {'D',3,1,1,1,0},{'G',2,1,1,1,0},{'D',1,1,1,1,0}};
+    for (unsigned i=0;i<sizeof bad_v2/sizeof bad_v2[0];++i) {
+        assert(savePersistentBytes(prefs,bad_v2[i],5));fake_reset();
+        DPFDeck invalid(dispatcher,bmw::BasicString<char>("DPFDeck"),1,0,version,bundle,bundle,prefs);
+        assert(invalid.onInit() && invalid.bank_==0 && invalid.metric_ && !invalid.regen_ && invalid.onFinalize());
+    }
+    const unsigned char v2[]={'D',2,1,0,1,0};
+    for (unsigned length=4;length<=6;length+=2) {
+        assert(savePersistentBytes(prefs,v2,length));fake_reset();
+        DPFDeck invalid(dispatcher,bmw::BasicString<char>("DPFDeck"),1,0,version,bundle,bundle,prefs);
+        assert(invalid.onInit() && invalid.bank_==0 && invalid.metric_ && !invalid.regen_ && invalid.onFinalize());
+    }
+    for (unsigned record=1;record<=2;++record) {
+        const unsigned char bytes[]={'D',static_cast<unsigned char>(record),1,0,1};
+        assert(savePersistentBytes(prefs,bytes,record==1 ? 4 : 5));fake_reset();
+        DPFDeck restored(dispatcher,bmw::BasicString<char>("DPFDeck"),1,0,version,bundle,bundle,prefs);
+        assert(restored.onInit() && restored.bank_==1 && !restored.metric_ && restored.regen_==(record==2));
+        assert(restored.onFinalize());
+    }
+    unlink(prefs);
     fake_reset();
     {
         DPFDeck restored(dispatcher,bmw::BasicString<char>("DPFDeck"),1,0,version,bundle,bundle,prefs);

@@ -29,7 +29,7 @@ jobs:
           make -C source/native test
       - name: C++98 public header and QNX build script syntax
         run: |
-          printf '#include "dpf_core.h"\nint main() { return DPF_COUNT != 11; }\n' > /tmp/dpf-header.cpp
+          printf '#include "dpf_core.h"\ntypedef char dpf_count[(DPF_COUNT == 13 && DPF_LEGACY_COUNT == 11) ? 1 : -1];\nint main() { return 0; }\n' > /tmp/dpf-header.cpp
           g++ -std=gnu++98 -Wall -Wextra -Werror -Isource/native/src/common -fsyntax-only /tmp/dpf-header.cpp
           sh -n source/native/build.sh
       - name: Memory safety and static analysis
@@ -39,7 +39,10 @@ jobs:
           mkdir -p /tmp/dpf-locales
           localedef --no-archive -i de_DE -f UTF-8 /tmp/dpf-locales/de_DE.UTF-8
           LOCPATH=/tmp/dpf-locales DPF_REQUIRE_COMMA_LOCALE=1 /tmp/dpf-sanitized
+          clang -std=c99 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -Isource/native/src/common source/native/tests/test_dpf_regen_capabilities.c source/native/src/common/dpf_regen_capabilities.c source/native/src/common/obd_capabilities.c -o /tmp/dpf-regen-capabilities-sanitized
+          /tmp/dpf-regen-capabilities-sanitized
           clang --analyze -std=c99 -Wall -Wextra -Isource/native/src/common source/native/src/common/dpf_core.c -o /tmp/dpf-core.plist
+          clang --analyze -std=c99 -Wall -Wextra -Isource/native/src/common source/native/src/common/dpf_regen_capabilities.c -o /tmp/dpf-regen-capabilities.plist
           clang --analyze -std=c99 -Wall -Wextra -Isource/native/src/common -Isource/native/src/ipc source/native/src/workers/dpf_deck_worker.c -o /tmp/dpf-worker.plist
           clang++ --analyze -std=gnu++98 -fno-strict-aliasing -isystem source/native/sdk -Isource/native/src/common source/native/src/plugins/dpf_deck.cpp -o /tmp/dpf-plugin.plist
           clang -std=c99 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Isource/native/src/common -c source/native/src/common/dpf_core.c -o /tmp/dpf-core-sanitized.o
@@ -53,6 +56,7 @@ jobs:
           /tmp/dpf-tools/bin/python -B source/tools/make_dpfdeck.py
           /tmp/dpf-tools/bin/python -B source/tools/test_dpf_resources.py
           /tmp/dpf-tools/bin/python -B source/tools/preview_dpfdeck.py --models /tmp/dpf-models/bank1-live.tsv --out /tmp/dpf-bank1.png
+          /tmp/dpf-tools/bin/python -B source/tools/preview_dpfdeck.py --models /tmp/dpf-models/regen-active.tsv --out /tmp/dpf-regen-active.png
 
   installer:
     runs-on: ubuntu-24.04

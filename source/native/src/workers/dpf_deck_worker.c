@@ -4,6 +4,7 @@
 #include "gauge_coexistence.h"
 #include "gauge_core.h"
 #include "obd_capabilities.h"
+#include "dpf_regen_capabilities.h"
 #include <limits.h>
 #include <poll.h>
 #include <string.h>
@@ -27,17 +28,19 @@ int main(int argc,char **argv) {
     struct diag_link_cfg cfg={0,6801,DIAG_AUTO,DIAG_LOOP,"dpfdeck",1};
     struct diag_link link;
     struct obd_capabilities caps={{0},{0},0};
+    struct dpf_regen_capabilities regen_caps={0,0,0};
     struct dpf_frame frame;
-    static const unsigned pids[]={0x05,0x7a,0x7b,0x7c};
-    uint64_t token=0,due[4]={0},observed[DPF_COUNT]={0};
+    static const unsigned pids[]={0x05,0x7a,0x7b,0x7c,0x8b};
+    uint64_t token=0,due[5]={0},observed[DPF_COUNT]={0};
     unsigned cycles=0,count=0,next=0,udp_port=DPF_PORT;
     const pid_t parent=getppid();
-    int i,sock;
+    int i,sock,regen_enabled=0;
     struct sockaddr_in peer;
     memset(&frame,0,sizeof frame);
     for (i=1;i<argc;++i) {
         uint64_t value;
         if (!strcmp(argv[i],"--host") && i+1<argc && !cfg.host) cfg.host=argv[++i];
+        else if (!strcmp(argv[i],"--regen-status") && !regen_enabled) regen_enabled=1;
         else if ((!strcmp(argv[i],"--token") || !strcmp(argv[i],"--port") ||
                   !strcmp(argv[i],"--udp-port") || !strcmp(argv[i],"--cycles")) && i+1<argc) {
             const int token_arg=!strcmp(argv[i],"--token"),port_arg=!strcmp(argv[i],"--port"),
@@ -68,15 +71,17 @@ int main(int argc,char **argv) {
     diag_link_init(&link,&cfg);
     while (diag_running && getppid()==parent && (!cycles || count<cycles)) {
         if (diag_link_up(&link)) {
-            const unsigned group=next,pid=pids[group],mask=dpf_pid_mask(pid),before=caps.known;
-            next=(next+1)%4;
+            const unsigned group=next,pid=pids[group],mask=dpf_pid_mask(pid),
+                           before=dpf_capability_generation(&caps,&regen_caps);
+            next=(next+1)%(regen_enabled?5:4);
             diag_link_tick(&link);
             if (bd_mono_ms()>=due[group]) {
-                const int supported=obd_pid_advertised(&caps,&link,pid);
+                const int supported=pid==0x8b ? dpf_regen_advertised(&caps,&regen_caps,&link) :
+                                               obd_pid_advertised(&caps,&link,pid);
                 if (supported==0) {
                     frame.known|=mask;frame.supported&=~mask;frame.valid&=~mask;
                     due[group]=bd_mono_ms()+DPF_RETRY_MS;
-                } else if (supported==1 && before==caps.known && diag_running) {
+                } else if (supported==1 && before==dpf_capability_generation(&caps,&regen_caps) && diag_running) {
                     const unsigned char request[]={1,(unsigned char)pid},prefix[]={0x41,(unsigned char)pid};
                     unsigned char reply[16];
                     unsigned negative;

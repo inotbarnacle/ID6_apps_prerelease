@@ -21,10 +21,10 @@ class DPFDeck : public bmw::PluginApp {
     int socket_;
     pid_t child_;
     unsigned generation_,visible_,bank_,labels_known_;
-    bool metric_,stopping_,save_error_;
+    bool metric_,regen_,stopping_,save_error_;
     uint64_t token_,opened_,retry_,bind_retry_;
     dpf_frame frame_;
-    char labels_[10][96];
+    char labels_[12][96];
 
     void text(unsigned slot,const char *value) {
         if ((labels_known_ & (1u<<slot)) && !strcmp(labels_[slot],value)) return;
@@ -80,28 +80,38 @@ class DPFDeck : public bmw::PluginApp {
     }
 
     void loadPreferences() {
-        bank_=0;metric_=true;save_error_=false;
+        bank_=0;metric_=true;regen_=false;save_error_=false;
         FILE *file=fopen(preferences_,"rb");
         if (!file) return;
-        unsigned char bytes[4];
-        const bool valid=fread(bytes,1,sizeof bytes,file)==sizeof bytes && !ferror(file) &&
-            fgetc(file)==EOF && !ferror(file) && bytes[0]=='D' && bytes[1]==1 && bytes[2]<2 && bytes[3]<2;
+        unsigned char bytes[5];
+        const size_t size=fread(bytes,1,sizeof bytes,file);
+        const bool valid=size>=4 && !ferror(file) &&
+            (feof(file) || (fgetc(file)==EOF && !ferror(file))) &&
+            bytes[0]=='D' && bytes[2]<2 && bytes[3]<2 &&
+            ((size==4 && bytes[1]==1) || (size==5 && bytes[1]==2 && bytes[4]<2));
         fclose(file);
-        if (valid) { bank_=bytes[2];metric_=bytes[3]!=0; }
+        if (valid) { bank_=bytes[2];metric_=bytes[3]!=0;regen_=size==5 && bytes[4]!=0; }
     }
 
-    bool savePreferences(unsigned bank,bool metric) {
-        const unsigned char bytes[]={'D',1,static_cast<unsigned char>(bank),static_cast<unsigned char>(metric)};
+    bool savePreferences(unsigned bank,bool metric,bool regen) {
+        const unsigned char bytes[]={'D',2,static_cast<unsigned char>(bank),static_cast<unsigned char>(metric),static_cast<unsigned char>(regen)};
         if (!savePersistentBytes(preferences_,bytes,sizeof bytes)) { save_error_=true;return false; }
-        bank_=bank;metric_=metric;save_error_=false;
+        bank_=bank;metric_=metric;regen_=regen;save_error_=false;
         return true;
     }
 
     template <unsigned Bank> bool bank(const bmw::Parcel &) {
-        savePreferences(Bank,metric_);render(bd_mono_ms());return true;
+        savePreferences(Bank,metric_,regen_);render(bd_mono_ms());return true;
     }
     template <bool Metric> bool units(const bmw::Parcel &) {
-        savePreferences(bank_,Metric);render(bd_mono_ms());return true;
+        savePreferences(bank_,Metric,regen_);render(bd_mono_ms());return true;
+    }
+    template <bool Show> bool regenStatus(const bmw::Parcel &) {
+        const bool changed=Show!=regen_;
+        if (savePreferences(bank_,metric_,Show) && changed) {
+            stopWorker();retry_=0;opened_=bd_mono_ms();
+        }
+        render(bd_mono_ms());return true;
     }
 
     bool accept(const char *packet,size_t size,const sockaddr_in &peer,uint64_t now) {
@@ -152,6 +162,15 @@ class DPFDeck : public bmw::PluginApp {
         snprintf(caption,sizeof caption,"Bank %u",bank_+1);text(7,caption);
         snprintf(caption,sizeof caption,"Bank %u / %s, %s",bank_+1,metric_ ? "mbar" : "psi",metric_ ? "C" : "F");
         text(8,caption);text(9,save_error_ ? "Could not save settings" : "");
+        const int progress=dpf_measurement_state(&frame_,DPF_REGEN_PROGRESS,elapsed);
+        const int type=dpf_measurement_state(&frame_,DPF_REGEN_TYPE,elapsed);
+        const char *state=!regen_ ? "Not shown" : progress==DPF_VALID ?
+            frame_.value[DPF_REGEN_PROGRESS]==0 ? "Not in progress" :
+            type==DPF_VALID ? frame_.value[DPF_REGEN_TYPE]==1 ? "Active" : "Passive" : "In progress" :
+            progress==DPF_UNSUPPORTED ? "Unsupported" : progress==DPF_UNAVAILABLE ? "Unavailable" :
+            progress==DPF_STALE ? "Stale" : "Unknown";
+        snprintf(caption,sizeof caption,"Regeneration: %s",state);text(10,caption);
+        text(11,regen_ ? "Regeneration status: shown" : "Regeneration status: hidden");
     }
 
     void tick() {
@@ -164,7 +183,7 @@ class DPFDeck : public bmw::PluginApp {
             token_=(now<<16)|(++dpfLaunchSerial & 0xffffu);
             if (!token_) token_=1;
             char token[24];snprintf(token,sizeof token,"%llu",static_cast<unsigned long long>(token_));
-            const char *args[]={dpfWorker,"--host",gateway.host(),"--token",token,0};
+            const char *args[]={dpfWorker,"--host",gateway.host(),"--token",token,regen_ ? "--regen-status" : 0,0};
             clearFrame();opened_=now;
             child_=launch(args,-1);retry_=now+2000;
             if (child_<=0) token_=0;
@@ -191,7 +210,7 @@ public:
             bmw::RHMIInterfaceVersion version,const bmw::Bundle &config,const bmw::Bundle &resources,
             const char *preferences=dpfPreferences)
         : PluginApp(d,name,major,minor,version,config,resources),preferences_(preferences),socket_(-1),child_(-1),
-          generation_(0),visible_(0),bank_(0),labels_known_(0),metric_(true),stopping_(false),save_error_(false),token_(0),opened_(0),retry_(0),bind_retry_(0) {
+          generation_(0),visible_(0),bank_(0),labels_known_(0),metric_(true),regen_(false),stopping_(false),save_error_(false),token_(0),opened_(0),retry_(0),bind_retry_(0) {
         clearFrame();memset(labels_,0,sizeof labels_);
     }
     virtual ~DPFDeck() { shutdown(); }
@@ -207,6 +226,8 @@ public:
         action.m_exec=&Handler::execImpl<DPFDeck,&DPFDeck::bank<1> >;addHandler(421u,action);
         action.m_exec=&Handler::execImpl<DPFDeck,&DPFDeck::units<true> >;addHandler(430u,action);
         action.m_exec=&Handler::execImpl<DPFDeck,&DPFDeck::units<false> >;addHandler(431u,action);
+        action.m_exec=&Handler::execImpl<DPFDeck,&DPFDeck::regenStatus<true> >;addHandler(440u,action);
+        action.m_exec=&Handler::execImpl<DPFDeck,&DPFDeck::regenStatus<false> >;addHandler(441u,action);
         render(bd_mono_ms());
         postPoll();
         return true;

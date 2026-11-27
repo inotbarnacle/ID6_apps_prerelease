@@ -76,13 +76,14 @@ class DpfResourcesTest(unittest.TestCase):
             app = ET.fromstring(first['DPFDeck.xml']).find('pluginApp')
             self.assertEqual(app.get('text'),'DPFDeck')
             self.assertEqual({x.get('id') for x in app.findall('hmiStates/hmiState')},{'100','101'})
-            self.assertEqual({x.get('id') for x in app.findall('.//raAction')},{'420','421','430','431'})
+            self.assertEqual({x.get('id') for x in app.findall('.//raAction')},{'420','421','430','431','440','441'})
             source = (ROOT/'source/native/src/plugins/dpf_deck.cpp').read_text()
-            for identifier in (420,421,430,431):
+            for identifier in (420,421,430,431,440,441):
                 self.assertIn('addHandler('+str(identifier)+'u,action)',source)
             values = app.findall("hmiStates/hmiState[@id='100']/components/label")
             self.assertEqual({x.get('model') for x in values if x.get('model') and int(x.get('model'))<56},set(map(str,range(50,56))))
-            self.assertIn('Regeneration: Unknown',{x.get('text') for x in values})
+            self.assertEqual(next(x for x in values if x.get('id')=='202').get('model'),'60')
+            self.assertEqual({x.get('id') for x in app.findall('.//raDataModel')},set(map(str,range(50,62))))
             manifest = ET.fromstring(first['DPFDeck.manifest'])
             self.assertEqual(manifest.findtext('config/dependencies/pluginAppConnector/id'),'123')
             for other in (ROOT/'source/native/manifests').glob('*.manifest'):

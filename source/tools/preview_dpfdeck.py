@@ -20,7 +20,7 @@ def render(resources,models,output):
     values = {}
     for line in models.read_text(encoding='latin1').splitlines():
         key,value=line.split('\t',1)
-        if key not in set(map(str,range(50,60))) or key in values:
+        if key not in set(map(str,range(50,62))) or key in values:
             raise ValueError('unexpected captured model')
         values[key]=value
     root = ET.parse(resources/'DPFDeck.xml')

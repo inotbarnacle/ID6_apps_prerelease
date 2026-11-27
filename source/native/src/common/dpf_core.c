@@ -10,12 +10,14 @@ unsigned dpf_pid_mask(unsigned pid) {
     case 0x7b: return 7u<<3;
     case 0x7c: return 15u<<6;
     case 0x05: return DPF_BIT(DPF_COOLANT);
+    case 0x8b: return DPF_BIT(DPF_REGEN_PROGRESS)|DPF_BIT(DPF_REGEN_TYPE);
     default: return 0;
     }
 }
 
 static int value_valid(unsigned field,double value) {
     if (field>=DPF_COUNT || !isfinite(value)) return 0;
+    if (field>=DPF_REGEN_PROGRESS) return value==0 || value==1;
     if (field==DPF_COOLANT) return value>=-40 && value<=215;
     if (field>=DPF_B1_INLET_TEMP) return value>=-40 && value<=DPF_TEMP_MAX_C;
     if (field==DPF_B1_DELTA || field==DPF_B2_DELTA) return value>=-327.68 && value<=327.67;
@@ -31,6 +33,13 @@ int dpf_decode(unsigned pid,const unsigned char *p,size_t size,struct dpf_sample
         if (size!=1) return 0;
         sample.known=sample.supported=sample.valid=DPF_BIT(DPF_COOLANT);
         sample.value[DPF_COOLANT]=(int)p[0]-40;
+    } else if (pid==0x8b) {
+        if (size!=7 || (p[0]&0x80) || (p[1]&0xf0)) return 0;
+        sample.known=dpf_pid_mask(pid);
+        sample.supported=sample.valid=(unsigned)(p[0]&3)<<DPF_REGEN_PROGRESS;
+        for (i=0;i<2;++i)
+            if (sample.valid & DPF_BIT(DPF_REGEN_PROGRESS+i))
+                sample.value[DPF_REGEN_PROGRESS+i]=(p[1]>>i)&1;
     } else {
         const int temperature=pid==0x7c;
         count=temperature ? 4 : 3;
@@ -69,7 +78,7 @@ int dpf_encode(const struct dpf_frame *f,char *out,size_t size) {
     int n;
     if (!out || !size || !frame_valid(f)) return -1;
     if (size>DPF_MAX_PACKET) size=DPF_MAX_PACKET;
-    n=snprintf(out,size,"DPF1 %lu %lu %llu %llu %u %u %u",(unsigned long)f->seq,(unsigned long)f->worker_pid,
+    n=snprintf(out,size,"DPF2 %lu %lu %llu %llu %u %u %u",(unsigned long)f->seq,(unsigned long)f->worker_pid,
                (unsigned long long)f->token,(unsigned long long)f->sent_ms,f->known,f->supported,f->valid);
     if (n<0 || (size_t)n>=size) return -1;
     used=(size_t)n;
@@ -138,9 +147,13 @@ int dpf_parse(const char *data,size_t size,struct dpf_frame *out) {
     struct dpf_frame f;
     char packet[DPF_MAX_PACKET],*cursor;
     uint64_t integer;
-    unsigned i;
+    unsigned i,fields,mask;
     if (!data || !out || size<6 || size>=sizeof packet || data[size-1]!='\n' ||
-        memchr(data,0,size) || memchr(data,'\n',size-1) || memcmp(data,"DPF1 ",5)) return 0;
+        memchr(data,0,size) || memchr(data,'\n',size-1)) return 0;
+    if (!memcmp(data,"DPF1 ",5)) fields=DPF_LEGACY_COUNT;
+    else if (!memcmp(data,"DPF2 ",5)) fields=DPF_COUNT;
+    else return 0;
+    mask=DPF_BIT(fields)-1;
     memcpy(packet,data,size);packet[size]=0;
     memset(&f,0,sizeof f);cursor=packet+5;
     if (!unsigned_field(&cursor,UINT32_MAX,&integer)) return 0;
@@ -148,13 +161,13 @@ int dpf_parse(const char *data,size_t size,struct dpf_frame *out) {
     if (!unsigned_field(&cursor,INT_MAX,&integer)) return 0;
     f.worker_pid=(uint32_t)integer;
     if (!unsigned_field(&cursor,UINT64_MAX,&f.token) || !unsigned_field(&cursor,UINT64_MAX,&f.sent_ms)) return 0;
-    if (!unsigned_field(&cursor,DPF_ALL,&integer)) return 0;
+    if (!unsigned_field(&cursor,mask,&integer)) return 0;
     f.known=(unsigned)integer;
-    if (!unsigned_field(&cursor,DPF_ALL,&integer)) return 0;
+    if (!unsigned_field(&cursor,mask,&integer)) return 0;
     f.supported=(unsigned)integer;
-    if (!unsigned_field(&cursor,DPF_ALL,&integer)) return 0;
+    if (!unsigned_field(&cursor,mask,&integer)) return 0;
     f.valid=(unsigned)integer;
-    for (i=0;i<DPF_COUNT;++i) {
+    for (i=0;i<fields;++i) {
         if (!value_field(&cursor,&f.value[i]) || !unsigned_field(&cursor,999999,&integer)) return 0;
         f.age_ms[i]=(unsigned)integer;
         if (!(f.valid & DPF_BIT(i)) && (f.value[i]!=0 || f.age_ms[i]!=0)) return 0;
@@ -175,12 +188,14 @@ int dpf_measurement_state(const struct dpf_frame *f,unsigned field,uint64_t elap
 
 double dpf_display_value(unsigned field,double value,int metric) {
     if (field>=DPF_COUNT) return NAN;
+    if (field>=DPF_REGEN_PROGRESS) return value;
     if (field>=DPF_B1_INLET_TEMP) return metric ? value : value*1.8+32;
     return metric ? value*10 : value*.145037738;
 }
 
 const char *dpf_unit(unsigned field,int metric) {
     if (field>=DPF_COUNT) return "";
+    if (field>=DPF_REGEN_PROGRESS) return "";
     if (field>=DPF_B1_INLET_TEMP) return metric ? "C" : "F";
     return metric ? "mbar" : "psi";
 }

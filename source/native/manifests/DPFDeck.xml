@@ -33,6 +33,18 @@
           <hmiAction id="2431" target="100" />
         </actions>
       </combinedAction>
+      <combinedAction id="1440">
+        <actions>
+          <raAction id="440" />
+          <hmiAction id="2440" target="100" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="1441">
+        <actions>
+          <raAction id="441" />
+          <hmiAction id="2441" target="100" />
+        </actions>
+      </combinedAction>
     </actions>
     <models>
       <raDataModel id="50" modelType="Richtext" />
@@ -45,6 +57,8 @@
       <raDataModel id="57" modelType="Richtext" />
       <raDataModel id="58" modelType="Richtext" />
       <raDataModel id="59" modelType="Richtext" />
+      <raDataModel id="60" modelType="Richtext" />
+      <raDataModel id="61" modelType="Richtext" />
       <imageIdModel id="70" imageId="65100" />
     </models>
     <hmiStates>
@@ -71,7 +85,7 @@
               <property id="10" value="40" />
             </properties>
           </label>
-          <label id="202" text="Regeneration: Unknown">
+          <label id="202" model="60">
             <properties>
               <property id="20" value="430" />
               <property id="21" value="18" />
@@ -205,10 +219,13 @@
         <components>
           <label id="300" model="58" />
           <label id="301" model="59" />
+          <label id="302" model="61" />
           <button id="310" action="1420" text="Show bank 1" />
           <button id="311" action="1421" text="Show bank 2" />
           <button id="312" action="1430" text="Metric: mbar / C" />
           <button id="313" action="1431" text="Imperial: psi / F" />
+          <button id="314" action="1440" text="Show regeneration status" />
+          <button id="315" action="1441" text="Hide regeneration status" />
         </components>
       </hmiState>
     </hmiStates>

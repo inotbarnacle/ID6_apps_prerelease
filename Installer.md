@@ -21,8 +21,9 @@ Display layouts follow Andreas Boehm’s measured RHMI coordinate rules.
 DPFDeck is an experimental optional app in source builds that include a reviewed
 DPF payload; it is not included in the installer release linked above. Its
 unchecked selection requires a 1280 × 480, 1440 × 540 or 1920 × 720 display.
-It monitors advertised standard DPF pressure/temperature and coolant; regeneration
-stays unknown and soot/ash unavailable. See the [DPFDeck guide](source/docs/DPFDECK.md)
+It monitors advertised standard DPF pressure/temperature and coolant, with an
+optional regeneration status display hidden by default. Soot/ash remain
+unavailable. See the [DPFDeck guide](source/docs/DPFDECK.md)
 for build status, validation and rollback. It adds no approved firmware profile.
 
 ## Uninstall

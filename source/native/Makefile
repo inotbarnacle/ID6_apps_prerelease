@@ -15,13 +15,16 @@ HOST_LINK = $(CC) $(CFLAGS) -pthread -DMOST_HOST -Isrc/common -Isrc/ipc -Isrc/wo
 dpf-assets:
 	$(PYTHON) ../tools/make_dpfdeck.py
 
-build/dpfdeck-collector: src/workers/dpf_deck_worker.c src/common/dpf_core.c src/common/dpf_core.h src/common/obd_capabilities.c src/common/obd_capabilities.h $(WORKER_COMMON) | build
+build/dpfdeck-collector: src/workers/dpf_deck_worker.c src/common/dpf_core.c src/common/dpf_core.h src/common/obd_capabilities.c src/common/obd_capabilities.h src/common/dpf_regen_capabilities.c src/common/dpf_regen_capabilities.h $(WORKER_COMMON) | build
 	$(HOST_LINK) $(filter %.c,$^) -lm -o $@
 
-build/test-dpf: tests/test_dpf.c src/common/dpf_core.c src/common/dpf_core.h | build
+build/test-dpf: tests/test_dpf.c tests/fixtures/dpf_v1_frame.h src/common/dpf_core.c src/common/dpf_core.h | build
 	$(CC) $(CFLAGS) -Isrc/common $(filter %.c,$^) -lm -o $@
 
 build/test-dpf-capabilities: tests/test_obd_capabilities.c src/common/obd_capabilities.c src/common/obd_capabilities.h $(HEADERS) | build
+	$(CC) $(CFLAGS) -Isrc/common $(filter %.c,$^) -o $@
+
+build/test-dpf-regen-capabilities: tests/test_dpf_regen_capabilities.c src/common/dpf_regen_capabilities.c src/common/dpf_regen_capabilities.h src/common/obd_capabilities.c src/common/obd_capabilities.h $(HEADERS) | build
 	$(CC) $(CFLAGS) -Isrc/common $(filter %.c,$^) -o $@
 
 build/dpf-core.o: src/common/dpf_core.c src/common/dpf_core.h | build
@@ -33,9 +36,10 @@ build/test-dpf-plugin: tests/test_dpf_plugin.cpp tests/fake_bmw.cpp tests/fake_b
 build/dpf-parent-exit: tests/dpf_parent_exit.c | build
 	$(CC) $(CFLAGS) $< -o $@
 
-test-dpf: build/test-dpf build/test-dpf-capabilities build/test-dpf-plugin build/dpfdeck-collector build/dpf-parent-exit build/boost-deck
+test-dpf: build/test-dpf build/test-dpf-capabilities build/test-dpf-regen-capabilities build/test-dpf-plugin build/dpfdeck-collector build/dpf-parent-exit build/boost-deck
 	./build/test-dpf
 	./build/test-dpf-capabilities
+	./build/test-dpf-regen-capabilities
 	./build/test-dpf-plugin
 	$(PYTHON) -B tests/test_dpf_transport.py
 	$(PYTHON) -B tests/test_dpf_coexistence.py

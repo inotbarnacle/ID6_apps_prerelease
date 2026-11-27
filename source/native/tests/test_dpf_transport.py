@@ -17,8 +17,14 @@ from udp_test_socket import telemetry_socket
 BIN = str(Path(__file__).resolve().parents[1] / 'build/dpfdeck-collector')
 PARENT_FIXTURE = str(Path(__file__).resolve().parents[1] / 'build/dpf-parent-exit')
 ALL = (1 << 11)-1
+REGEN = 3 << 11
 PAYLOADS = {5:bytes.fromhex('7a'), 0x7a:bytes.fromhex('07fff600002710'),
-            0x7b:bytes.fromhex('058000ffffffff'), 0x7c:bytes.fromhex('0f0190019147e003e8')}
+            0x7b:bytes.fromhex('058000ffffffff'), 0x7c:bytes.fromhex('0f0190019147e003e8'),
+            0x8b:bytes.fromhex('03030000000000')}
+
+
+def regen_reply(pid,count):
+    return bytes.fromhex('416000000071') if pid==0x60 else None
 
 
 def exact(connection,size):
@@ -38,7 +44,7 @@ def frame(control,body):
 def parse(data):
     assert data.endswith(b'\n') and len(data)<512
     fields = data.decode('ascii').split()
-    assert len(fields)==30 and fields[0]=='DPF1'
+    assert (fields[0],len(fields)) in (('DPF1',30),('DPF2',34))
     return dict(seq=int(fields[1]),pid=int(fields[2]),token=int(fields[3]),sent=int(fields[4]),
                 known=int(fields[5]),supported=int(fields[6]),valid=int(fields[7]),
                 values=[float(v) for v in fields[8::2]],ages=[int(v) for v in fields[9::2]])
@@ -85,16 +91,20 @@ class Gateway:
                     try:
                         assert control==1 and request[:3]==b'\xf4\x12\x01' and len(request)==4,request
                         pid = request[3]
-                        assert pid in (0,0x20,0x40,0x60,5,0x7a,0x7b,0x7c),request
+                        assert pid in (0,0x20,0x40,0x60,0x80,5,0x7a,0x7b,0x7c,0x8b),request
                         self.seen.append((time.monotonic(),pid))
                         self.counts[pid] = self.counts.get(pid,0)+1
                         answer = self.reply(pid,self.counts[pid]) if self.reply else None
                         if answer=='drop':
                             break
+                        if isinstance(answer,tuple):
+                            delay,answer = answer
+                            time.sleep(delay)
                         if answer is None:
                             answer = bytes((0x41,pid))+(bytes.fromhex('08000001') if pid==0 else
                                       bytes.fromhex('00000001') if pid in (0x20,0x40) else
-                                      bytes.fromhex('00000070') if pid==0x60 else PAYLOADS[pid])
+                                      bytes.fromhex('00000070') if pid==0x60 else
+                                      bytes.fromhex('00200000') if pid==0x80 else PAYLOADS[pid])
                         # Correct-looking replies from another ECU, and pending replies,
                         # cannot become a measurement. Fragment the matching response.
                         connection.sendall(frame(1,b'\x18\xf4'+answer))
@@ -110,16 +120,18 @@ class Gateway:
 
 
 class DpfTransportTest(unittest.TestCase):
-    def run_worker(self,cycles=12,reply=None,most=False,observe=None,stop_when=None):
+    def run_worker(self,cycles=12,reply=None,most=False,observe=None,stop_when=None,regen=False):
         environment = dict(os.environ)
         environment.pop('ID6_FAKE_MOST',None)
         if most:
-            environment['ID6_FAKE_MOST']='dpf'
+            environment['ID6_FAKE_MOST']='dpf-regen' if regen else 'dpf'
         with contextlib.ExitStack() as stack:
             udp = stack.enter_context(telemetry_socket())
             udp.settimeout(8)
             gateway = None if most else stack.enter_context(Gateway(reply))
             command = [BIN,'--token','42','--cycles',str(cycles),'--udp-port',str(udp.getsockname()[1])]
+            if regen:
+                command.append('--regen-status')
             command += ['--transport','most'] if most else ['--host','127.0.0.1','--port',str(gateway.port),'--transport','hsfz']
             process = subprocess.Popen(command,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,env=environment)
             packets = []
@@ -154,10 +166,94 @@ class DpfTransportTest(unittest.TestCase):
         self.assertEqual(final['known'],ALL)
         self.assertEqual(final['supported'],ALL ^ (1 << 4))
         self.assertEqual(final['valid'],final['supported'])
-        self.assertEqual(final['values'],[-.1,0,100,-327.68,0,655.35,0,.1,1800,60,82])
+        self.assertEqual(final['values'],[-.1,0,100,-327.68,0,655.35,0,.1,1800,60,82,0,0])
         self.assertTrue(any(final['ages']))
         self.assertEqual([pid for _,pid in requests[:4]],[0,0x20,0x40,0x60])
         self.assertTrue(all(b-a>=.20 for (a,_),(b,_) in zip(requests,requests[1:])))
+
+    def test_regeneration_request_set_is_absent_by_default_even_when_advertised(self):
+        packets,requests,_ = self.run_worker(reply=regen_reply)
+        self.assertFalse(any(pid in (0x80,0x8b) for _,pid in requests))
+        self.assertEqual(packets[-1]['known'],ALL)
+        self.assertEqual(packets[-1]['values'][11:],[0,0])
+
+    def test_opt_in_reads_five_bitmaps_and_only_advertised_regeneration_status(self):
+        packets,requests,_ = self.run_worker(cycles=24,regen=True,reply=regen_reply)
+        final = packets[-1]
+        self.assertEqual([pid for _,pid in requests if pid%0x20==0],[0,0x20,0x40,0x60,0x80])
+        self.assertEqual(final['known'],ALL | REGEN)
+        self.assertEqual(final['valid'],(ALL | REGEN) ^ (1 << 4))
+        self.assertEqual(final['values'][11:],[1,1])
+        self.assertTrue(all(b-a>=.20 for (a,_),(b,_) in zip(requests,requests[1:])))
+
+    def test_opt_in_stops_at_missing_continuation_or_unadvertised_status(self):
+        for reply,expected_pages in ((None,[0,0x20,0x40,0x60]),
+                                     (lambda pid,n:bytes.fromhex('418000000000') if pid==0x80 else regen_reply(pid,n),
+                                      [0,0x20,0x40,0x60,0x80])):
+            packets,requests,_ = self.run_worker(cycles=16,regen=True,reply=reply)
+            self.assertEqual([pid for _,pid in requests if pid%0x20==0],expected_pages)
+            self.assertFalse(any(pid==0x8b for _,pid in requests))
+            self.assertEqual(packets[-1]['known'] & REGEN,REGEN)
+            self.assertEqual(packets[-1]['supported'] & REGEN,0)
+
+    def test_invalid_extension_bitmap_stays_unknown_and_backs_off(self):
+        for bad in (bytes.fromhex('4180002000'),bytes.fromhex('7f0131')):
+            packets,requests,_ = self.run_worker(cycles=20,regen=True,reply=lambda pid,n:
+                                                bad if pid==0x80 else regen_reply(pid,n))
+            self.assertEqual(sum(pid==0x80 for _,pid in requests),1)
+            self.assertFalse(any(pid==0x8b for _,pid in requests))
+            self.assertEqual(packets[-1]['known'] & REGEN,0)
+            self.assertTrue(packets[-1]['valid'] & (1 << 6))
+
+    def test_progress_and_type_support_are_independent_and_false_is_valid(self):
+        for flags,status,mask,values in ((1,3,1,[1,0]),(2,3,2,[0,1]),(3,2,3,[0,1])):
+            response=bytes((0x41,0x8b,flags,status,0,0,0,0,0))
+            packets,_,_ = self.run_worker(cycles=12,regen=True,reply=lambda pid,n:
+                                         response if pid==0x8b else regen_reply(pid,n))
+            self.assertEqual(packets[-1]['known'] & REGEN,REGEN)
+            self.assertEqual(packets[-1]['valid'] & REGEN,mask << 11)
+            self.assertEqual(packets[-1]['values'][11:],values)
+
+    def test_current_support_flags_clear_old_progress_without_using_type(self):
+        packets,_,_ = self.run_worker(cycles=24,regen=True,reply=lambda pid,n:
+                                     bytes.fromhex('418b02030000000000') if pid==0x8b and n>=2 else regen_reply(pid,n))
+        self.assertTrue(any(p['valid'] & (1 << 11) for p in packets))
+        self.assertEqual(packets[-1]['supported'] & REGEN,1 << 12)
+        self.assertEqual(packets[-1]['valid'] & REGEN,1 << 12)
+        self.assertEqual(packets[-1]['values'][11:],[0,1])
+
+    def test_refused_or_extra_length_status_clears_only_regeneration_with_backoff(self):
+        for bad in (bytes.fromhex('7f0131'),bytes.fromhex('418b0303000000000000')):
+            packets,requests,_ = self.run_worker(cycles=28,regen=True,reply=lambda pid,n:
+                                                bad if pid==0x8b and n>=2 else regen_reply(pid,n))
+            self.assertTrue(any(p['valid'] & REGEN==REGEN for p in packets))
+            self.assertEqual(sum(pid==0x8b for _,pid in requests),2)
+            self.assertEqual(packets[-1]['valid'] & REGEN,0)
+            self.assertEqual(packets[-1]['supported'] & REGEN,REGEN)
+            self.assertTrue(packets[-1]['valid'] & (1 << 6))
+
+    def test_delayed_status_uses_actual_request_period_and_conservative_age(self):
+        packets,requests,_ = self.run_worker(cycles=28,regen=True,reply=lambda pid,n:
+                                            (.35,bytes.fromhex('418b03030000000000')) if pid==0x8b else regen_reply(pid,n))
+        stamps=[when for when,pid in requests if pid==0x8b]
+        self.assertGreaterEqual(len(stamps),2)
+        self.assertTrue(all(b-a>=1.98 for a,b in zip(stamps,stamps[1:])))
+        self.assertTrue(all(p['ages'][11]>=300 for p in packets if p['valid'] & (1 << 11)))
+
+    def test_most_optional_status_releases_its_diagnostic_resources(self):
+        packets,_,errors = self.run_worker(cycles=100,regen=True,most=True,
+                                          stop_when=lambda p:p['valid'] & REGEN==REGEN)
+        self.assertEqual(packets[-1]['values'][11:],[1,1])
+        self.assertIn('unregister_target=1 unregister_client=1 free=1',errors)
+        for port in (42861,42868,42869):
+            with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as probe:
+                probe.bind(('127.0.0.1',port))
+
+    def test_duplicate_optional_status_flag_exits_before_transport(self):
+        process=subprocess.run([BIN,'--token','42','--cycles','1','--transport','most',
+                                '--regen-status','--regen-status'],capture_output=True,text=True,timeout=2)
+        self.assertEqual(process.returncode,2)
+        self.assertNotIn('FAKE-MOST',process.stderr)
 
     def test_unsupported_chain_never_polls_dpf_or_later_bitmap_pages(self):
         packets,requests,_ = self.run_worker(reply=lambda pid,n:bytes.fromhex('410008000000') if pid==0 else None)

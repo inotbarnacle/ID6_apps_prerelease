@@ -25,12 +25,12 @@ def generate(output):
     actions = ET.SubElement(app, 'actions')
     ET.SubElement(actions, 'hmiAction', id='10', target='100')
     ET.SubElement(actions, 'hmiAction', id='20', target='101')
-    for callback in (420,421,430,431):
+    for callback in (420,421,430,431,440,441):
         combined = ET.SubElement(ET.SubElement(actions, 'combinedAction', id=str(1000+callback)), 'actions')
         ET.SubElement(combined, 'raAction', id=str(callback))
         ET.SubElement(combined, 'hmiAction', id=str(2000+callback), target='100')
     models = ET.SubElement(app, 'models')
-    for model in range(50,60):
+    for model in range(50,62):
         ET.SubElement(models, 'raDataModel', id=str(model), modelType='Richtext')
     ET.SubElement(models, 'imageIdModel', id='70', imageId=str(BACKGROUND))
     states = ET.SubElement(app, 'hmiStates')
@@ -49,7 +49,7 @@ def generate(output):
 
     placed('image',200,70,(32,12,1160,444))
     placed('label',201,57,(54,18,240,40))
-    placed('label',202,None,(430,18,738,40),'Regeneration: Unknown')
+    placed('label',202,60,(430,18,738,40))
     for index,title in enumerate(TITLES):
         x,y = 54+(index%3)*386, 76+(index//3)*132
         placed('label',210+index,None,(x,y,342,45),title)
@@ -61,8 +61,10 @@ def generate(output):
     content = ET.SubElement(settings, 'components')
     ET.SubElement(content, 'label', id='300', model='58')
     ET.SubElement(content, 'label', id='301', model='59')
+    ET.SubElement(content, 'label', id='302', model='61')
     for index,(callback,title) in enumerate(((420,'Show bank 1'),(421,'Show bank 2'),
-                                            (430,'Metric: mbar / C'),(431,'Imperial: psi / F'))):
+                                            (430,'Metric: mbar / C'),(431,'Imperial: psi / F'),
+                                            (440,'Show regeneration status'),(441,'Hide regeneration status'))):
         ET.SubElement(content, 'button', id=str(310+index), action=str(1000+callback), text=title)
     ET.indent(root, space='  ')
     ET.ElementTree(root).write(output/'DPFDeck.xml', encoding='utf-8', xml_declaration=True)

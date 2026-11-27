@@ -21,15 +21,29 @@ bank 1/2 and metric (mbar/C) or imperial (psi/F) units. Each tile independently
 shows Unknown, Unsupported, Unavailable, Stale or a valid measurement. Valid
 zero and negative delta pressure remain measurements.
 
-Regeneration stays **Unknown**. Soot, ash and last-regeneration values stay
-**unavailable**; inlet/outlet pressure reference stays **unknown**. Pressure and
-temperature never supply inferred regeneration states, completion estimates or
-universal soot/ash thresholds. There are no vehicle controls.
+Regeneration status is **hidden by default**. OPTIONS offers **Show regeneration
+status** and **Hide regeneration status**. Showing it opts the worker into the
+additional advertised standard PID 8B read described below. A fresh progress
+flag reports **Not in progress** or **In progress**. Only an independently
+supported, fresh type flag refines an in-progress state to **Active** or
+**Passive**. Type alone never establishes progress. Unknown, Unsupported,
+Unavailable and Stale remain explicit. This status applies to the ECU's DPF
+system; selecting a pressure/temperature bank does not make it bank-specific.
 
-Bank and units use a separate four-byte D1 record at
-`/var/opt/hmi/data/ID5/DPFDeck.prefs`. Invalid records default to bank 1/metric.
-Saves use the existing atomic persistence helper; failure keeps the previous
-choice and shows an error. Other app preferences are untouched.
+Soot, ash and last-regeneration values stay **unavailable**; inlet/outlet pressure
+reference stays **unknown**. Pressure and temperature never supply inferred
+regeneration states, completion estimates or universal soot/ash thresholds.
+There are no alerts or vehicle controls.
+
+Bank, units and the status choice use a separate five-byte D2 record at
+`/var/opt/hmi/data/ID5/DPFDeck.prefs`. A four-byte D1 record preserves its bank
+and units with regeneration status hidden. Invalid records default to bank
+1/metric/status hidden. Saves use the existing atomic persistence helper;
+failure keeps the previous choice and shows an error. Other app preferences
+are untouched. Changing the status choice retires the current worker before
+launching the new request set; it never starts a second worker concurrently.
+
+![Optional regeneration status with synthetic values rendered on the host](images/dpfdeck-regen-host-synthetic.png)
 
 ## Diagnostic evidence and scope
 
@@ -39,12 +53,19 @@ contributor implementation branch at the checked revision. The separate
 [#201 discovery profile](https://github.com/voioo/iDriveDeck/blob/15857d6f084dacb2e4cc21626e06048f7116ea62/source/docs/DIESEL-VALIDATION.md#optional-standard-dpf-pressure-and-temperature-evidence-profile)
 can collect standard DPF evidence after review and explicit owner approval.
 
-The worker uses only these Mode 01 reads, addressed to DME/DDE 12:
+By default the worker uses only these Mode 01 reads, addressed to DME/DDE 12:
 
 - Supported-PID bitmaps 00, 20, 40 and 60, following continuation bits.
 - Advertised coolant PID 05.
 - Advertised PID 7A/7B bank 1/2 delta, inlet and outlet pressure.
 - Advertised PID 7C bank 1/2 inlet/outlet temperatures.
+
+With **Show regeneration status** selected, the worker may additionally read
+supported-PID bitmap 80 after the complete continuation chain, then PID 8B only
+if advertised. There are no 80 or 8B reads in the default request set. This is
+a display setting for passive monitoring, with no regeneration request or
+other control command. Any physical trial of this expanded request set still
+requires the owner's explicit approval and exact-ECU evidence.
 
 It does not infer an engine family. Exact support, bank identity, pressure
 reference and calibration on N57/B47/B57 remain unverified.
@@ -65,14 +86,24 @@ an application plausibility envelope, not a BMW limit or regeneration threshold.
 The discovery report retains the full protocol temperature domain for review.
 FFFF delta is -0.01 kPa and valid; no universal FFFF sentinel is invented.
 
-Regeneration active/requested/inhibited, soot/ash mass, distance/time since last
+PID 8B requires exactly seven data bytes. Byte A bits 0/1 independently advertise
+progress/type; byte B bits 0/1 carry their boolean values (type 0 passive, 1
+active). A bit 7 and B bits 4–7 are reserved and rejected. NOx adsorber flags,
+normalized trigger and average regeneration interval fields are not exposed by
+this app. In particular, an average interval is not time/distance since the last
+regeneration. The same two references above corroborate this wire layout;
+physical N57 support and meaning remain unverified.
+
+Regeneration requested/inhibited, soot/ash mass, distance/time since last
 regeneration and inhibition reasons remain unimplemented. There are no commands
 for regeneration, reset, coding, emissions, actuators, fault clearing, diagnostic
 session changes or dynamic DIDs.
 
 ## Polling, freshness and ownership
 
-The capability helper is identical to #202's shared implementation. Evidence
+The four-page capability helper is identical to #202's shared implementation.
+The optional bitmap-80 cache is separate and cannot expand other apps' request
+policies. Evidence
 belongs to one DME/endpoint for the worker lifetime, across short diagnostic
 leases. Unknown differs from unsupported; failed bitmaps back off five seconds.
 A new bitmap consumes its tick before a measurement is sent.
@@ -94,11 +125,14 @@ tunnel retains it through teardown. Existing markers prevent another client;
 activity socket ownership prevents duplicate DPF workers. OS process exit
 releases sockets. A project lease cannot exclude an external diagnostic device.
 
-DPF1 is a separate locale-independent ASCII protocol with eleven fields, strict
+DPF2 is a separate locale-independent ASCII protocol with thirteen fields, strict
 masks/numbers, final newline and a 512-byte buffer bound. It includes sequence,
 worker PID, launch token, monotonic send time and per-field ages. Invalid fields
 have zero placeholders with validity clear; availability never follows numeric
-zero. New fields require a new wire version. BoostDeck channels, packets, saved
+zero. Its first eleven field IDs retain their published meanings; progress and
+type append IDs 11/12. The reader also accepts frozen eleven-field DPF1 packets,
+with both new fields unknown. Old readers reject DPF2; deploy matching plugin
+and worker files together. New fields require a new wire version. BoostDeck channels, packets, saved
 settings and existing layouts are unchanged.
 
 The HMI accepts only its owned live worker PID/token at 127.0.0.1:42868 with a
@@ -113,7 +147,7 @@ ECHILD alone does not prove exit. Busy receivers and failed launches retry no
 faster than every two seconds. Finalization closes the receiver and invalidates
 queued callbacks. The worker also exits when its parent disappears.
 
-Connector 123 and DPF1 are independent of BoostDeck identifiers. Combining this
+Connector 123 and the DPF wire formats are independent of BoostDeck identifiers. Combining this
 branch with [#211](https://github.com/inotbarnacle/iDriveDeck/pull/211) requires
 reconciling its new MOST ownership name map and coordination ports; its PowerDeck
 connector 121 does not establish DPFDeck coexistence or ECU compatibility.
@@ -177,6 +211,9 @@ Before an authorized trial:
    bank persistence, unavailable/stale values, OPTIONS transitions, exit/worker
    cleanup and coexistence. Check factory menus, CarPlay, navigation, audio,
    Bluetooth, camera and parking displays.
+   Leave regeneration status hidden until its expanded read set is separately
+   approved. Compare progress and type against independent diagnostics, check
+   false/stale/unsupported states and confirm hiding it removes 80/8B reads.
 5. After parked stability, test standalone operation with ENET, laptop and
    external OBD adapters disconnected. Record results; host tests do not prove it.
 
@@ -196,19 +233,24 @@ make -C source/native test
 python3 source/tools/test_dpf_resources.py
 ```
 
-The full suite runs ten native programs and 96 Python cases. Tests use loopback
+The full suite runs eleven native programs and 107 Python cases. Tests use loopback
 HSFZ and fake DSI/MOST, with #213's private receiver allocator. They cover full
 16-bit decoder domains, flags, units, framing, negative/truncated replies,
 backoff/rate bounds, reconnects, duplicate ownership and MOST teardown.
+Regeneration cases cover default absence, the complete capability chain,
+independent flags, valid false, delayed replies, current support loss and
+refusal/backoff. The original DPF1 fixture was generated from published commit
+`6f9176ced52678b3c1c0b48eb93753e5143e1c6a` before changing the codec.
 Production HMI callback tests cover sender ownership, replay, sequence wrap,
-independent tile states, bounded drains, preferences/save failures, OPTIONS,
+independent tile/status states, bounded drains, D1 migration, strict D2 records,
+preferences/save failures, OPTIONS, request-set changes,
 finalization and child cleanup. A Linux guardian terminates the actual worker's
 parent and verifies worker exit and socket release.
 
-Two handoff cases run the actual DPF and Boost workers against one synthetic
+Three handoff cases run the actual DPF and Boost workers against one synthetic
 gateway. They check progress while overlapping, serialized in-flight requests,
 activity/lease release and continued Boost reads after normal or abnormal DPF
-exit. These observations do not establish physical coexistence or exclude an
+exit, including the optional regeneration request set. These observations do not establish physical coexistence or exclude an
 external diagnostic tester.
 
 Seven resource/package cases cover deterministic generation, layout bounds,
@@ -234,5 +276,6 @@ without changing the system locale. All results remain host/simulation evidence.
 
 Remaining evidence includes exact ECU support, a licensed QNX build, firmware
 ABI/loader review, actual rendering, parked lifecycle/factory checks and
-standalone operation. Regeneration, soot/ash, time/distance and inhibition need
-credible, appropriately licensed definitions plus exact-ECU validation.
+standalone operation. Standard regeneration status still needs exact-ECU
+validation. Soot/ash, time/distance and inhibition need credible, appropriately
+licensed definitions plus exact-ECU validation.
