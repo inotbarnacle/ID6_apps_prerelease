@@ -39,7 +39,8 @@ These are one vendor's related sources, not independent confirmations.
 separately distinguishes actual duty/position, requested duty/position and
 error labels; it does not establish this X5's support or scaling.
 
-OBDb publishes its data under CC BY-SA 4.0. This contribution implements the
+OBDb publishes its data under [CC BY-SA 4.0](https://github.com/OBDb/SAEJ1979/blob/1abdef6ae0c1b9134c8f2a10911a9daa1354649d/LICENSE).
+This contribution implements the
 protocol arithmetic independently and does not vendor its database entries,
 descriptions or polling recommendations. No proprietary BMW dictionary or
 vehicle capture is included. The official standard is available through

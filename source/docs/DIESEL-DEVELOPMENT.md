@@ -65,7 +65,7 @@ This description is not diagnostic confirmation.
 
 ## Progress and next actions
 
-- Standard EGR follow-up on `diesel/egr-telemetry`: Custom layout adds PID 2C
+- Standard EGR follow-up in [#202](https://github.com/inotbarnacle/iDriveDeck/pull/202): Custom layout adds PID 2C
   request, 2D error and six independent requested/actual/error A/B fields from
   PID 69. Every new read is PID-gated, even in Gasoline. PID 69 requires exact
   seven-byte data and per-field support; error is never used as actual EGR.
@@ -80,7 +80,10 @@ This description is not diagnostic confirmation.
   records primary references, provenance, settings rollback and pending exact-
   target validation. The complete local suite passes 14 native C/C++ programs
   and 113 native-suite Python cases, plus seven resource and eight read-only
-  tool cases. No vehicle session or control command was performed.
+  tool cases. [Telemetry CI](https://github.com/voioo/iDriveDeck/actions/runs/46015121428)
+  passes on exact source `5f5e35f688f3536434f8d50607bc9b8c231afcd2`, including
+  optimized GCC/Clang, C++98 syntax, analysis and sanitizer jobs. No vehicle
+  session or control command was performed.
 
 - Standard EGT follow-up in [#202](https://github.com/inotbarnacle/iDriveDeck/pull/202): eight named bank/sensor
   channels use advertised PID 78/79 and a valid per-bank support layout.
@@ -312,7 +315,31 @@ Conflicts in `CHANGELOG.md`, `source/README.md` and `source/native/Makefile` wer
 retaining every feature, documentation link and test target. The common MIT
 framework fake is identical across the ShiftDeck, fault and BoostDeck scale branches.
 
-The latest combined revision `031b67d` includes #201's explicit EGT evidence
+The latest combined revision `1a29e40` includes optional EGR request/actual/error
+monitoring, retained NBG7/NBG8 and B1/B2/B3 contracts, and new NBG9/B4 boundaries.
+The complete local suite passes **37 native C/C++ test programs and 183 distinct
+Python tests**: 131 native-suite cases (36 app, 24 one-shot MOST, eight standard
+OBD faults, 26 transport, 12 capability, four fault resources, 11 EGT transport
+and ten EGR transport), plus 52 separate tool/resource cases. All 56 tool/resource
+cases pass; four are already counted by the native suite. The existing #143
+worker-ownership fix and its 13 production-plugin regression targets survive
+the merge. Conflicts in `CHANGELOG.md` and the native Makefile retained every
+feature and test target. All eight workflows pass on exact source
+`1a29e40f42b99cc3e56ed5b31c66fefe49347190`:
+[diagnostics](https://github.com/voioo/iDriveDeck/actions/runs/46015233005),
+[faults](https://github.com/voioo/iDriveDeck/actions/runs/46015232913),
+[WarmDeck](https://github.com/voioo/iDriveDeck/actions/runs/46015232933),
+[worker ownership](https://github.com/voioo/iDriveDeck/actions/runs/46015233372),
+[record reads](https://github.com/voioo/iDriveDeck/actions/runs/46015233052),
+[ShiftDeck](https://github.com/voioo/iDriveDeck/actions/runs/46015233164),
+[discovery](https://github.com/voioo/iDriveDeck/actions/runs/46015232989), and
+[rail scale](https://github.com/voioo/iDriveDeck/actions/runs/46015232971).
+These are host/simulation results. No new discovery requests are silently added
+to #201's fixed plans, and exact DDE/EGS, QNX, physical transport and sensor
+validation remain unverified. The subsequent documentation-only commit on #202
+does not alter the pinned runtime source above.
+
+The earlier combined revision `031b67d` includes #201's explicit EGT evidence
 profile, preserved default/v1 contract and heartbeat deadline fix. Validation
 passes **35 native C/C++ programs and 172 distinct Python tests**: the same 121
 native-suite cases as the EGT revision, plus 51 separate tool/resource cases.
