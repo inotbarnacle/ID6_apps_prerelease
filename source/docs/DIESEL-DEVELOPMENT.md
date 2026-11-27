@@ -20,7 +20,7 @@ application ZIPs are separate maintainer build artifacts.
 | Pressure | PID 23 is direct-injection rail gauge pressure, 0.1 bar per count. MAP PID 0B is limited to 255 kPa absolute; subtracting barometric pressure does not extend that range. | Test units and avoid representing saturated MAP as full-range diesel boost. Requested rail/boost require separate evidence. |
 | WarmDeck | Three temperatures expire independently and trend estimates require all three. Oil PID is currently queried unconditionally. Thresholds 85/75/40 C are application choices. | Gate unsupported oil and preserve independent coolant/transmission readiness. |
 | ShiftDeck | Source artwork/preferences retain five gasoline targets while the latest installer release advertises 6000–8000 RPM. Neither establishes an N57 limit. | [Draft #203](https://github.com/inotbarnacle/iDriveDeck/pull/203) adds manually selected diesel targets/display scales, legacy settings migration and asset/plugin tests. No universal diesel redline or physical validation is claimed. |
-| Faults | Worker reads 24-bit UDS codes with status bytes; plugin descriptions are a reference gasoline DME table. UI confirmation precedes clearing. | No invented DDE descriptions. Audit data license and ECU scope before adding a DDE table. |
+| Faults | Worker reads 24-bit UDS codes; the old UI discarded status availability and always used a reference gasoline table. | [Draft #204](https://github.com/inotbarnacle/iDriveDeck/pull/204) preserves supported status bits, adds a DDE/raw view and backend clear confirmation. Licensed DDE descriptions and OBD-format validation remain open. |
 | DPF | [#196](https://github.com/inotbarnacle/iDriveDeck/issues/196) offers B47 capture and DPFDeck development; no verified DPF mapping in this checkout. | Coordinate with the contributor before a separate DPFDeck implementation. No guessed DIDs, thresholds or regeneration controls. |
 | Installer / rollback | Desktop installer checks framework pairs and display layouts, inventories/stages managed folders and preserves backups; uninstall is documented in `Installer.md`. | Run compatibility check only after authorized vehicle discovery. No installation or restart is authorized yet. |
 | Factory integration | Native Android Auto installation currently disables gauge MOST fallback; [PR #138](https://github.com/inotbarnacle/iDriveDeck/pull/138) proposes a startup process check. This does not establish CarPlay/HUD coexistence. | Keep current guards pending reproducible evidence and maintainer review. |
@@ -90,11 +90,22 @@ This description is not diagnostic confirmation.
   [Fork CI](https://github.com/voioo/iDriveDeck/actions/runs/45979404545) passed
   for both compiler jobs and memory checks and uploaded synthetic host previews.
   No QNX build or head-unit renderer/runtime result is implied.
-- Next: strict fault-code/status handling and ECU-scoped descriptions with a
-  demonstrable data license. Keep lifecycle/MOST work coordinated
+- Fault handling is implemented in [draft PR #204](https://github.com/inotbarnacle/iDriveDeck/pull/204),
+  independent branch `diesel/fault-status`, commit `57a3ec4`. The supported-status
+  mask reaches the UI, exact hexadecimal fields/record lengths are validated,
+  DDE/raw mode suppresses the gasoline lookup, reads are the default and clears
+  require backend confirmation as well as the existing UI confirmation.
+  [Fork CI](https://github.com/voioo/iDriveDeck/actions/runs/45982875509) passed
+  GCC/Clang, static and sanitizer checks. Ten native test programs and 89 Python
+  tests cover the fault branch, including mocked read/clear boundaries and
+  native resource preservation. No new DDE dictionary is imported.
+- Next: verify the combined source checkout and improve the remaining diesel
+  gauge range/default behavior. Keep lifecycle/MOST work coordinated
   with #143/#138/#141 rather than replacing their pending fixes.
 - Vehicle status: no vehicle connection, SSH, ECU requests, installation,
   head-unit restart or QNX build has been performed.
+- Owner update: ENET/captures are not yet available; continue offline. No live
+  collection or installation authorization has been received or inferred.
 - Constraints: no legitimate QNX SDK/private framework inputs or physical
   captures have been supplied. Offline work continues. Missing verified DPF
   definitions prevent an honest functional DPF dashboard for this vehicle.
@@ -106,7 +117,33 @@ This description is not diagnostic confirmation.
   [#202](https://github.com/inotbarnacle/iDriveDeck/pull/202)
   (draft; capability-gated telemetry and pressure saturation), and
   [#203](https://github.com/inotbarnacle/iDriveDeck/pull/203)
-  (draft; configurable ShiftDeck diesel profile, persistence and resources).
+  (draft; configurable ShiftDeck diesel profile, persistence and resources), and
+  [#204](https://github.com/inotbarnacle/iDriveDeck/pull/204)
+  (draft; supported fault statuses, raw view and clear confirmation).
+
+## Combined source validation
+
+The isolated [fork integration branch](https://github.com/voioo/iDriveDeck/tree/diesel/integration)
+combines the four source contributions without merging any upstream PR.
+Conflicts in `source/README.md` and `source/native/Makefile` were resolved by
+retaining every feature, documentation link and test target. The common MIT
+framework fake is identical across the ShiftDeck and fault branches.
+
+At integration code commit `ab6e1dd`, `make -C source/native test` passes all
+13 native C/C++ test programs and 97 Python cases (36 app, 24 one-shot MOST,
+26 transport, 8 capability and 3 fault-resource tests). Separate tool checks
+pass 11 discovery, 2 probe, 6 head-unit capture and 6 ShiftDeck asset cases:
+122 Python tests in total. These are simulation/host results, not QNX or vehicle
+validation. A candidate build still needs an authorized SDK and exact firmware
+inputs before any proposed installation can be prepared and reviewed.
+
+One remaining offline gap was confirmed in this combined tree: BoostDeck's
+`BD_RAIL` visual range is still the shared 0–250 bar reference range in
+`boost_signals.def`; the plugin calls `bd_bar(signal,value)` without a diesel
+range override. Thus a correctly decoded synthetic 1000-bar diesel value fills
+the gauge completely. Numeric conversion is correct, but useful diesel range
+presentation and capability-aware default assignments still need work. This
+does not justify assuming a universal DDE pressure limit.
 
 ## Fault-data licensing finding
 
@@ -123,13 +160,13 @@ raw fault parsing/status improvements can proceed without importing that data.
 ## Outstanding scope
 
 The overall N57 objective remains active. These drafts do not complete it.
-Still required: ShiftDeck QNX/runtime validation; ECU-scoped fault
-descriptions and status tests with licensed data; verified ECU-specific signals
-and dashboard capability choices beyond the standard PID gate; DPFDeck decision
+Still required: ShiftDeck QNX/runtime validation; licensed, ECU-scoped DDE fault
+descriptions and validated standard OBD fault formats; verified ECU-specific
+signals and dashboard capability choices/ranges beyond the standard PID gate; DPFDeck decision
 after contributor coordination; reproducible F15/F16 fixes coordinated with
 existing PRs; exact target vehicle identification/firmware/transport evidence;
 and any applicable QNX and separately authorized physical validation.
-Maintain this scope rather than treating host tests or these two drafts as proof
+Maintain this scope rather than treating host tests or these drafts as proof
 of comprehensive N57 support.
 
 Retain separate evidence levels: physical vehicle, recorded diagnostics,
