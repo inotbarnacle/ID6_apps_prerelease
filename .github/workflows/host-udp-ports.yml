@@ -1,0 +1,26 @@
+name: Host UDP receiver isolation
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - cc: gcc
+            cxx: g++
+          - cc: clang
+            cxx: clang++
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run native workers, private receiver regressions and intentional IPC tests
+        run: make -C source/native test CC=${{ matrix.cc }} CXX=${{ matrix.cxx }}

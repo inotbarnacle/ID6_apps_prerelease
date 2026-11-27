@@ -7,6 +7,11 @@ make -C native test
 python3 tools/test_probe_signals.py
 ```
 
+Host telemetry receivers use `tests/udp_test_socket.py` to avoid the project's
+IPC ports. Tests that exercise HUD sharing, diagnostic leases or activity
+markers still bind those roles explicitly. The host suite forces both kinds
+of allocation and checks that rejected receiver sockets are closed.
+
 ## Native payload
 
 If you need the toolchain for a native build, the [QNX SDP 6.5 archive](https://archive.org/details/qnxsdp-65.7z) includes the SDK and a license key generator, according to the archive listing.

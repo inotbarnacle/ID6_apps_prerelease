@@ -95,6 +95,7 @@ test: build/xdrive-control build/boost-deck build/shift-deck build/mhd-maps buil
 	./build/test-core
 	./build/test-most
 	./build/test-diag-link
+	$(PYTHON) -B tests/test_udp_ports.py
 	$(PYTHON) -B tests/test_drive_apps.py
 	$(PYTHON) -B tests/test_oneshot_most.py
 	$(PYTHON) -B tests/test_transport.py

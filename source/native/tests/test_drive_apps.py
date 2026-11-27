@@ -13,6 +13,8 @@ import unittest
 
 from test_transport import exact, frame
 
+from udp_test_socket import telemetry_socket
+
 BUILD = Path(__file__).resolve().parents[1] / "build"
 BM3_CLEAR = ("2c03f301", ["6c03f301"])
 
@@ -121,8 +123,7 @@ class DriveAppsTest(unittest.TestCase):
             self.assertEqual((oil_c,trans_c),(85.0,40.0))
 
     def test_shift_worker_decodes_live_rpm_and_speed(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as listener:
-            listener.bind(("127.0.0.1", 0))
+        with telemetry_socket() as listener:
             listener.settimeout(2)
             self.run_worker("shift-deck", ["--cycles", "1", "--udp-port", str(listener.getsockname()[1])],
                             [("010c", ["410c61a8"]), ("010d", ["410d64"])])
@@ -133,10 +134,9 @@ class DriveAppsTest(unittest.TestCase):
 
     def test_shift_worker_shares_rpm_with_hud(self):
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as hud, \
-                socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as display:
+                telemetry_socket() as display:
             hud.bind(("127.0.0.1", 42870))
             hud.settimeout(2)
-            display.bind(("127.0.0.1", 0))
             self.run_worker("shift-deck", ["--cycles", "1", "--udp-port", str(display.getsockname()[1])],
                             [("010c", ["410c61a8"]), ("010d", ["410d64"])])
             data, peer = hud.recvfrom(64)
@@ -147,10 +147,9 @@ class DriveAppsTest(unittest.TestCase):
 
     def test_dashboard_requests_most_from_hud_before_fallback(self):
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as hud, \
-                socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as display:
+                telemetry_socket() as display:
             hud.bind(("127.0.0.1", 42874))
             hud.settimeout(2)
-            display.bind(("127.0.0.1", 0))
             display.settimeout(0.25)
             proc = self.start_most("shift-deck", display.getsockname()[1])
             try:
@@ -165,8 +164,7 @@ class DriveAppsTest(unittest.TestCase):
             self.assertEqual(codes, [0], errors)
 
     def test_launch_worker_samples_speed_without_an_rpm_query(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as listener:
-            listener.bind(("127.0.0.1", 0))
+        with telemetry_socket() as listener:
             listener.settimeout(2)
             self.run_worker("shift-deck",
                 ["--speed-only", "--cycles", "1", "--udp-port", str(listener.getsockname()[1])],
@@ -385,8 +383,7 @@ class DriveAppsTest(unittest.TestCase):
         return dict(os.environ, ID6_FAKE_MOST="up")
 
     def test_shiftdeck_most_fallback(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:
-            udp.bind(("127.0.0.1", 0))
+        with telemetry_socket() as udp:
             udp.settimeout(5)
             r = subprocess.run(
                 [BUILD/"shift-deck", "--host", "127.0.0.1", "--port", str(self.closed_port()),
@@ -398,8 +395,7 @@ class DriveAppsTest(unittest.TestCase):
         self.assertIn("transport: MOST", r.stderr)
 
     def test_shiftdeck_hsfz_never_binds(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as listener:
-            listener.bind(("127.0.0.1", 0))
+        with telemetry_socket() as listener:
             listener.settimeout(2)
             err = self.run_worker("shift-deck", ["--cycles", "1", "--udp-port", str(listener.getsockname()[1])],
                                   [("010c", ["410c61a8"]), ("010d", ["410d64"])], env=self.most_env(), stream="stderr")
@@ -441,10 +437,9 @@ class DriveAppsTest(unittest.TestCase):
 
     def test_shiftdeck_keeps_a_fair_share_of_a_slow_tunnel(self):
         env = dict(self.most_env(), ID6_FAKE_MOST_DELAY_MS="80")
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as us, \
-                socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as ub:
+        with telemetry_socket() as us, \
+                telemetry_socket() as ub:
             for u in (us, ub):
-                u.bind(("127.0.0.1", 0))
                 u.settimeout(0.2)
             shift = self.start_most("shift-deck", us.getsockname()[1], env=env)
             procs = [shift]
@@ -462,8 +457,7 @@ class DriveAppsTest(unittest.TestCase):
         self.assertGreaterEqual(shared, 0.4*alone, (alone, shared))
 
     def test_shiftdeck_sigterm_on_most(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:
-            udp.bind(("127.0.0.1", 0))
+        with telemetry_socket() as udp:
             udp.settimeout(3)
             proc = self.start_most("shift-deck", udp.getsockname()[1])
             try:
@@ -491,10 +485,9 @@ class DriveAppsTest(unittest.TestCase):
                         busy.append(1)
                 time.sleep(0.001)
 
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as us, \
-                socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as ub:
+        with telemetry_socket() as us, \
+                telemetry_socket() as ub:
             for u in (us, ub):
-                u.bind(("127.0.0.1", 0))
                 u.settimeout(0.5)
             shift = self.start_most("shift-deck", us.getsockname()[1])
             boost = self.start_most("boost-deck", ub.getsockname()[1], ["--session"])

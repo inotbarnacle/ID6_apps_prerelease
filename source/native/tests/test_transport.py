@@ -10,6 +10,8 @@ import time
 import unittest
 from pathlib import Path
 
+from udp_test_socket import telemetry_socket
+
 BIN = str(Path(__file__).resolve().parents[1] / "build/boost-deck")
 VALUES = {0x4201: bytes.fromhex("63ca"), 0x4205: bytes.fromhex("31e5"),
           0x5889: bytes.fromhex("104e"), 0x4A49: bytes.fromhex("004e"),
@@ -37,8 +39,7 @@ def exact(conn, n):
 
 class TransportTest(unittest.TestCase):
     def run_collector(self, mode="normal", extra=(), cycles=1, env=None):
-        udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        udp.bind(("127.0.0.1", 0))
+        udp = telemetry_socket()
         udp.settimeout(4)
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server.bind(("127.0.0.1", 0))
@@ -269,8 +270,7 @@ class TransportTest(unittest.TestCase):
         env.pop("ID6_FAKE_MOST", None)
         if fake:
             env["ID6_FAKE_MOST"] = fake
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:
-            udp.bind(("127.0.0.1", 0))
+        with telemetry_socket() as udp:
             udp.settimeout(.5)
             r = subprocess.run([BIN, *args, "--udp-port", str(udp.getsockname()[1]), "--cycles", str(cycles)],
                                capture_output=True, text=True, timeout=20, env=env)
@@ -365,8 +365,7 @@ class TransportTest(unittest.TestCase):
         """A read skipped for a busy lease leaves a still-fresh gauge shown."""
         env = dict(os.environ, ID6_FAKE_MOST="up")
         env.pop("ID6_FAKE_MOST_DELAY_MS", None)
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:
-            udp.bind(("127.0.0.1", 0))
+        with telemetry_socket() as udp:
             udp.settimeout(1)
             proc = subprocess.Popen([BIN, "--transport", "most", "--udp-port", str(udp.getsockname()[1]),
                                      "--cycles", "30"], stderr=subprocess.DEVNULL, env=env)
@@ -398,8 +397,7 @@ class TransportTest(unittest.TestCase):
 
     def test_sigterm_closes_most_session(self):
         env = dict(os.environ, ID6_FAKE_MOST="up")
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:
-            udp.bind(("127.0.0.1", 0))
+        with telemetry_socket() as udp:
             udp.settimeout(3)
             proc = subprocess.Popen([BIN, "--session", "--udp-port", str(udp.getsockname()[1])],
                                     stderr=subprocess.PIPE, text=True, env=env)
@@ -421,8 +419,7 @@ class TransportTest(unittest.TestCase):
         self.assertIn("FAKE-MOST exit unregister_target=1 unregister_client=1 free=1", err)
 
     def test_demo_never_uses_vehicle(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:
-            udp.bind(("127.0.0.1", 0))
+        with telemetry_socket() as udp:
             udp.settimeout(2)
             r = subprocess.run([BIN, "--demo", "--cycles", "1", "--udp-port", str(udp.getsockname()[1])],
                                capture_output=True, timeout=2)
