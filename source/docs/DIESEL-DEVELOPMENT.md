@@ -2,7 +2,7 @@
 
 Audit baseline: upstream `8567abaadd1305965b3ad39e3222575cd49c507d`,
 27 November 2026. Source is MIT licensed. No additional contribution template or
-CI workflow is present in this checkout. Follow `source/AGENTS.md` and the host
+CI workflow was present at that baseline. Follow `source/AGENTS.md` and the host
 checks in [BUILD.md](BUILD.md). Changes below are source contributions; published
 application ZIPs are separate maintainer build artifacts.
 
@@ -19,7 +19,7 @@ application ZIPs are separate maintainer build artifacts.
 | Oil temperature | [#21](https://github.com/inotbarnacle/iDriveDeck/issues/21), [#162](https://github.com/inotbarnacle/iDriveDeck/issues/162): DDE741 rejects fixed reads and does not advertise PID 5C. Temporary F303 is reused for different signals. | Leave unavailable without a verified fixed source. Never define or poll somebody else's dynamic DID. |
 | Pressure | PID 23 is direct-injection rail gauge pressure, 0.1 bar per count. MAP PID 0B is limited to 255 kPa absolute; subtracting barometric pressure does not extend that range. | Test units and avoid representing saturated MAP as full-range diesel boost. Requested rail/boost require separate evidence. |
 | WarmDeck | Three temperatures expire independently and trend estimates require all three. Oil PID is currently queried unconditionally. Thresholds 85/75/40 C are application choices. | Gate unsupported oil and preserve independent coolant/transmission readiness. |
-| ShiftDeck | Source artwork/preferences retain five gasoline targets while the latest installer release advertises 6000–8000 RPM. Neither establishes an N57 limit. | Separate configurable engine-profile contribution, with persistence and generated-asset tests. No universal diesel redline. |
+| ShiftDeck | Source artwork/preferences retain five gasoline targets while the latest installer release advertises 6000–8000 RPM. Neither establishes an N57 limit. | [Draft #203](https://github.com/inotbarnacle/iDriveDeck/pull/203) adds manually selected diesel targets/display scales, legacy settings migration and asset/plugin tests. No universal diesel redline or physical validation is claimed. |
 | Faults | Worker reads 24-bit UDS codes with status bytes; plugin descriptions are a reference gasoline DME table. UI confirmation precedes clearing. | No invented DDE descriptions. Audit data license and ECU scope before adding a DDE table. |
 | DPF | [#196](https://github.com/inotbarnacle/iDriveDeck/issues/196) offers B47 capture and DPFDeck development; no verified DPF mapping in this checkout. | Coordinate with the contributor before a separate DPFDeck implementation. No guessed DIDs, thresholds or regeneration controls. |
 | Installer / rollback | Desktop installer checks framework pairs and display layouts, inventories/stages managed folders and preserves backups; uninstall is documented in `Installer.md`. | Run compatibility check only after authorized vehicle discovery. No installation or restart is authorized yet. |
@@ -58,7 +58,7 @@ This description is not diagnostic confirmation.
 | Gateway, HSFZ, MOST, standalone operation | Unverified | Parked transport observations with equipment attached and detached. |
 | Standard OBD signals | Simulation / host tests only | Supported bitmaps and independently compared readings from this vehicle. |
 | Fixed BMW diesel, DPF, EGR, SCR, oil pressure | Unsupported in this effort | Credible ECU-specific definitions and repeatable sanitized captures. |
-| Physical installation / factory regression / rollback | Not performed | Separate owner-authorized milestone; see staged plan to be added. |
+| Physical installation / factory regression / rollback | Not performed | Separate owner-authorized milestone; staged plan in [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201). |
 
 ## Progress and next actions
 
@@ -81,7 +81,17 @@ This description is not diagnostic confirmation.
 - Telemetry/capability work is in [draft PR #202](https://github.com/inotbarnacle/iDriveDeck/pull/202).
   Check the [fork workflow runs](https://github.com/voioo/iDriveDeck/actions/workflows/host-tests.yml)
   for the current pushed commit's GCC/Clang and sanitizer results.
-- Next: ShiftDeck configuration and fault display audit. Keep lifecycle/MOST work coordinated
+- ShiftDeck profiles are implemented in [draft PR #203](https://github.com/inotbarnacle/iDriveDeck/pull/203),
+  independent branch `diesel/shift-profiles`, commit `eddd41e`. Diesel target
+  adjustment, display scaling and independent profile choices preserve legacy
+  gasoline behavior. All 312 original image payloads and dashboard geometry are
+  preserved. Nine native C/C++ test programs, 80 existing Python worker tests and
+  six asset tests pass; GCC/Clang syntax, ASan/UBSan and static checks pass.
+  [Fork CI](https://github.com/voioo/iDriveDeck/actions/runs/45979404545) passed
+  for both compiler jobs and memory checks and uploaded synthetic host previews.
+  No QNX build or head-unit renderer/runtime result is implied.
+- Next: strict fault-code/status handling and ECU-scoped descriptions with a
+  demonstrable data license. Keep lifecycle/MOST work coordinated
   with #143/#138/#141 rather than replacing their pending fixes.
 - Vehicle status: no vehicle connection, SSH, ECU requests, installation,
   head-unit restart or QNX build has been performed.
@@ -94,12 +104,26 @@ This description is not diagnostic confirmation.
 - Pull requests opened by this effort: [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201)
   (draft; discovery/reporting and validation plan) and
   [#202](https://github.com/inotbarnacle/iDriveDeck/pull/202)
-  (draft; capability-gated telemetry and pressure saturation).
+  (draft; capability-gated telemetry and pressure saturation), and
+  [#203](https://github.com/inotbarnacle/iDriveDeck/pull/203)
+  (draft; configurable ShiftDeck diesel profile, persistence and resources).
+
+## Fault-data licensing finding
+
+The existing `dme_descriptions.h` cites `gediz/bmw-unified-db`. Its
+[license at the audited revision](https://github.com/gediz/bmw-unified-db/blob/0b2f53b3e298aa4f8700eaf704cdfae1d8e9e8c5/LICENSE)
+limits the MIT grant to the repository's original tooling/compilation and
+explicitly excludes underlying BMW-derived data rights. Therefore its DDE
+dictionary is not treated as an established MIT-redistributable dataset. No new
+BMW fault dictionary or diagnostic database was downloaded or incorporated.
+The existing upstream gasoline table is unchanged. A DDE description extension
+still needs independently established provenance, permission and ECU applicability;
+raw fault parsing/status improvements can proceed without importing that data.
 
 ## Outstanding scope
 
 The overall N57 objective remains active. These drafts do not complete it.
-Still required: engine-profile ShiftDeck ranges/configuration; ECU-scoped fault
+Still required: ShiftDeck QNX/runtime validation; ECU-scoped fault
 descriptions and status tests with licensed data; verified ECU-specific signals
 and dashboard capability choices beyond the standard PID gate; DPFDeck decision
 after contributor coordination; reproducible F15/F16 fixes coordinated with
