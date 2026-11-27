@@ -1,5 +1,11 @@
 # Change notes
 
+## Unreleased (source only)
+
+- BoostDeck offers a separate diesel rail-pressure display scale instead of
+  filling its gasoline 250-bar scale for every higher reading. This is host-tested
+  source, with no rebuilt QNX package or vehicle validation.
+
 ## v0.7.18
 
 - Renames the project to **iDriveDeck**.
