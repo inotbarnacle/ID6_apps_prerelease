@@ -36,12 +36,13 @@ jobs:
       - name: Prove the read-error fixture fails against the pinned upstream loader
         run: |
           ${{ matrix.cxx }} -std=gnu++98 -Wall -Wextra -Werror -Ibaseline/source/native/src/common -Isource/native/src/common source/native/tests/test_launch_record_io.cpp source/native/build/launch_timer.o -o source/native/build/test-launch-record-io-baseline
-          if source/native/build/test-launch-record-io-baseline > source/native/build/record-baseline.log 2>&1; then
-            cat source/native/build/record-baseline.log
-            exit 1
-          fi
-          cat source/native/build/record-baseline.log
-          rg -F 'partial=0 errors=2 closes=1' source/native/build/record-baseline.log
+          python3 - <<'PY'
+          import subprocess
+          result = subprocess.run(['source/native/build/test-launch-record-io-baseline'], capture_output=True, text=True)
+          print(result.stdout, end='')
+          print(result.stderr, end='')
+          assert result.returncode == 1 and 'partial=0 errors=2 closes=1' in result.stderr, result
+          PY
   memory:
     runs-on: ubuntu-24.04
     steps:
