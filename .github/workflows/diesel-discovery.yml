@@ -1,0 +1,20 @@
+name: Diesel discovery tool
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate offline plan and privacy-safe reports
+        run: |
+          python3 -B source/tools/discover_diesel.py --plan
+          python3 -B source/tools/test_discover_diesel.py
+          python3 -B source/tools/test_probe_signals.py
+          python3 -B source/tools/test_capture_headunit.py
