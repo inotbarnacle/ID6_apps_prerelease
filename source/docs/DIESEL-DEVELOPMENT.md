@@ -91,6 +91,11 @@ This description is not diagnostic confirmation.
   [Fork CI](https://github.com/voioo/iDriveDeck/actions/runs/45976585881) passed
   for discovery commit `ac48c54`.
 - Telemetry/capability work is in [draft PR #202](https://github.com/inotbarnacle/iDriveDeck/pull/202).
+  [CI for automatic-default code `824b78a`](https://github.com/voioo/iDriveDeck/actions/runs/45989318583)
+  passed GCC/Clang, production syntax, helper/worker/plugin analysis, resource
+  checks and sanitizers. A small follow-up avoids assuming `uint32_t *` and
+  `unsigned *` are the same C pointer type when filling capability reports;
+  its synthetic collector regression passes with identical output semantics.
   Check the [fork workflow runs](https://github.com/voioo/iDriveDeck/actions/workflows/host-tests.yml)
   for the current pushed commit's GCC/Clang and sanitizer results.
 - ShiftDeck profiles are implemented in [draft PR #203](https://github.com/inotbarnacle/iDriveDeck/pull/203),
@@ -124,8 +129,7 @@ This description is not diagnostic confirmation.
   of QNX compatibility. [Fork CI](https://github.com/voioo/iDriveDeck/actions/runs/45985869445)
   passed GCC/Clang, static, resource and sanitizer jobs on the exact pushed
   source commit. No diagnostic worker or decoder changed.
-- Next: integrate the expanded capability/default-layout contribution and
-  continue reproducible lifecycle work. Keep lifecycle/MOST work coordinated
+- Next: continue reproducible lifecycle work. Keep lifecycle/MOST work coordinated
   with #143/#138/#141 rather than replacing their pending fixes.
 - Vehicle status: no vehicle connection, SSH, ECU requests, installation,
   head-unit restart or QNX build has been performed.
@@ -184,9 +188,18 @@ The rail display gap found in this combined tree is addressed separately by
 assuming an ECU maximum or expanding sensor support. PR #202 now also supplies
 an explicit capability envelope and automatic/default policy; it does not infer
 permanent support/absence from transient blank samples or replace saved gauge
-choices. The earlier combined test counts above predate that expansion and
-must not be cited as its integration evidence. Re-run the combined source and
-record its exact revision before proposing any candidate build.
+choices. The expanded integration at code commit `8fee471` passes all 17 native
+test programs and 101 native-suite Python cases (36 app, 24 one-shot MOST,
+26 transport, 12 capability and three fault-resource cases). Separate tests
+pass 11 discovery, two probe, six capture, six ShiftDeck assets, five rail-scale
+resources and four automatic-default resources: 135 Python tests in total.
+The production automatic-default test additionally changes the diesel rail
+scale through its real callback while the automatic layout is active, checks
+the resulting image fill, and confirms saved custom assignments are untouched.
+The merged scale test explicitly selects Custom layout and both mode/scale
+sidecars are cleaned up by the host fixtures. The combined plugin links the
+new common object in host and native build rules. The previous five draft PRs
+remain separate; these local/fork merges do not merge an upstream contribution.
 
 ## Fault-data licensing finding
 
@@ -205,7 +218,7 @@ raw fault parsing/status improvements can proceed without importing that data.
 The overall N57 objective remains active. These drafts do not complete it.
 Still required: ShiftDeck QNX/runtime validation; licensed, ECU-scoped DDE fault
 descriptions and validated standard OBD fault formats; verified ECU-specific
-signals and dashboard capability choices/ranges beyond the standard PID gate; DPFDeck decision
+signals and ECU-specific profiles beyond the standard PID/default pool; DPFDeck decision
 after contributor coordination; reproducible F15/F16 fixes coordinated with
 existing PRs; exact target vehicle identification/firmware/transport evidence;
 and any applicable QNX and separately authorized physical validation.
