@@ -42,7 +42,11 @@ SGBD-specific fixed signals, EGS-over-MOST and lifecycle fixes. Its diesel rows
 are reported as not vehicle-tested. [PR #157](https://github.com/inotbarnacle/iDriveDeck/pull/157)
 is now closed without a merge and is superseded by
 [draft #211](https://github.com/inotbarnacle/iDriveDeck/pull/211), reviewed at
-`8ae065ea74e5bfe1defe334ce546598af12895cc`. That candidate adds an explicitly
+`8ae065ea74e5bfe1defe334ce546598af12895cc`. The subsequent
+`dcafa161b5e37fb4cb04d04f5b10d15b432e8ed7`
+changes the narrow gauge layout and its tests; the diagnostic reader, codecs
+and assignment functions examined below are unchanged. That candidate adds an
+explicitly
 pinned N57 dynamic-DID path and PowerDeck, attributes the worker-ownership fix
 to #143 and adapts the rail scale from #205. Its source uses temporary F303
 clear/define/read transactions; pinning an SGBD index does not establish this
@@ -50,9 +54,34 @@ X5's complete DDE hardware/software identity or a fixed read-only oil source.
 Its reported QNX/emulator results use synthetic ECU data and are not validation
 performed by this effort or on the owner's X5.
 
-The candidate also appends BoostDeck IDs 31–40 for DPF/torque/power fields,
-overlapping #202's EGT IDs 31–38 and early EGR IDs. Combining these features
-needs an explicit ID, wire and persisted-settings migration review. No #211
+An isolated local review compiled the unchanged candidate reader and both
+branches' codecs/settings code against #202 source `b9bbdd8`. It passed 14
+in-memory lifecycle cases (also with ASan/UBSan), 13 cross-codec cases and 11
+cross-settings checks. The candidate's own native N57 test also passes. These
+are additional host observations, outside the published CI counts; no vehicle
+transport was linked into the lifecycle model.
+
+| Review item | Reproduced observation and implication |
+| --- | --- |
+| Temporary definition | The reader sends clear, define and read, with no post-read restoration. In the model, successful oil/pair reads retain the new F303 definition; a refused define after a successful clear leaves it empty. Read errors preserve output variables but retain the new definition. These describe the callback sequence, not this X5's ECU behavior. |
+| Lease and teardown | Identity/read groups hold a project lease, and late MOST timeouts retain ownership until tunnel teardown. The inspected `diag_link_end`, drop and close paths release transport resources without restoring F303. A project lease cannot exclude an external diagnostic client. |
+| Packet meaning | IDs 31–38 overlap #202's standard EGT channels. The candidate accepts a #202 `NBG8` packet with ID 31 and value 42 as **DPF soot, 42 g**, although the sender means **EGT bank 1 sensor 1, 42 C**. All eight EGT IDs are accepted with different meanings. The common legacy RPM control passes; the tested NBG9/NBG10/NBGA cross-formats are rejected. |
+| Saved assignments | Legacy B1/B2 controls load in both branches. Extended B3/B4/B5 formats differ in length/layout: the tested cross-branch files fall back to defaults rather than migrate. Matching revision labels alone do not establish compatible settings. |
+
+Source anchors: [reader and identity check](https://github.com/FreZZZeR/ID6_apps_prerelease/blob/8ae065ea74e5bfe1defe334ce546598af12895cc/source/native/src/common/n57.c),
+[transport lifecycle](https://github.com/FreZZZeR/ID6_apps_prerelease/blob/8ae065ea74e5bfe1defe334ce546598af12895cc/source/native/src/common/diag_link.c),
+[codec](https://github.com/FreZZZeR/ID6_apps_prerelease/blob/8ae065ea74e5bfe1defe334ce546598af12895cc/source/native/src/common/gauge_core.c)
+and [assignments](https://github.com/FreZZZeR/ID6_apps_prerelease/blob/8ae065ea74e5bfe1defe334ce546598af12895cc/source/native/src/plugins/boostdeck_assignments.h).
+The candidate's [NOTICE](https://github.com/FreZZZeR/ID6_apps_prerelease/blob/8ae065ea74e5bfe1defe334ce546598af12895cc/source/third_party/nbtevo-diag/NOTICE)
+attributes its catalog to Apache-2.0 `nbtevo-diag` commit
+`4e85c42952b3edb89cf71583de5dba98810219e4` and factory-derived tables. That
+[catalog](https://github.com/FreZZZeR/nbtevo-diag/blob/4e85c42952b3edb89cf71583de5dba98810219e4/nbtevo_diag/signals.py)
+labels the N57 signals as candidates requiring independent vehicle validation.
+This review establishes the attribution chain, not exact-ECU applicability or
+permission to redistribute the underlying factory-derived data.
+
+Combining these features needs agreed signal IDs, unambiguous wire schemas,
+explicit settings migration and matched collector/plugin/resources. No #211
 code, definitions, binaries or firmware approval is imported here. Dynamic-DID
 ownership, conflicts, cleanup/restoration, data provenance and exact ECU
 applicability remain subject to separate review and owner authorization.
