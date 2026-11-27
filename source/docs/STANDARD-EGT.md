@@ -33,7 +33,8 @@ cached for that worker/endpoint lifetime. A conflicting later layout blanks
 that bank and backs off; it cannot silently change the capability report.
 
 One bank request serves all selected sensors in that bank, at most once every
-two seconds. Malformed/refused bank reads use a five-second backoff. Requests
+two seconds measured from the request itself, including after slow capability
+replies. Malformed/refused bank reads use a five-second backoff. Requests
 reuse the existing lease, transport deadlines and close path. No session change,
 dynamic DID or write is added. MOST uses the existing DME tunnel only.
 
@@ -86,7 +87,8 @@ Tests cover all support bytes, sensor scales/bounds, exact lengths, wide-mask
 round trips, a synthetic packet emitted by the pinned old core, all 2,097,152
 default-candidate subsets, production native callbacks/UDP, B3 persistence and
 legacy rejection, both transport paths, unavailable sensors, rate/backoff,
-layout conflicts and unchanged gasoline rail reads. The fixture at
+layout conflicts, delayed-capability rate bounds and unchanged gasoline rail
+reads. The fixture at
 `tests/fixtures/boost_legacy_frame.h` is generated from source `12b2e6c`, not a
 vehicle. UI launch interception never executes a diagnostic worker. The original
 dashboard geometry and all 906 image pixels are preserved; six resource checks

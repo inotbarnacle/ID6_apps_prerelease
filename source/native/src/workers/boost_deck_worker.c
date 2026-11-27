@@ -426,7 +426,12 @@ int main(int argc, char **argv) {
                 int rc=obd_pid_advertised(&capabilities,&link,0x78+bank);
                 if (rc==OBD_CAPABILITY_PENDING) { egt_due[bank]=bd_mono_ms()+100; continue; }
                 struct obd_egt_sample sample;
-                if (rc==1) rc=read_egt(&link,bank,&sample);
+                if (rc==1) {
+                    /* Earlier reads may have consumed much of this loop. Bound
+                     * bank traffic from the actual request, not the loop start. */
+                    egt_due[bank]=bd_mono_ms()+2000;
+                    rc=read_egt(&link,bank,&sample);
+                }
                 if (rc==-3) { egt_failed_until[bank]=bd_mono_ms()+OBD_EGT_RETRY_MS; continue; }
                 if (rc<0) {
                     f.valid &= ~bank_mask;

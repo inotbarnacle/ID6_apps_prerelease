@@ -88,6 +88,22 @@ class EgtTransportTest(unittest.TestCase):
         for pid in (0, 0x20, 0x40, 0x60): self.assertEqual(requests.count(bytes((0x12, 1, pid))), 1)
         for pid in (0x78, 0x79): self.assertLessEqual(requests.count(bytes((0x12, 1, pid))), 2)
 
+    def test_slow_capability_reply_cannot_shorten_bank_read_interval(self):
+        class SlowBitmap(Responses):
+            def __getitem__(self, key):
+                value = super().__getitem__(key)
+                if key == bytes.fromhex("120160"):
+                    time.sleep(.3)  # valid reply within the production 500-ms deadline
+                return value
+
+        source = SlowBitmap(responses())
+        packets, _, _ = self.run_worker(source, selected=(1 << 31), cycles=100)
+        reads = source.times[bytes.fromhex("120178")]
+        self.assertGreaterEqual(len(reads), 2)
+        # The server observes arrivals; allow 100 ms of scheduling variability.
+        self.assertTrue(all(b-a >= 1.9 for a, b in zip(reads, reads[1:])), reads)
+        self.assertTrue(packets[-1][1] & (1 << 31))
+
     def test_missing_continuation_or_pid_never_reads_egt(self):
         for advertised in ((), (0x20,), (0x20, 0x40), (0x20, 0x40, 0x60)):
             with self.subTest(advertised=advertised):

@@ -72,7 +72,7 @@ This description is not diagnostic confirmation.
   bytes remain intact; appended IDs use wider masks, NBG8/NBC2 and B3 settings.
   Old B1/B2 ID bounds remain strict. Source/limits and legitimate public protocol
   references are in [Standard EGT](STANDARD-EGT.md). Local evidence includes
-  two new C/C++ tests, ten transport tests, all 2,097,152 default subsets and
+  two new C/C++ tests, eleven transport tests, all 2,097,152 default subsets and
   six resource checks preserving all 906 image pixels. Static analysis and
   sanitizer checks pass; all 49 host BMW imports match the pinned old source.
   Exact target support, QNX and physical validation remain unverified.
