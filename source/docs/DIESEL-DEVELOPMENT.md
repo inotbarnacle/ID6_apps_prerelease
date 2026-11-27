@@ -284,16 +284,35 @@ This description is not diagnostic confirmation.
   phase) is fixed by using the remaining receive deadline; the full six-second
   transaction reservation remains valid. All 55 combined tool/resource cases
   also pass locally. See the [profile and report contract](https://github.com/voioo/iDriveDeck/blob/diesel/read-only-discovery/source/docs/DIESEL-VALIDATION.md).
-- Next offline evidence work: extend #201's separately selected evidence policy
-  for EGR without silently changing the existing 16/19-read plans. Review
-  additional documented standard pressure fields against exact format and
-  unit evidence, including whether a source is requested, reported actual,
-  absolute or gauge pressure. Retain the separate target-capture, EGS transport
-  and licensed DDE-description requirements.
+- Completed offline EGR evidence follow-up in [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201):
+  source `35f6f00de1f47e229e73a74850e606a17c2d78c7` preserves the prior 16/19-read
+  request sets and v1/v2 outputs, verified against frozen synthetic fixtures.
+  A separately selected `standard-diesel` plan permits at most 22 reads and
+  prioritizes PID 69, 2C and 2D before EGT and the original channels. The same
+  45-second budget, full transaction reservation, 200-ms gaps and no retries
+  apply. V3 reports distinguish each EGR requested/actual/error field and add
+  fixed input-record status values for missing, duplicate, missing-reply and
+  parsed-byte records. Actual is never inferred from legacy request/error;
+  unsupported fields have no numeric value. Neither choosing the profile nor
+  decoding synthetic data establishes a diesel family or physical support.
+  [Discovery CI](https://github.com/voioo/iDriveDeck/actions/runs/46018009954)
+  passes 33 discovery, four probe and six capture tests. All 68 combined tool
+  and resource cases also pass locally. This new plan needs its own review and
+  owner approval before any physical use.
+- Next offline work: review and implement justified standard pressure fields
+  without conflating requested/actual, manifold/boost, or absolute/gauge values.
+  A pinned [vendor reference](https://github.com/OBDb/SAEJ1979/blob/1abdef6ae0c1b9134c8f2a10911a9daa1354649d/signalsets/v3/default.json)
+  describes PID 6D rail-pressure pairs relative to atmosphere. Independent
+  [preOBD tests](https://github.com/preobd/preOBD/blob/45b371e2fd0edf0001971c0768754c237de7b2ce/test/test_obd_encode/test_obd_encode.cpp)
+  corroborate PID 70's ten-byte payload, sensor-A support bit, absolute reading
+  position and 1/32-kPa scale. These are protocol references, not N57 evidence.
+  Do not adopt the simulator's fallback atmosphere as a missing vehicle reading
+  or silently expand NBG9/B4 when adding channels. Retain target-capture,
+  standalone EGS and licensed DDE-description requirements.
 - Pull requests opened by this effort: [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201)
   (draft; discovery/reporting and validation plan) and
   [#202](https://github.com/inotbarnacle/iDriveDeck/pull/202)
-  (draft; capability-gated telemetry, supported defaults, pressure saturation and standard EGT), and
+  (draft; capability-gated telemetry, supported defaults, pressure saturation and standard EGT/EGR), and
   [#203](https://github.com/inotbarnacle/iDriveDeck/pull/203)
   (draft; configurable ShiftDeck diesel profile, persistence and resources), and
   [#204](https://github.com/inotbarnacle/iDriveDeck/pull/204)
@@ -315,7 +334,28 @@ Conflicts in `CHANGELOG.md`, `source/README.md` and `source/native/Makefile` wer
 retaining every feature, documentation link and test target. The common MIT
 framework fake is identical across the ShiftDeck, fault and BoostDeck scale branches.
 
-The latest combined revision `1a29e40` includes optional EGR request/actual/error
+The latest combined revision `4ab39bc` adds #201's explicitly selected v3
+EGR/EGT evidence profile and preserved v1/v2 contracts. Validation passes
+**37 native C/C++ test programs and 195 distinct Python tests**: the same 131
+native-suite cases, plus 64 separate tool/resource cases. All 68 tool/resource
+cases pass locally; four fault-resource cases are already counted by the native
+suite. The increase is 12 discovery cases; no native source or live read set in
+the older profiles changes. All eight workflows pass on exact source
+`4ab39bc4012f0c5ee4febb4ce642c7764c8c2ce0`:
+[diagnostics](https://github.com/voioo/iDriveDeck/actions/runs/46018096862),
+[faults](https://github.com/voioo/iDriveDeck/actions/runs/46018096763),
+[WarmDeck](https://github.com/voioo/iDriveDeck/actions/runs/46018096903),
+[worker ownership](https://github.com/voioo/iDriveDeck/actions/runs/46018096973),
+[record reads](https://github.com/voioo/iDriveDeck/actions/runs/46018096799),
+[ShiftDeck](https://github.com/voioo/iDriveDeck/actions/runs/46018096754),
+[discovery](https://github.com/voioo/iDriveDeck/actions/runs/46018096949), and
+[rail scale](https://github.com/voioo/iDriveDeck/actions/runs/46018096984).
+These are host/simulation results. The new 22-read plan is separately reviewable
+and needs its own owner approval before a physical session. Firmware, exact
+DDE/EGS, independently compared values, QNX and factory-function behavior remain
+unverified. Later progress-only documentation does not change this pinned source.
+
+The earlier combined revision `1a29e40` includes optional EGR request/actual/error
 monitoring, retained NBG7/NBG8 and B1/B2/B3 contracts, and new NBG9/B4 boundaries.
 The complete local suite passes **37 native C/C++ test programs and 183 distinct
 Python tests**: 131 native-suite cases (36 app, 24 one-shot MOST, eight standard

@@ -99,5 +99,7 @@ and unchanged gasoline requests. All 906 original image pixels remain intact.
 
 These are host/simulation results. Exact DDE identity, PID support, A/B meaning,
 independent values, QNX loading and physical X5 behavior remain unverified.
-The bounded discovery plans in #201 do not automatically include these EGR
-queries; any extension needs its own reviewed request set and owner approval.
+The original 16/19-read discovery plans in #201 remain unchanged. Its separate
+22-read `standard-diesel` profile can collect EGR and EGT evidence with a v3
+sanitized report. Review that exact plan and obtain owner approval before any
+physical run; selecting it or decoding a replay grants no authorization.
