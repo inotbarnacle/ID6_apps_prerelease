@@ -97,8 +97,8 @@ live command is authorized by this source contribution.
 The worker defaults to reading when no operation is specified. `--codes` remains
 supported. Its ordinary text records retain the existing CLI format; the plugin
 opts into `--status-mask` for the additional `mask XX` field. Both the plugin and
-worker must be updated together. The wire request and ECU target for reads are
-unchanged. An unsupported read, malformed record or lost link never falls back
+worker must be updated together. The existing BMW `--codes` wire request and ECU
+target are unchanged. An unsupported read, malformed record or lost link never falls back
 to clearing memory or changing a diagnostic session.
 
 Clearing still uses **Clear engine codes… → Confirm clear engine codes**.
