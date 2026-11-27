@@ -61,6 +61,7 @@ int main() {
     {
         EngineCodes app(dispatcher,bmw::BasicString<char>("EngineCodes"),1,0,version,bundle,bundle,worker,prefs);
         assert(app.onInit());
+        assert(!app.result_obd_);
         assert(last(80).find("gas ref")!=std::string::npos);
         result(app,"Engine: 2 codes\n02FF12  status 09 mask 08\n000001  status 20 mask 20\n");
         assert(last(81)=="02FF12 Confirmed" && last(82)=="000001 Since clear");
@@ -90,6 +91,36 @@ int main() {
         action(27); // explicit confirmation callback, with backend confirmation too
         finish(app);
         assert(read_file(args).find("--clear\n--status-mask\n--confirm-clear\n")!=std::string::npos);
+        const struct { unsigned action, service; const char* flag; const char* state; } obd[]={
+            {33,3,"--obd-confirmed","Confirmed"},{34,7,"--obd-pending","Pending"},
+            {35,10,"--obd-permanent","Permanent"}
+        };
+        for (unsigned i=0;i<sizeof obd/sizeof obd[0];++i) {
+            action(obd[i].action);
+            action(23); // another read while the pipe is active cannot relabel its result
+            action(i ? 33 : 34);
+            assert(app.result_obd_==obd[i].service);
+            finish(app);
+            const std::string flags=read_file(args);
+            assert(flags.find(obd[i].flag)!=std::string::npos);
+            assert(flags.find("--clear")==std::string::npos && flags.find("--confirm-clear")==std::string::npos);
+            assert(flags.find("--status-mask")==std::string::npos && flags.find("--codes")==std::string::npos);
+            assert(app.result_obd_==obd[i].service);
+            char output[128];
+            snprintf(output,sizeof output,"OBD emissions: 1 code\nOBD%02X P0133\n",obd[i].service);
+            result(app,output);
+            assert(last(81)==std::string("P0133 ")+obd[i].state);
+            assert(last(91)=="Standard emissions; description unavailable");
+            assert(last(80).find("OBD ")!=std::string::npos && last(80).find("DDE/raw")==std::string::npos);
+            action(31); // description preference cannot reinterpret standard results
+            assert(last(81)==std::string("P0133 ")+obd[i].state);
+            assert(read_file(args)==flags);
+            result(app,"OBD emissions\n02FF12  status 09 mask 08\n");
+            assert(last(91).empty()); // BMW dictionary is never consulted for OBD output
+        }
+        action(23); finish(app);
+        assert(!app.result_obd_ && last(81)=="02FF12 Confirmed");
+        action(30); // retain the persisted raw preference used below
         assert(app.onFinalize());
     }
     fake_reset();

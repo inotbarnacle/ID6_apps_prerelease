@@ -40,6 +40,19 @@ int main() {
     for (size_t length=0;length<25;++length)
         assert(parseFaultLine(valid,length,line)==(length==17));
 
+    char obd[6];
+    assert(parseObdFaultLine("OBD03 P0133",11,3,obd) && !strcmp(obd,"P0133"));
+    assert(parseObdFaultLine("OBD07 U1016",11,7,obd) && !strcmp(obd,"U1016"));
+    assert(parseObdFaultLine("OBD0A B2abc",11,10,obd) && !strcmp(obd,"B2ABC"));
+    const char* invalid_obd[]={"OBD03 P0000","OBD07 P0133","OBD04 P0133","OBD03 P4133",
+        "OBD03 X0133","OBD03 p0133","OBD03 P01G3","OBD03 P0133 ","OBD03 0133",
+        "OBD03 P01330","02FF12  status 01 mask FF","OBD03 +0133","OBD03 -0133"};
+    for (unsigned i=0;i<sizeof invalid_obd/sizeof invalid_obd[0];++i)
+        assert(!parseObdFaultLine(invalid_obd[i],strlen(invalid_obd[i]),3,obd));
+    for (size_t length=0;length<11;++length) assert(!parseObdFaultLine("OBD03 P0133",length,3,obd));
+    assert(!parseObdFaultLine(0,11,3,obd) && !parseObdFaultLine("OBD03 P0133",11,3,0));
+    assert(!parseObdFaultLine("OBD03 P0133",11,4,obd));
+
     char path[]="/tmp/fault-preferences.XXXXXX";
     int fd=mkstemp(path);
     assert(fd>=0); close(fd);

@@ -4,6 +4,7 @@
 
 - Engine Fault Codes preserves the ECU status-availability mask, supports a persisted DDE/raw description view and validates complete fault records. The existing gasoline reference table is unchanged.
 - Fault-worker command-line use defaults to reading. Clearing now requires both `--clear` and `--confirm-clear`; the existing UI confirmation supplies them. `--status-mask` opts into availability metadata while ordinary read output retains its legacy format.
+- Separate standard emissions-code read options use CAN-counted OBD services 03/07/0A for confirmed/pending/permanent categories. Strict count/format checks and bounded output keep these distinct from BMW 24-bit UDS records; no descriptions or vehicle-support claims are added.
 - Host/mock tests cover status masks, malformed replies, UI profiles and confirmation boundaries. These source changes have not been built for QNX or validated on a physical N57.
 
 ## v0.7.18

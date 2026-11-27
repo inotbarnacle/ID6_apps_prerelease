@@ -56,8 +56,41 @@ referenced by the existing table distinguishes its MIT tooling from the
 underlying BMW-derived data rights; see its
 [license](https://github.com/gediz/bmw-unified-db/blob/0b2f53b3e298aa4f8700eaf704cdfae1d8e9e8c5/LICENSE).
 A DDE-specific dictionary still needs verified ECU applicability and established
-redistribution rights. Standard OBD-II fault reading/format conversion likewise
-requires a validated protocol/format path; this change does not claim it.
+redistribution rights. The separate standard OBD read path below never converts
+a BMW 24-bit record or uses this reference dictionary.
+
+## Standard emissions-code reads
+
+OPTIONS offers explicit **Read standard confirmed/pending/permanent emissions
+codes** choices. The ordinary **Read engine codes** action remains the BMW UDS
+read. Each standard choice sends one read to the existing engine ECU address:
+`03` for confirmed, `07` for pending, or `0A` for permanent emission-related codes.
+These categories follow [AUTOSAR DCM R22-11 §7.6.3.5,
+SWS_Dcm_00289/00412/00330](https://www.autosar.org/fileadmin/standards/R22-11/CP/AUTOSAR_SWS_DiagnosticCommunicationManager.pdf).
+Confirmed or permanent does not establish a current failure. A zero result
+applies only to the selected category, not all fault memory.
+
+The parser accepts the CAN-counted form: positive service, one count byte,
+then that many two-byte codes. Its P/C/B/U formatting and CAN count are
+cross-checked against [ELM327DSJ p. 34](https://www.elmelectronics.com/wp-content/uploads/2016/07/ELM327DS.pdf).
+It rejects incomplete counts, zero codes inside the count, nonzero trailing
+data, odd-length payloads, wrong services and replies over 512 bytes. Extra
+whole-pair zero filler is allowed. Older uncounted formats are unsupported;
+the parser never guesses a format from plausible digits.
+
+CLI choices are `--obd-confirmed`, `--obd-pending`, and `--obd-permanent`.
+They use the shared diagnostic lease and a 1.8-second request deadline, without
+retry, session change, clear, or automatic fallback. Mixing these choices with
+clearing, a status-mask request or tracing is rejected before connecting.
+Refusals, lost replies and malformed data stay unavailable. The worker reports
+the full category count but sends at most 128 records to the bounded UI pipe.
+The display labels their service category independently of its saved description
+profile. No standard-code description dictionary is included.
+
+These are protocol fixtures and host tests, not captures or confirmed N57
+support. The target DDE's implementation and gateway payload format remain
+unverified. The matching plugin and worker must be built together; no additional
+live command is authorized by this source contribution.
 
 ## Read default and clear confirmation
 
@@ -96,6 +129,12 @@ The UI callback tests use an argv-echo shell stub, not a diagnostic worker.
 Mock ECU tests use loopback HSFZ and fake MOST. The framework fake is reused from
 [PR #143](https://github.com/inotbarnacle/iDriveDeck/pull/143), also used in #203.
 CI runs GCC/Clang, static analysis, AddressSanitizer and UndefinedBehaviorSanitizer.
+The separate OBD decoder tests cover count/filler/format boundaries and all
+possible service bytes. Eight mock transport tests exercise the three standard
+categories, unavailable results, finite pending waits, output bounds, MOST
+cleanup and invalid argument combinations. Production callback tests verify
+the exact read flags and prevent description-profile changes from reinterpreting
+standard results. The original BMW read/clear regressions still run.
 
 ```sh
 make -C native test

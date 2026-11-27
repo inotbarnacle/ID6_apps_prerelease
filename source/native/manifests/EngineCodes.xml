@@ -15,6 +15,9 @@
       <raAction id="30" />
       <raAction id="31" />
       <hmiAction id="32" target="103" />
+      <raAction id="33" />
+      <raAction id="34" />
+      <raAction id="35" />
     </actions>
     <models>
       <raDataModel id="80" modelType="Richtext" />
@@ -37,6 +40,9 @@
           <button id="312" action="29" text="Next page" />
           <button id="313" action="25" text="Clear engine codes..." />
           <button id="314" action="32" text="Description profile" />
+          <button id="315" action="33" text="Read standard confirmed emissions codes" />
+          <button id="316" action="34" text="Read standard pending emissions codes" />
+          <button id="317" action="35" text="Read standard permanent emissions codes" />
         </optionComponents>
         <components>
           <image id="328" model="95">

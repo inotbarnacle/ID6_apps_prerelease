@@ -4,6 +4,7 @@
 #include "gauge_coexistence.h"
 #include "diag_link.h"
 #include "fault_codes.h"
+#include "obd_fault_codes.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <math.h>
@@ -155,6 +156,29 @@ static void fault_codes(struct diag_link *link, int clear, int trace, int status
     if (full) puts("More codes may exist");
 }
 
+static void obd_codes(struct diag_link* link, unsigned service) {
+    const unsigned char request=(unsigned char)service, prefix=(unsigned char)(0x40u|service);
+    unsigned char response[OBD_FAULT_REPLY_MAX];
+    unsigned negative;
+    struct obd_fault_reply codes;
+    if (!diag_link_up(link)) { puts("Diagnostic gateway unavailable"); return; }
+    const int n=diag_link_request(link,0x12,&request,1,&prefix,1,response,sizeof response,1800,&negative);
+    if (n==-2) { printf("OBD %s read rejected (NRC %02X)\n",obd_fault_state(service),negative); return; }
+    if (n<0 || !obd_fault_parse_reply(response,(size_t)n,service,&codes)) {
+        printf("OBD %s read unavailable; no valid counted CAN reply\n",obd_fault_state(service));
+        return;
+    }
+    printf("OBD %s emissions: %u %s\n",obd_fault_state(service),codes.count,codes.count==1 ? "code" : "codes");
+    for (unsigned i=0;i<codes.count && i<128;++i) {
+        uint16_t value;
+        char code[6];
+        if (!obd_fault_record_at(&codes,i,&value)) return;
+        obd_fault_format(value,code);
+        printf("OBD%02X %s\n",service,code);
+    }
+    if (codes.count>128) puts("More codes returned; first 128 shown");
+}
+
 int main(int argc, char **argv) {
     const char *host=0;
     unsigned port=6801;
@@ -172,12 +196,16 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i],"--confirm-clear") && !confirm_clear) confirm_clear=1;
         else if (!strcmp(argv[i],"--codes") && !mode) mode=1;
         else if (!strcmp(argv[i],"--clear") && !mode) mode=2;
+        else if (!strcmp(argv[i],"--obd-confirmed") && !mode) mode=3;
+        else if (!strcmp(argv[i],"--obd-pending") && !mode) mode=7;
+        else if (!strcmp(argv[i],"--obd-permanent") && !mode) mode=10;
         else break;
     }
     if (!mode) mode=1; // read-only is the default operation
     if (i!=argc || (mode==2 && !confirm_clear) || (confirm_clear && mode!=2) ||
-        (trace && mode!=1) || (transport==DIAG_HSFZ && !host)) {
-        fprintf(stderr,"Usage: %s [--host IPv4] [--transport auto|hsfz|most] [--port 6801] [--status-mask] [--codes [--trace] | --clear --confirm-clear]\n",argv[0]);
+        (trace && mode!=1) || (status_mask && obd_fault_service((unsigned)mode)) ||
+        (transport==DIAG_HSFZ && !host)) {
+        fprintf(stderr,"Usage: %s [--host IPv4] [--transport auto|hsfz|most] [--port 6801] [--status-mask] [--codes [--trace] | --clear --confirm-clear | --obd-confirmed | --obd-pending | --obd-permanent]\n",argv[0]);
         return 2;
     }
     diag_link_signals();
@@ -189,7 +217,8 @@ int main(int argc, char **argv) {
                                : "Could not reserve the diagnostics connection");
         return 0;
     }
-    fault_codes(&link,mode==2,trace,status_mask);
+    if (obd_fault_service((unsigned)mode)) obd_codes(&link,(unsigned)mode);
+    else fault_codes(&link,mode==2,trace,status_mask);
     result_done();
     diag_link_close(&link);
     return 0;

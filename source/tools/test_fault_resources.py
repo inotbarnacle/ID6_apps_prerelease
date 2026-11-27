@@ -41,6 +41,14 @@ class FaultResourceTest(unittest.TestCase):
         self.assertEqual(self.current.find(".//raDataModel[@id='96']").get("modelType"), "Richtext")
         self.assertIsNotNone(self.current.find(".//hmiState[@id='103']/components/label[@model='96']"))
 
+    def test_standard_emissions_categories_are_explicit_native_read_options(self):
+        for action, category in ((33, "confirmed"), (34, "pending"), (35, "permanent")):
+            node = self.current.find(f".//hmiState[@id='101']/optionComponents/button[@action='{action}']")
+            self.assertIsNotNone(node)
+            self.assertIn(f"Read standard {category} emissions codes", node.get("text"))
+            self.assertIsNotNone(self.current.find(f".//actions/raAction[@id='{action}']"))
+        self.assertEqual(len(self.current.findall(".//button[@action='27']")), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -14,8 +14,16 @@ const unsigned kCodePageSize = 4;
 const char kEngineWorker[] = "/var/opt/hmi/data/ID5/Plugins/EngineCodes/engine-codes-qnx";
 const char kFaultPreferences[] = "/var/opt/hmi/data/ID5/EngineCodes.prefs";
 
-void format_code_line(char* text, size_t size, const char* line, int length, char* detail, size_t detail_size, bool raw) {
+void format_code_line(char* text, size_t size, const char* line, int length, char* detail, size_t detail_size, bool raw, unsigned obd) {
     detail[0]=0;
+    if (obd) {
+        char code[6];
+        if (parseObdFaultLine(line,static_cast<size_t>(length),obd,code)) {
+            snprintf(text,size,"%s %s",code,obd_fault_state(obd));
+            snprintf(detail,detail_size,"Standard emissions; description unavailable");
+        } else snprintf(text,size,"%.*s",length,line);
+        return;
+    }
     FaultLine fault;
     if (!parseFaultLine(line,static_cast<size_t>(length),fault)) {
         snprintf(text,size,"%.*s",length,line);
@@ -51,9 +59,10 @@ class EngineCodes : public bmw::PluginApp {
     char code_result_[4096];
     size_t code_size_;
     unsigned code_page_;
+    unsigned result_obd_;
     unsigned poll_generation_;
 
-    void startCodes(bool clear);
+    void startCodes(bool clear, unsigned obd=0);
     void pollCodes();
     void renderCodes();
     void showProfile() {
@@ -98,7 +107,7 @@ public:
                 const char* worker=kEngineWorker, const char* preferences=kFaultPreferences)
         : PluginApp(dispatcher,name,major,minor,version,config,resources),
           worker_(worker), preferences_(preferences), profile_saved_(true), codes_pid_(-1), codes_fd_(-1), code_size_(0),
-          code_page_(0), poll_generation_(0) {}
+          code_page_(0), result_obd_(0), poll_generation_(0) {}
 
     virtual ~EngineCodes() { stopWorker(); }
     virtual bool onInit() {
@@ -116,8 +125,15 @@ public:
         addHandler(30u,action);
         action.m_exec=&Action::execImpl<EngineCodes,&EngineCodes::setProfile<false> >;
         addHandler(31u,action);
+        action.m_exec=&Action::execImpl<EngineCodes,&EngineCodes::readObd<3> >;
+        addHandler(33u,action);
+        action.m_exec=&Action::execImpl<EngineCodes,&EngineCodes::readObd<7> >;
+        addHandler(34u,action);
+        action.m_exec=&Action::execImpl<EngineCodes,&EngineCodes::readObd<10> >;
+        addHandler(35u,action);
         code_size_=0;
         code_page_=0;
+        result_obd_=0;
         clearRows();
         prefs_.load(preferences_);
         profile_saved_=true;
@@ -140,6 +156,7 @@ public:
 
     bool readEngine(const bmw::Parcel&) { startCodes(false); return true; }
     bool clearEngine(const bmw::Parcel&) { startCodes(true); return true; }
+    template <unsigned Service> bool readObd(const bmw::Parcel&) { startCodes(false,Service); return true; }
     bool nextCodes(const bmw::Parcel&) {
         if (codes_fd_<0 && code_size_) { ++code_page_; renderCodes(); }
         return true;
@@ -152,7 +169,8 @@ public:
     }
 };
 
-void EngineCodes::startCodes(bool clear) {
+void EngineCodes::startCodes(bool clear, unsigned obd) {
+    if ((obd && !obd_fault_service(obd)) || (clear && obd)) return;
     reapWorker();
     if (codes_fd_>=0) return;
     if (codes_pid_>0) {
@@ -165,8 +183,10 @@ void EngineCodes::startCodes(bool clear) {
         return;
     }
     const DiagnosticGateway gateway("/var/opt/hmi/data/ID5/Plugins/" "EngineCodes" "/gateway-ip.txt");
-    const char *args[]={worker_,"--host",gateway.host(),clear ? "--clear" : "--codes",
-                        "--status-mask",clear ? "--confirm-clear" : 0,0};
+    const char* operation=obd==3 ? "--obd-confirmed" : obd==7 ? "--obd-pending" :
+        obd==10 ? "--obd-permanent" : clear ? "--clear" : "--codes";
+    const char *args[]={worker_,"--host",gateway.host(),operation,
+                        obd ? 0 : "--status-mask",clear ? "--confirm-clear" : 0,0};
     if (fcntl(channel[0],F_SETFL,O_NONBLOCK)>=0 &&
         fcntl(channel[0],F_SETFD,FD_CLOEXEC)>=0 && fcntl(channel[1],F_SETFD,FD_CLOEXEC)>=0)
         codes_pid_=launch(args,channel[1]);
@@ -179,9 +199,10 @@ void EngineCodes::startCodes(bool clear) {
     codes_fd_=channel[0];
     code_size_=0;
     code_page_=0;
+    result_obd_=obd;
     code_result_[0]=0;
     clearRows();
-    updateModel(80u,bmw::BasicString<char>(clear ? "Clearing engine codes..." : "Reading codes..."));
+    updateModel(80u,bmw::BasicString<char>(clear ? "Clearing engine codes..." : obd ? "Reading standard emission codes..." : "Reading codes..."));
     postPoll();
 }
 
@@ -210,10 +231,13 @@ void EngineCodes::renderCodes() {
     unsigned pages=lines ? (lines+kCodePageSize-1)/kCodePageSize : 1;
     code_page_%=pages;
     char text[160];
+    char profile[32];
+    if (result_obd_) snprintf(profile,sizeof profile,"OBD %s",obd_fault_state(result_obd_));
+    else snprintf(profile,sizeof profile,"%s",prefs_.raw ? "DDE/raw" : "gas ref");
     int header=first ? static_cast<int>(first-code_result_) : static_cast<int>(code_size_);
     if (header>110) header=110;
-    if (pages>1) snprintf(text,sizeof text,"%.*s [%s] (%u/%u)",header,code_result_,prefs_.raw ? "DDE/raw" : "gas ref",code_page_+1,pages);
-    else snprintf(text,sizeof text,"%.*s [%s]",header,code_result_,prefs_.raw ? "DDE/raw" : "gas ref");
+    if (pages>1) snprintf(text,sizeof text,"%.*s [%s] (%u/%u)",header,code_result_,profile,code_page_+1,pages);
+    else snprintf(text,sizeof text,"%.*s [%s]",header,code_result_,profile);
     updateModel(80u,bmw::BasicString<char>(text));
     const char *line=first ? first+1 : "";
     for (unsigned i=0;i<code_page_*kCodePageSize && *line;++i) {
@@ -224,7 +248,7 @@ void EngineCodes::renderCodes() {
         const char *end=strchr(line,'\n');
         int length=end ? static_cast<int>(end-line) : static_cast<int>(strlen(line));
         char detail[160];
-        format_code_line(text,sizeof text,line,length,detail,sizeof detail,prefs_.raw);
+        format_code_line(text,sizeof text,line,length,detail,sizeof detail,prefs_.raw,result_obd_);
         updateModel(81u+i,bmw::BasicString<char>(text));
         updateModel(91u+i,bmw::BasicString<char>(detail));
         line=end ? end+1 : "";

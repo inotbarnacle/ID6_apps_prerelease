@@ -2,6 +2,7 @@
 #define FAULT_DISPLAY_H
 
 #include "fault_codes.h"
+#include "obd_fault_codes.h"
 
 struct FaultLine {
     uint32_t code;
@@ -31,6 +32,19 @@ inline bool parseFaultLine(const char* line, size_t length, FaultLine& out) {
     out.status=status;
     out.available=available;
     out.has_mask=length==25;
+    return true;
+}
+inline bool parseObdFaultLine(const char* line, size_t length, unsigned service, char code[6]) {
+    if (!obd_fault_service(service) || !line || !code || length!=11 || memcmp(line,"OBD",3) || line[5]!=' ') return false;
+    static const char families[]="PCBU";
+    const char* family=strchr(families,line[6]);
+    unsigned received, digits;
+    if (!faultHex(line+3,2,received) || received!=service ||
+        !family || !line[6] || line[7]<'0' || line[7]>'3' ||
+        !faultHex(line+8,3,digits)) return false;
+    const uint16_t value=static_cast<uint16_t>(((family-families)<<14)|((line[7]-'0')<<12)|digits);
+    if (!value) return false;
+    obd_fault_format(value,code);
     return true;
 }
 inline const char* faultState(const FaultLine& line) {
