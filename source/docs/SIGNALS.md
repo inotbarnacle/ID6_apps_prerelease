@@ -28,7 +28,10 @@ WarmDeck uses OBD `01 5C` (oil), `01 05` (coolant) and the existing HSFZ EGS
 supply DME temperatures where supported. The transmission tile requires HSFZ.
 If any required reading is unavailable, WarmDeck waits for it before showing a
 complete warm-up estimate. The display estimates warm-up from measured trends
-and uses 85/75/40 °C as its own thresholds.
+and uses 85/75/40 °C as its own targets, with independent per-fluid indicators.
+These are app choices, not BMW operating specifications. See
+[WarmDeck target behavior](WARM-READINESS.md) for hysteresis, unavailable samples,
+estimate limits, and host-only validation.
 
 
 ## BoostDeck selectable OBD readings

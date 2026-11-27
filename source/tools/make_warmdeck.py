@@ -32,15 +32,15 @@ def main():
 
     ET.SubElement(models, "imageIdModel", id="65", imageId="58150")
     place("image", 200, 65, (32, 14, 1160, 428))
-    for i in range(5):
+    for i in range(8):
         ET.SubElement(models, "raDataModel", id=str(50+i), modelType="Richtext")
-    for i, (name, target) in enumerate((("Engine oil",85),("Coolant",75),("Transmission",40))):
+    for i, name in enumerate(("Engine oil", "Coolant", "Transmission")):
         x = 54+i*382
         ET.SubElement(models, "imageIdModel", id=str(60+i), imageId="58100")
         place("label", 220+i, None, (x, 48, 320, 45), name)
         place("label", 230+i, 50+i, (x, 101, 320, 72))
         place("image", 240+i, 60+i, (x, 190, 294, 16))
-        place("label", 250+i, None, (x, 222, 320, 48), f"Target {target} C")
+        place("label", 250+i, 55+i, (x, 222, 320, 48))
     place("label", 260, 53, (54, 304, 1116, 50))
     place("label", 261, 54, (54, 363, 1116, 50))
     ET.indent(tree, space="  ")

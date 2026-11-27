@@ -16,6 +16,9 @@
       <raDataModel id="52" modelType="Richtext" />
       <raDataModel id="53" modelType="Richtext" />
       <raDataModel id="54" modelType="Richtext" />
+      <raDataModel id="55" modelType="Richtext" />
+      <raDataModel id="56" modelType="Richtext" />
+      <raDataModel id="57" modelType="Richtext" />
       <imageIdModel id="60" imageId="58100" />
       <imageIdModel id="61" imageId="58100" />
       <imageIdModel id="62" imageId="58100" />
@@ -59,7 +62,7 @@
               <property id="3" value="true" />
             </properties>
           </image>
-          <label id="250" text="Target 85 C">
+          <label id="250" model="55">
             <properties>
               <property id="20" value="54" />
               <property id="21" value="222" />
@@ -93,7 +96,7 @@
               <property id="3" value="true" />
             </properties>
           </image>
-          <label id="251" text="Target 75 C">
+          <label id="251" model="56">
             <properties>
               <property id="20" value="436" />
               <property id="21" value="222" />
@@ -127,7 +130,7 @@
               <property id="3" value="true" />
             </properties>
           </image>
-          <label id="252" text="Target 40 C">
+          <label id="252" model="57">
             <properties>
               <property id="20" value="818" />
               <property id="21" value="222" />

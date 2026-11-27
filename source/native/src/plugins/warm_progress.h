@@ -9,25 +9,27 @@ static const double kWarmLower[WARM_COUNT]={81,70,35};
 class WarmProgress {
     uint64_t anchor_[WARM_COUNT];
     double baseline_[WARM_COUNT], rate_[WARM_COUNT];
-    bool reached_;
+    bool reached_[WARM_COUNT];
 public:
     WarmProgress() { reset(); }
 
     void reset() {
-        reached_=false;
         for (unsigned i=0;i<WARM_COUNT;++i) {
+            reached_[i]=false;
             anchor_[i]=0;
             baseline_[i]=rate_[i]=0;
         }
     }
 
+    bool targetReached(unsigned fluid) const { return fluid<WARM_COUNT && reached_[fluid]; }
+
     // Positive estimates require a rising trend for every fluid still below its target.
     int update(const warm_frame& frame, unsigned valid) {
-        if (valid != (1u<<WARM_COUNT)-1) reached_=false;
         bool all=true, estimate=true;
         double longest=0;
         for (unsigned i=0;i<WARM_COUNT;++i) {
             if (!(valid & (1u<<i))) {
+                reached_[i]=false;
                 anchor_[i]=0;
                 rate_[i]=0;
                 all=estimate=false;
@@ -44,8 +46,10 @@ public:
                 anchor_[i]=stamp;
                 baseline_[i]=value;
             }
-            if (value<(reached_ ? kWarmLower[i] : kWarmTarget[i])) all=false;
-            if (value>=kWarmTarget[i]) rate_[i]=0;
+            if (value>=kWarmTarget[i]) reached_[i]=true;
+            else if (value<kWarmLower[i]) reached_[i]=false;
+            if (!reached_[i]) all=false;
+            if (reached_[i]) rate_[i]=0;
             else {
                 if (rate_[i]<0.015) estimate=false;
                 else {
@@ -54,7 +58,6 @@ public:
                 }
             }
         }
-        reached_=all;
         if (all) return 0;
         return estimate && longest>0 && longest<=1800 ? static_cast<int>(longest+0.99) : -1;
     }

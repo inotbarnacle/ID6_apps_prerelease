@@ -1,0 +1,43 @@
+name: WarmDeck independent targets
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - cc: gcc
+            cxx: g++
+          - cc: clang
+            cxx: clang++
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Native regressions and production WarmDeck UDP/UI
+        run: make -C source/native test CC=${{ matrix.cc }} CXX=${{ matrix.cxx }}
+      - name: Production syntax and static analysis
+        run: |
+          ${{ matrix.cxx }} -std=gnu++98 -Wall -Wextra -Werror -Isource/native/sdk -Isource/native/src/common -Isource/native/src/ipc -fsyntax-only source/native/src/plugins/warm_deck.cpp
+          clang++ --analyze -Xanalyzer -analyzer-output=text -std=gnu++98 -Isource/native/sdk -Isource/native/src/common -Isource/native/src/ipc source/native/src/plugins/warm_deck.cpp
+      - name: Generated model bindings and original artwork
+        run: |
+          python3 -m pip install Pillow==13.0.0
+          python3 -B source/tools/test_warm_readiness_resources.py
+  memory:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Independent targets and production UDP/UI under sanitizers
+        env:
+          ASAN_OPTIONS: detect_leaks=1
+          UBSAN_OPTIONS: halt_on_error=1
+        run: make -C source/native test-warm-readiness CXX=clang++ CXXFLAGS='-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'
