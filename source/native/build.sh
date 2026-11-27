@@ -79,6 +79,10 @@ cxx -Isrc/common -Isrc/ipc -Isdk -O2 -fno-exceptions -fPIC -shared src/plugins/l
 cxx -Isrc/common -Isrc/ipc -Isdk -O2 -fno-exceptions -fPIC -shared src/plugins/warm_deck.cpp out/core.o \
     "$frameworks/libAppFramework.A.so" "$frameworks/libCoreFramework.A.so" -Lout -lm -lsocket \
     -Wl,--allow-shlib-undefined -Wl,-soname,libWarmDeck.so -o out/libWarmDeck.so
+c -Isrc/common -O2 -fPIC -c src/common/dpf_core.c -o out/dpf-core.o
+cxx -Isrc/common -Isrc/ipc -Isdk -O2 -fno-strict-aliasing -fno-exceptions -fPIC -shared src/plugins/dpf_deck.cpp out/core.o out/dpf-core.o \
+    "$frameworks/libAppFramework.A.so" "$frameworks/libCoreFramework.A.so" -Lout -lm -lsocket \
+    -Wl,--allow-shlib-undefined -Wl,-soname,libDPFDeck.so -o out/libDPFDeck.so
 
 cxx -Isrc/common -Isrc/ipc -Isdk -O2 -fno-exceptions -fPIC -shared src/plugins/mg_flasher.cpp \
     "$frameworks/libAppFramework.A.so" "$frameworks/libCoreFramework.A.so" -Lout -lsocket \

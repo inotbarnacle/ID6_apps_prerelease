@@ -20,7 +20,9 @@ import (
 )
 
 //go:embed payload
-var bundled embed.FS
+var embeddedPayload embed.FS
+
+var bundled fs.ReadFileFS = embeddedPayload
 
 const (
 	root        = "/var/opt/hmi/data/ID5"
@@ -270,6 +272,9 @@ func digest(b []byte) string { sum := sha256.Sum256(b); return hex.EncodeToStrin
 
 type plugin struct{ name, worker, connector string }
 
+// DPFDeck is an explicit optional selection, never part of legacy defaults.
+var dpfApp = plugin{"DPFDeck", "dpfdeck-collector-qnx", "123"}
+
 var apps = []plugin{
 	{"BoostDeck", "boostdeck-collector-qnx", "100"},
 	{"ShiftDeck", "shift-deck-qnx", "104"},
@@ -288,6 +293,9 @@ var apps = []plugin{
 
 func checkAppLayouts(screen panel, selection []plugin) error {
 	for _, app := range selection {
+		if app.name == "DPFDeck" && screen != (panel{1280, 480}) && screen != (panel{1440, 540}) && screen != (panel{1920, 720}) {
+			return fmt.Errorf("DPFDeck currently requires a wide iDrive display")
+		}
 		if (app.name == "RoadJet" || app.name == "BEAMer") && screen != (panel{1280, 480}) {
 			return fmt.Errorf("%s currently requires a 1280 × 480 iDrive display", app.name)
 		}
@@ -304,6 +312,29 @@ func (p plugin) executables() []string {
 		return []string{p.worker, "exhaust-flap-worker-qnx"}
 	}
 	return []string{p.worker}
+}
+
+func (p plugin) requiredFiles() []string {
+	files := append([]string{p.name + ".manifest", p.name + ".xml", "lib" + p.name + ".so"}, p.executables()...)
+	if p.usesImages() {
+		files = append(files, p.name+"_ALL_Images.zip")
+	}
+	return files
+}
+
+func dpfPayloadAvailable() bool {
+	if _, err := bundled.ReadFile("payload/TEST-ONLY-DPF-FIXTURE"); err == nil {
+		return false
+	}
+	for _, name := range dpfApp.requiredFiles() {
+		data, err := bundled.ReadFile("payload/DPFDeck/" + name)
+		if err != nil || len(data) == 0 {
+			return false
+		}
+	}
+	raw, _ := bundled.ReadFile("payload/DPFDeck/DPFDeck.manifest")
+	var identity manifest
+	return xml.Unmarshal(raw, &identity) == nil && identity.Name == dpfApp.name && identity.Connector == dpfApp.connector
 }
 
 type manifest struct {
@@ -418,10 +449,7 @@ func install(r remoteRunner, gateway string, screen panel, recoverLock bool, sel
 		}
 		filesData := map[string][]byte{"gateway-ip.txt": []byte(gateway + "\n")}
 		executables := app.executables()
-		expected := append([]string{app.name + ".manifest", app.name + ".xml", "lib" + app.name + ".so"}, executables...)
-		if app.usesImages() {
-			expected = append(expected, app.name+"_ALL_Images.zip")
-		}
+		expected := app.requiredFiles()
 		for _, file := range files {
 			name := file.Name()
 			if !slices.Contains(expected, name) {

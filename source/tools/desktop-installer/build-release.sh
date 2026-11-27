@@ -2,6 +2,10 @@
 set -eu
 cd "$(dirname "$0")"
 installer="$PWD"
+if test -f payload/TEST-ONLY-DPF-FIXTURE; then
+    echo "Installer test data cannot be included in a release. Stage real build inputs first." >&2
+    exit 1
+fi
 template="$(cd "$1" && pwd)"
 mkdir -p "$2"
 out="$(cd "$2" && pwd)"

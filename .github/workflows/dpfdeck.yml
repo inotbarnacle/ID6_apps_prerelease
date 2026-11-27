@@ -12,13 +12,21 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        compiler: [gcc, clang]
+        include:
+          - compiler: gcc
+            cxx: g++
+          - compiler: clang
+            cxx: clang++
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: DPF worker and existing native regressions
         env:
           CC: ${{ matrix.compiler }}
-        run: make -C source/native test
+          CXX: ${{ matrix.cxx }}
+          DPF_MODEL_CAPTURE_DIR: /tmp/dpf-models
+        run: |
+          mkdir -p /tmp/dpf-models
+          make -C source/native test
       - name: C++98 public header and QNX build script syntax
         run: |
           printf '#include "dpf_core.h"\nint main() { return DPF_COUNT != 11; }\n' > /tmp/dpf-header.cpp
@@ -33,3 +41,32 @@ jobs:
           LOCPATH=/tmp/dpf-locales DPF_REQUIRE_COMMA_LOCALE=1 /tmp/dpf-sanitized
           clang --analyze -std=c99 -Wall -Wextra -Isource/native/src/common source/native/src/common/dpf_core.c -o /tmp/dpf-core.plist
           clang --analyze -std=c99 -Wall -Wextra -Isource/native/src/common -Isource/native/src/ipc source/native/src/workers/dpf_deck_worker.c -o /tmp/dpf-worker.plist
+          clang++ --analyze -std=gnu++98 -fno-strict-aliasing -isystem source/native/sdk -Isource/native/src/common source/native/src/plugins/dpf_deck.cpp -o /tmp/dpf-plugin.plist
+          clang -std=c99 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Isource/native/src/common -c source/native/src/common/dpf_core.c -o /tmp/dpf-core-sanitized.o
+          clang++ -std=gnu++98 -O1 -g -Wall -Wextra -Werror -fno-access-control -fno-strict-aliasing -fsanitize=address,undefined -fno-omit-frame-pointer -isystem source/native/sdk -Isource/native/src/common -Isource/native/tests source/native/tests/test_dpf_plugin.cpp source/native/tests/fake_bmw.cpp /tmp/dpf-core-sanitized.o -lm -o /tmp/dpf-plugin-sanitized
+          /tmp/dpf-plugin-sanitized
+      - name: Native resources and host previews
+        if: matrix.compiler == 'clang'
+        run: |
+          python3 -m venv /tmp/dpf-tools
+          /tmp/dpf-tools/bin/pip install Pillow==13.0.0
+          /tmp/dpf-tools/bin/python -B source/tools/make_dpfdeck.py
+          /tmp/dpf-tools/bin/python -B source/tools/test_dpf_resources.py
+          /tmp/dpf-tools/bin/python -B source/tools/preview_dpfdeck.py --models /tmp/dpf-models/bank1-live.tsv --out /tmp/dpf-bank1.png
+
+  installer:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version: '1.27.4'
+          cache-dependency-path: source/tools/desktop-installer/go.sum
+      - name: Stage host-only installer test inputs
+        run: |
+          python3 -m venv /tmp/dpf-tools
+          /tmp/dpf-tools/bin/pip install Pillow==13.0.0
+          /tmp/dpf-tools/bin/python -B source/tools/test_dpf_resources.py --stage-installer-fixture
+      - name: Installer selection, transaction and rollback checks
+        working-directory: source/tools/desktop-installer
+        run: go test -count=1 -json ./...

@@ -6,6 +6,8 @@ from pathlib import Path
 import socket
 import struct
 import subprocess
+import select
+import sys
 import threading
 import time
 import unittest
@@ -13,6 +15,7 @@ import unittest
 from udp_test_socket import telemetry_socket
 
 BIN = str(Path(__file__).resolve().parents[1] / 'build/dpfdeck-collector')
+PARENT_FIXTURE = str(Path(__file__).resolve().parents[1] / 'build/dpf-parent-exit')
 ALL = (1 << 11)-1
 PAYLOADS = {5:bytes.fromhex('7a'), 0x7a:bytes.fromhex('07fff600002710'),
             0x7b:bytes.fromhex('058000ffffffff'), 0x7c:bytes.fromhex('0f0190019147e003e8')}
@@ -279,6 +282,34 @@ class DpfTransportTest(unittest.TestCase):
             self.assertTrue(packets[-1]['valid'] & (1 << 6))
             if most:
                 self.assertIn('unregister_target=1 unregister_client=1 free=1',errors)
+            for port in (42861,42868,42869):
+                with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as probe:
+                    probe.bind(('127.0.0.1',port))
+
+    @unittest.skipUnless(sys.platform.startswith('linux'),'isolated guardian uses Linux subreaper support')
+    def test_parent_exit_stops_the_real_worker_without_signalling_it(self):
+        with telemetry_socket() as udp,Gateway() as gateway:
+            udp.settimeout(4)
+            environment=dict(os.environ);environment.pop('ID6_FAKE_MOST',None)
+            guardian=subprocess.Popen([PARENT_FIXTURE,BIN,str(gateway.port),str(udp.getsockname()[1])],
+                                      stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
+                                      text=True,env=environment)
+            try:
+                self.assertTrue(select.select([guardian.stdout],[],[],4)[0])
+                worker=int(guardian.stdout.readline().strip())
+                for _ in range(16):
+                    packet=parse(udp.recv(513))
+                    self.assertEqual(packet['pid'],worker)
+                    if packet['valid'] & (1 << 6):
+                        break
+                self.assertTrue(packet['valid'] & (1 << 6))
+                output,errors=guardian.communicate('x\n',timeout=8)
+                self.assertEqual(guardian.returncode,0,errors)
+                self.assertIn('exited after parent death',output)
+            finally:
+                if guardian.poll() is None:
+                    guardian.kill()
+                guardian.communicate(timeout=8)
             for port in (42861,42868,42869):
                 with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as probe:
                     probe.bind(('127.0.0.1',port))
