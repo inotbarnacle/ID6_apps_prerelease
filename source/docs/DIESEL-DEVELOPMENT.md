@@ -11,14 +11,14 @@ application ZIPs are separate maintainer build artifacts.
 | Area | Current evidence and gap | Action |
 | --- | --- | --- |
 | Native HMI / RHMI | C++98 plugins use private framework ABI declarations and generated XML/image archives. Full-screen layouts and workers are separate compatibility concerns. | Keep ECU changes independent of ABI/layout changes; no new firmware approval. |
-| QNX / renderer | `native/build.sh` requires licensed SDP 6.5 and private framework link inputs. Framework fingerprint comparison checks static imports, not runtime behavior. | Host validation first. Ask [QNX licensing/support](https://qnx.software/en/contact) about a legitimate legacy SDP 6.5 entitlement. The current SDP 8 evaluation does not supply this toolchain. Do not use key generators or unauthorized archives mentioned in older project instructions. |
+| QNX / renderer | `native/build.sh` requires licensed SDP 6.5 and private framework link inputs. Framework fingerprint comparison checks static imports, not runtime behavior. | Host validation first. [PR #208](https://github.com/inotbarnacle/iDriveDeck/pull/208) replaces the archive/key-generator recommendation with official acquisition channels. Legacy availability and entitlement need QNX confirmation; the current SDP 8 evaluation does not establish either. |
 | HSFZ / gateway | Shared link filters target ECU and response prefix, bounds replies and deadlines, and discovers a unique wired link-local gateway. | Reuse the link and diagnostic lease. Do not scan arbitrary addresses or DIDs. |
 | MOST / standalone | Current MOST tunnel accepts DME only; EGS transmission temperature requires HSFZ. A worker that has connected HSFZ does not subsequently switch to MOST. | Coordinate with [PR #143](https://github.com/inotbarnacle/iDriveDeck/pull/143); do not duplicate its multi-ECU tunnel work. |
 | Ownership / lifecycle | Loopback leases coordinate project workers, not external tools. The original reapers can forget a live PID on `ECHILD`, permitting duplicate workers after retry deadlines and losing the PID needed for close. | Reuse PR #143's existing process-existence fix. [Fork test review #1](https://github.com/voioo/iDriveDeck/pull/1) adds production-plugin/baseline/owned-child regressions. Hidden polling changes in #143/#50 and actual vehicle cleanup remain separate. |
 | Diesel telemetry | Explicit Diesel selection substitutes standard OBD coolant, IAT, rail and boost for unverified gasoline DIDs. Only fuel-rate polling currently checks a supported-PID bitmap. No automatic ECU-specific verified N57 profile exists on main. | Add shared capability checks first. Preserve fixed gasoline decoders and persisted signal IDs. |
 | Oil temperature | [#21](https://github.com/inotbarnacle/iDriveDeck/issues/21), [#162](https://github.com/inotbarnacle/iDriveDeck/issues/162): DDE741 rejects fixed reads and does not advertise PID 5C. Temporary F303 is reused for different signals. | Leave unavailable without a verified fixed source. Never define or poll somebody else's dynamic DID. |
 | Pressure | PID 23 is direct-injection rail gauge pressure, 0.1 bar per count. MAP PID 0B is limited to 255 kPa absolute; subtracting barometric pressure does not extend that range. The original graphic fills at only 250 bar. | #202 blanks saturated diesel MAP/boost. [Draft #205](https://github.com/inotbarnacle/iDriveDeck/pull/205) adds a configurable diesel rail display scale, not an ECU pressure limit. Requested rail/boost require separate evidence. |
-| WarmDeck | Three temperatures expire independently and trend estimates require all three. Oil PID is currently queried unconditionally. Thresholds 85/75/40 C are application choices. | Gate unsupported oil and preserve independent coolant/transmission readiness. |
+| WarmDeck | Three temperatures expire independently and trend estimates require all three. Main queries oil unconditionally and displays generic RPM guidance. Thresholds 85/75/40 C are application choices. | #202 gates oil by advertised support. [Draft #209](https://github.com/inotbarnacle/iDriveDeck/pull/209) adds independent target states, measured estimates and advisory vehicle-guidance text, with production UDP/UI and resource tests. |
 | ShiftDeck | Source artwork/preferences retain five gasoline targets while the latest installer release advertises 6000–8000 RPM. Neither establishes an N57 limit. | [Draft #203](https://github.com/inotbarnacle/iDriveDeck/pull/203) adds manually selected diesel targets/display scales, legacy settings migration and asset/plugin tests. No universal diesel redline or physical validation is claimed. |
 | Faults | Worker reads 24-bit UDS codes; the old UI discarded status availability and always used a reference gasoline table. | [Draft #204](https://github.com/inotbarnacle/iDriveDeck/pull/204) preserves supported status bits, adds a DDE/raw view and backend clear confirmation. Licensed DDE descriptions and OBD-format validation remain open. |
 | DPF | [#196](https://github.com/inotbarnacle/iDriveDeck/issues/196) offers B47 capture and DPFDeck development; no verified DPF mapping in this checkout. | Coordinate with the contributor before a separate DPFDeck implementation. No guessed DIDs, thresholds or regeneration controls. |
@@ -149,15 +149,43 @@ This description is not diagnostic confirmation.
   evidence. New source behavior is the existing #143 fix, not a newly guessed
   ECU/firmware workaround. The original patch's text-count guard is replaced
   by explicit behavioral coverage in this test contribution.
-- Static follow-up: modern host syntax checks suppress an inherited SDK
-  callback-overload hiding warning in menus such as BEAMer. Clang reports two
-  inherited stream-read findings at `launch_records.h:39`, also reproduced in
-  the pinned baseline. These are documented separately; analysis is not claimed
-  warning-free and no F15/F16 freeze cause is asserted from these host tests.
-- Next: evaluate the existing WarmDeck RPM guide against the requirement for
-  measured/advisory cold-operation information, address the LaunchRecords
-  read-error path separately, and clean up obsolete toolchain acquisition links.
-  Keep remaining lifecycle/MOST work coordinated with #143/#138/#141.
+- WarmDeck targets: [draft #209](https://github.com/inotbarnacle/iDriveDeck/pull/209),
+  branch `diesel/warm-readiness`, commit `4bd26e3`, implements independent
+  unknown/pending/met states with per-fluid hysteresis and trend resets. It
+  removes generic RPM numbers and identifies the targets as application choices.
+  The production display rejects wrong-size/source, future, pre-opening and
+  older positive samples; explicit unavailable markers clear a fluid immediately.
+  The legacy frame cannot order timestamp-free invalidations or authenticate a
+  worker, so a delayed invalidation can conservatively clear a newer reading.
+  Eight native programs, 80 worker Python tests and three resource tests pass;
+  the progress/UI tests pass ASan/UBSan, static analysis is clear, all 47 host
+  BMW imports match baseline and all 22 regenerated image pixels are preserved.
+  [Fork CI](https://github.com/voioo/iDriveDeck/actions/runs/45997064547) passes
+  GCC/Clang, production syntax/analysis, resources and memory checks.
+- Record-file follow-up: [draft #210](https://github.com/inotbarnacle/iDriveDeck/pull/210),
+  branch `fix/launch-record-reads`, preserves both legacy/current record formats
+  and avoids another read after a stream error or known EOF. Real glibc EIO
+  streams reproduce the old loader's second failing read, including after a
+  plausible legacy prefix; the fixed loader returns no records and closes once.
+  Eight native programs and 80 Python cases pass locally, including every
+  truncated current-format length and trailing bytes. Both record tests pass
+  ASan/UBSan; Clang analysis of production LaunchDeck no longer reports the two
+  inherited read-after-error/EOF findings. A CI wrapper initially failed because
+  its runner lacked ripgrep; `9f472fa` uses Python and verifies the old loader's
+  exact exit status and error count.
+  [Corrected fork CI](https://github.com/voioo/iDriveDeck/actions/runs/45997659997)
+  passes both compiler jobs, static analysis, sanitizers and the old-loader
+  expected-failure control. No F15/F16 freeze cause is asserted.
+- Toolchain documentation: [PR #208](https://github.com/inotbarnacle/iDriveDeck/pull/208),
+  commit `b1838c7`, replaces third-party SDK/key-generator links in both setup
+  guides with official QNX download/licensing/support channels. Compiler
+  requirements match `build.sh`; official links and the current SDP 8 commercial
+  evaluation were checked. This documentation-only PR is ready for review.
+  No SDK was obtained, license accepted, or vendor contacted.
+- Next: continue evidence-backed offline work on remaining diagnostic/profile
+  and compatibility gaps. Keep remaining lifecycle/MOST work coordinated with
+  #143/#138/#141. Extra diesel signals, DPF and DDE descriptions still require
+  valid definitions, licensing where relevant, and ECU-specific evidence.
 - Vehicle status: no vehicle connection, SSH, ECU requests, installation,
   head-unit restart or QNX build has been performed.
 - Owner update: ENET/captures are not yet available; continue offline. No live
@@ -177,7 +205,13 @@ This description is not diagnostic confirmation.
   [#204](https://github.com/inotbarnacle/iDriveDeck/pull/204)
   (draft; supported fault statuses, raw view and clear confirmation), and
   [#205](https://github.com/inotbarnacle/iDriveDeck/pull/205)
-  (draft; configurable diesel rail display scale and preserved settings/assets).
+  (draft; configurable diesel rail display scale and preserved settings/assets),
+  [#208](https://github.com/inotbarnacle/iDriveDeck/pull/208)
+  (ready for review; official QNX acquisition documentation),
+  [#209](https://github.com/inotbarnacle/iDriveDeck/pull/209)
+  (draft; independent WarmDeck app targets and data quality), and
+  [#210](https://github.com/inotbarnacle/iDriveDeck/pull/210)
+  (draft; LaunchDeck record read-error handling and regression tests).
 
 ## Combined source validation
 
@@ -237,6 +271,27 @@ cleanup, retry and retained-PID behavior now have regression evidence alongside
 the diesel features. This remains simulation/host evidence; it does not establish
 the target HMI's signal disposition, diagnose a specific freeze, or validate QNX
 installation, factory functionality or standalone transport.
+
+WarmDeck #209, LaunchRecords #210 and the official QNX acquisition docs #208
+are integrated at source commit `f868543`. The complete local run passes
+32 native C/C++ programs and 101 native-suite Python cases. All 40 tool/resource
+cases also pass, including three already counted by the native suite: 138
+distinct Python tests in total. The added production WarmDeck actor shares the
+unchanged MIT framework fake, and the existing #143 worker-PID fix survives the
+merge. Legacy record formats and the inherited lifecycle controls remain covered.
+The subsequent `fcf85a4` revision adds a documentation qualification and the
+portable CI baseline checker, without changing runtime code. All eight fork CI
+workflows pass on this exact revision:
+[diagnostics](https://github.com/voioo/iDriveDeck/actions/runs/45997694388),
+[discovery](https://github.com/voioo/iDriveDeck/actions/runs/45997694890),
+[ShiftDeck](https://github.com/voioo/iDriveDeck/actions/runs/45997694613),
+[faults](https://github.com/voioo/iDriveDeck/actions/runs/45997694679),
+[rail scale](https://github.com/voioo/iDriveDeck/actions/runs/45997694439),
+[worker ownership](https://github.com/voioo/iDriveDeck/actions/runs/45997694444),
+[WarmDeck](https://github.com/voioo/iDriveDeck/actions/runs/45997694549), and
+[record reads](https://github.com/voioo/iDriveDeck/actions/runs/45997694421).
+No upstream contribution is merged. The latest progress-only edit does not
+change the runtime source validated at `f868543` or the CI source at `fcf85a4`.
 
 ## Fault-data licensing finding
 
