@@ -17,36 +17,55 @@ from probe_signals import enet_address, exchange
 PIDS = (0x04, 0x05, 0x0b, 0x0c, 0x0f, 0x10, 0x23, 0x33, 0x42, 0x5c, 0x5e)
 WIDTHS = {pid: 2 if pid in (0x0c, 0x10, 0x23, 0x42, 0x5e) else 1 for pid in PIDS}
 MAX_REQUESTS, MAX_SECONDS = 16, 45
+EGT_PIDS = (0x78, 0x79)
 FRAMEWORKS = ("libAppFramework.A.so", "libCoreFramework.A.so")
 ALLOWLIST = {(ecu, bytes.fromhex("22f150")) for ecu in (0x12, 0x18)} | {
     (0x12, bytes((1, pid))) for pid in (0, 0x20, 0x40, *PIDS)
 }
+POLICIES = {
+    "standard": (PIDS, (0, 0x20, 0x40), MAX_REQUESTS, ALLOWLIST),
+    "standard-egt": (PIDS + EGT_PIDS, (0, 0x20, 0x40, 0x60), 19, ALLOWLIST | {
+        (0x12, bytes((1, pid))) for pid in (0x60, *EGT_PIDS)
+    }),
+}
 
 
-def plan():
-    return {
+def policy(profile):
+    try:
+        return POLICIES[profile]
+    except KeyError:
+        raise ValueError("unknown discovery profile") from None
+
+
+def plan(profile="standard"):
+    pids, bases, limit, _ = policy(profile)
+    result = {
         "transport": "HSFZ TCP 6801, explicit wired link-local endpoint only",
         "identity": [{"ecu": f"{ecu:02x}", "request": "22 f1 50"} for ecu in (0x12, 0x18)],
-        "capabilities": ["01 00", "01 20", "01 40"],
-        "measurements_if_advertised": [f"01 {pid:02x}" for pid in PIDS],
-        "max_requests": MAX_REQUESTS,
+        "capabilities": [f"01 {base:02x}" for base in bases],
+        "measurements_if_advertised": [f"01 {pid:02x}" for pid in pids],
+        "max_requests": limit,
         "max_duration_seconds": MAX_SECONDS,
         "minimum_gap_seconds": 0.2,
         "retries": 0,
         "writes_or_session_changes": False,
         "ssh_or_most": False,
     }
+    if profile != "standard":
+        result["profile"] = profile
+    return result
 
 
-def collect(local, gateway):
+def collect(local, gateway, *, profile="standard"):
+    pids, bases, limit, allowlist = policy(profile)
     rows = []
     deadline = time.monotonic() + MAX_SECONDS
 
     def read(ecu, request):
-        assert (ecu, request) in ALLOWLIST
+        assert (ecu, request) in allowlist
         # Reserve connect, send and receive deadlines (two seconds each),
         # plus the inter-request gap, before beginning another transaction.
-        if len(rows) >= MAX_REQUESTS or time.monotonic() + 6.2 > deadline:
+        if len(rows) >= limit or time.monotonic() + 6.2 > deadline:
             return None
         row = {"ecu": f"{ecu:02x}", "request": request.hex(" ")}
         try:
@@ -62,7 +81,7 @@ def collect(local, gateway):
     for ecu in (0x12, 0x18):
         read(ecu, bytes.fromhex("22f150"))
     supported = set()
-    for base in (0, 0x20, 0x40):
+    for base in bases:
         row = read(0x12, bytes((1, base)))
         reply = reply_bytes(row)
         if reply is None or len(reply) != 6 or reply[:2] != bytes((0x41, base)):
@@ -71,7 +90,7 @@ def collect(local, gateway):
         supported.update(base+offset for offset in range(1, 33) if mask & (1 << (32-offset)))
         if not mask & 1:
             break
-    for pid in PIDS:
+    for pid in pids:
         if pid in supported:
             read(0x12, bytes((1, pid)))
     return rows
@@ -114,7 +133,34 @@ def safe_headunit(value):
     return out or None
 
 
-def report(rows, headunit=None, evidence="replay"):
+def egt_sensors(pid, state, reply):
+    """Decode standard fields, never infer physical location or regeneration.
+
+    Matches the app's -40..1800 C plausibility envelope, not an OEM limit.
+    Format/scaling provenance is documented in DIESEL-VALIDATION.md.
+    """
+    complete = (state == "advertised" and reply is not None and len(reply) == 11
+                and reply[:2] == bytes((0x41, pid)) and not reply[2] & 0xf0)
+    sensors = []
+    for index in range(4):
+        capability = "unsupported" if state == "unsupported" else "unknown"
+        item = {"bank": pid - 0x77, "sensor": index + 1,
+                "capability": capability, "measurement": "unavailable"}
+        if complete:
+            supported = bool(reply[2] & (1 << index))
+            item["capability"] = "supported" if supported else "unsupported"
+            if supported:
+                raw = int.from_bytes(reply[3+2*index:5+2*index], "big")
+                celsius = (raw - 400) / 10
+                if celsius <= 1800:
+                    item.update(celsius=celsius, measurement="decoded_requires_independent_validation")
+                else:
+                    item["measurement"] = "outside_app_plausibility_range"
+        sensors.append(item)
+    return complete, sensors
+
+
+def report(rows, headunit=None, evidence="replay", *, profile="standard"):
     """Export only known fixed requests and validated response shapes.
 
     In particular no complete F150 payload, raw diagnostic errors, arbitrary
@@ -122,6 +168,7 @@ def report(rows, headunit=None, evidence="replay"):
     """
     if not isinstance(rows, list) or len(rows) > 256:
         raise ValueError("expected at most 256 probe records")
+    pids, bases, _, allowlist = policy(profile)
     records = {}
     for row in rows:
         if not isinstance(row, dict):
@@ -131,7 +178,7 @@ def report(rows, headunit=None, evidence="replay"):
             request = bytes.fromhex(row.get("request", ""))
         except (TypeError, ValueError):
             continue
-        if (ecu, request) in ALLOWLIST:
+        if (ecu, request) in allowlist:
             # Ambiguous duplicate reads cannot establish a single capability.
             key = (ecu, request)
             records[key] = row if key not in records else None
@@ -147,7 +194,7 @@ def report(rows, headunit=None, evidence="replay"):
         }
 
     bitmaps, advertised, checked = [], set(), set()
-    for base in (0, 0x20, 0x40):
+    for base in bases:
         reply = reply_bytes(records.get((0x12, bytes((1, base)))))
         if reply is None or len(reply) != 6 or reply[:2] != bytes((0x41, base)):
             break
@@ -155,24 +202,29 @@ def report(rows, headunit=None, evidence="replay"):
         bitmaps.append({"pid": f"{base:02X}", "reply": reply.hex(" ")})
         advertised.update(base+offset for offset in range(1, 33) if mask & (1 << (32-offset)))
         if not mask & 1:
-            checked.update(range(base+1, 0x60))
+            checked.update(range(base+1, bases[-1]+32))
         else:
             checked.update(range(base+1, base+32))
         if not mask & 1:
             break
 
     signals = []
-    for pid in PIDS:
+    for pid in pids:
         row = records.get((0x12, bytes((1, pid))))
         reply = reply_bytes(row)
         state = "unknown" if pid not in checked else "unsupported" if pid not in advertised else "advertised"
         entry = {"pid": f"{pid:02X}", "capability": state, "measurement": "unavailable"}
-        if state == "advertised" and reply is not None and len(reply) == WIDTHS[pid]+2 and reply[:2] == bytes((0x41, pid)):
+        if pid in EGT_PIDS:
+            complete, entry["sensors"] = egt_sensors(pid, state, reply)
+            if complete:
+                entry["reply"] = reply.hex(" ")
+                entry["measurement"] = "sensor_layout_requires_independent_validation"
+        elif state == "advertised" and reply is not None and len(reply) == WIDTHS[pid]+2 and reply[:2] == bytes((0x41, pid)):
             entry["reply"] = reply.hex(" ")
             entry["measurement"] = "response_requires_decoder_and_independent_validation"
             if pid == 0x0b and reply[2] == 255:
                 entry["measurement"] = "saturated_255_kpa_absolute"
-        elif reply is not None and len(reply) == 3 and reply[:2] == bytes((0x7f, 1)):
+        if reply is not None and len(reply) == 3 and reply[:2] == bytes((0x7f, 1)):
             entry["nrc"] = f"{reply[2]:02X}"
         signals.append(entry)
 
@@ -181,8 +233,8 @@ def report(rows, headunit=None, evidence="replay"):
         reply = reply_bytes(record)
         if reply is not None and len(reply) == 3 and reply[:2] == bytes((0x7f, request[0])):
             hsfz_observed = True
-    return {
-        "format": "idrive-diesel-discovery-v1",
+    result = {
+        "format": "idrive-diesel-discovery-v1" if profile == "standard" else "idrive-diesel-discovery-v2",
         "evidence": evidence,
         "vehicle_platform": "not_inferred",
         "ecu_identification": identities,
@@ -197,6 +249,10 @@ def report(rows, headunit=None, evidence="replay"):
                         "No DPF, EGR, SCR or BMW-specific oil mapping is established",
                         "No standalone, QNX ABI or factory-function compatibility is established"],
     }
+    if profile != "standard":
+        result["profile"] = profile
+        result["limitations"].append("EGT bank/sensor fields do not establish physical sensor locations or regeneration")
+    return result
 
 
 def main():
@@ -205,6 +261,8 @@ def main():
     mode.add_argument("--plan", action="store_true", help="print the exact bounded request policy; no connection")
     mode.add_argument("--replay", type=Path, help="offline probe JSONL input; no connection")
     mode.add_argument("--collect", action="store_true", help="execute the reviewed parked read-only plan")
+    parser.add_argument("--profile", choices=POLICIES, default="standard",
+                        help="standard: unchanged 16-read plan; standard-egt: separately reviewed 19-read plan")
     parser.add_argument("--owner-approved-parked", action="store_true", help="owner has explicitly approved this exact collection")
     parser.add_argument("--local", type=enet_address)
     parser.add_argument("--gateway", type=enet_address)
@@ -219,7 +277,7 @@ def main():
         if args.out and args.out.exists():
             raise ValueError("output already exists")
         if args.plan:
-            result = plan()
+            result = plan(args.profile)
         else:
             headunit = json.loads(args.headunit_report.read_text()) if args.headunit_report else None
             if args.replay:
@@ -227,8 +285,9 @@ def main():
                     raise ValueError("replay input exceeds 1 MiB")
                 rows = [json.loads(line) for line in args.replay.read_text().splitlines() if line.strip()]
             else:
-                rows = collect(args.local, args.gateway)
-            result = report(rows, headunit, "replay_unverified_provenance" if args.replay else "parked_live_read_only")
+                rows = collect(args.local, args.gateway, profile=args.profile)
+            result = report(rows, headunit, "replay_unverified_provenance" if args.replay else "parked_live_read_only",
+                            profile=args.profile)
         output = json.dumps(result, indent=2) + "\n"
         if args.out:
             fd = os.open(args.out, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
