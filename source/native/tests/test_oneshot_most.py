@@ -175,7 +175,7 @@ class EngineCodesTest(unittest.TestCase):
         self.assertEqual(r.stdout, "Engine: 2 codes\n123456  status 2F\n0ABCDE  status 08\n")
 
     def test_engine_codes_most_clear(self):
-        r = run("engine-codes", ["--transport", "most", "--clear"], "up")
+        r = run("engine-codes", ["--transport", "most", "--clear", "--confirm-clear"], "up")
         self.assertEqual(r.stdout, "Clear accepted; 2 engine codes remain\n123456  status 2F\n0ABCDE  status 08\n")
 
     def test_engine_codes_full_reply(self):
@@ -210,7 +210,7 @@ class EngineCodesTest(unittest.TestCase):
             thread.join()
         self.assertEqual(r.stdout, BUSY)
 
-    def run_hsfz(self, reply_hex):
+    def run_hsfz(self, reply_hex, extra=()):
         errors = []
         with socket.socket() as listener:
             listener.bind(("127.0.0.1", 0))
@@ -232,7 +232,7 @@ class EngineCodesTest(unittest.TestCase):
             thread = threading.Thread(target=gateway)
             thread.start()
             r = run("engine-codes", ["--host", "127.0.0.1", "--port", str(listener.getsockname()[1]),
-                                     "--codes"], "up")
+                                     "--codes", *extra], "up")
             thread.join(4)
         if errors:
             raise errors[0]
@@ -250,6 +250,17 @@ class EngineCodesTest(unittest.TestCase):
         self.assertEqual(len(lines), 1 + 128 + 1)
         self.assertEqual(lines[-1], "More codes returned; first 128 shown")
         self.assertNotIn("More codes may exist", r.stdout)
+
+    def test_engine_codes_metadata_fits_plugin_pipe_and_keeps_transport_limits(self):
+        codes = "".join(f"01{i >> 8:02x}{i & 255:02x}08" for i in range(200))
+        r = self.run_hsfz("5902ff"+codes, ("--status-mask",))
+        self.assertLess(len(r.stdout),4096)
+        self.assertIn("010000  status 08 mask FF",r.stdout)
+        self.assertIn("01007F  status 08 mask FF",r.stdout)
+        self.assertNotIn("010080",r.stdout)
+        r = run("engine-codes", ["--transport","most","--codes","--status-mask"], "codes-512")
+        self.assertIn("01007E  status 08 mask FF",r.stdout)
+        self.assertTrue(r.stdout.endswith("More codes may exist\n"))
 
     def test_engine_codes_hsfz_unchanged(self):
         errors = []

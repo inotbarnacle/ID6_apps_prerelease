@@ -12,6 +12,9 @@
       <raAction id="23" />
       <raAction id="27" />
       <raAction id="29" />
+      <raAction id="30" />
+      <raAction id="31" />
+      <hmiAction id="32" target="103" />
     </actions>
     <models>
       <raDataModel id="80" modelType="Richtext" />
@@ -26,12 +29,14 @@
       <raDataModel id="92" modelType="Richtext" />
       <raDataModel id="93" modelType="Richtext" />
       <raDataModel id="94" modelType="Richtext" />
+      <raDataModel id="96" modelType="Richtext" />
     </models>
     <hmiStates>
       <hmiState id="101" text="Engine Fault Codes">
         <optionComponents>
           <button id="312" action="29" text="Next page" />
           <button id="313" action="25" text="Clear engine codes..." />
+          <button id="314" action="32" text="Description profile" />
         </optionComponents>
         <components>
           <image id="328" model="95">
@@ -124,6 +129,13 @@
               <property id="10" value="58" />
             </properties>
           </label>
+        </components>
+      </hmiState>
+      <hmiState id="103" parentId="101" text="Description profile">
+        <components>
+          <label id="380" model="96" />
+          <button id="381" action="30" text="DDE / unknown ECU: raw codes" />
+          <button id="382" action="31" text="Legacy gasoline reference" />
         </components>
       </hmiState>
       <hmiState id="102" parentId="101" text="Clear engine codes?">

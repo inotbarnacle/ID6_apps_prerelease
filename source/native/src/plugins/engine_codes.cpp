@@ -2,6 +2,8 @@
 #include "diagnostic_worker.h"
 #include "diagnostic_gateway.h"
 #include "dme_descriptions.h"
+#include "fault_display.h"
+#include "fault_preferences.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/wait.h>
@@ -10,24 +12,28 @@ namespace {
 const unsigned kCodesPollKey = 0x4543504cu;
 const unsigned kCodePageSize = 4;
 const char kEngineWorker[] = "/var/opt/hmi/data/ID5/Plugins/EngineCodes/engine-codes-qnx";
+const char kFaultPreferences[] = "/var/opt/hmi/data/ID5/EngineCodes.prefs";
 
-void format_code_line(char* text, size_t size, const char* line, int length, char* detail, size_t detail_size) {
+void format_code_line(char* text, size_t size, const char* line, int length, char* detail, size_t detail_size, bool raw) {
     detail[0]=0;
-    unsigned code, status;
-    int used=0;
-    if (sscanf(line,"%6x  status %2x%n",&code,&status,&used)!=2 || used!=length) {
+    FaultLine fault;
+    if (!parseFaultLine(line,static_cast<size_t>(length),fault)) {
         snprintf(text,size,"%.*s",length,line);
         return;
     }
     const char* description="Description unavailable";
-    for (unsigned i=0;i<sizeof kDmeDescriptions/sizeof kDmeDescriptions[0];++i) {
-        if (kDmeDescriptions[i].code==code) {
-            description=kDmeDescriptions[i].text;
-            break;
+    if (!raw) {
+        for (unsigned i=0;i<sizeof kDmeDescriptions/sizeof kDmeDescriptions[0];++i) {
+            if (kDmeDescriptions[i].code==fault.code) {
+                description=kDmeDescriptions[i].text;
+                break;
+            }
         }
     }
-    snprintf(text,size,"%06X   %s",code,(status & 1u) ? "Active" : (status & 4u) ? "Pending" : "Stored");
-    snprintf(detail,detail_size,"%s",description);
+    snprintf(text,size,"%06lX %s",static_cast<unsigned long>(fault.code),faultState(fault));
+    if (!raw) snprintf(detail,detail_size,"%s",description);
+    else if (fault.has_mask) snprintf(detail,detail_size,"Description unavailable; status %02X / support %02X",fault.status,fault.available);
+    else snprintf(detail,detail_size,"Description unavailable; raw status %02X, support unknown",fault.status);
 }
 }
 
@@ -37,6 +43,9 @@ typedef char codes_message_size[(sizeof(bmw::Message)==80 && __alignof__(bmw::Me
 
 class EngineCodes : public bmw::PluginApp {
     const char* worker_;
+    const char* preferences_;
+    FaultPreferences prefs_;
+    bool profile_saved_;
     pid_t codes_pid_;
     int codes_fd_;
     char code_result_[4096];
@@ -47,6 +56,23 @@ class EngineCodes : public bmw::PluginApp {
     void startCodes(bool clear);
     void pollCodes();
     void renderCodes();
+    void showProfile() {
+        char text[128];
+        snprintf(text,sizeof text,"%s%s",prefs_.raw ? "DDE / unknown ECU: descriptions unavailable" :
+                 "Legacy gasoline reference; ECU applicability unverified",profile_saved_ ? "" : " (not saved)");
+        updateModel(96u,bmw::BasicString<char>(text));
+        if (code_size_ && codes_fd_<0) renderCodes();
+        else if (!code_size_ && codes_fd_<0) {
+            snprintf(text,sizeof text,"Select Read engine codes [%s]",prefs_.raw ? "DDE/raw" : "gas ref");
+            updateModel(80u,bmw::BasicString<char>(text));
+        }
+    }
+    template <bool Raw> bool setProfile(const bmw::Parcel&) {
+        prefs_.raw=Raw;
+        profile_saved_=prefs_.save(preferences_);
+        showProfile();
+        return true;
+    }
     void reapWorker() {
         if (codes_pid_<=0) return;
         pid_t ended=waitpid(codes_pid_,0,WNOHANG);
@@ -69,9 +95,9 @@ public:
     EngineCodes(bmw::IDispatcher& dispatcher, bmw::BasicString<char> name,
                 unsigned major, unsigned minor, bmw::RHMIInterfaceVersion version,
                 const bmw::Bundle& config, const bmw::Bundle& resources,
-                const char* worker=kEngineWorker)
+                const char* worker=kEngineWorker, const char* preferences=kFaultPreferences)
         : PluginApp(dispatcher,name,major,minor,version,config,resources),
-          worker_(worker), codes_pid_(-1), codes_fd_(-1), code_size_(0),
+          worker_(worker), preferences_(preferences), profile_saved_(true), codes_pid_(-1), codes_fd_(-1), code_size_(0),
           code_page_(0), poll_generation_(0) {}
 
     virtual ~EngineCodes() { stopWorker(); }
@@ -86,10 +112,16 @@ public:
         addHandler(27u,action);
         action.m_exec=&Action::execImpl<EngineCodes,&EngineCodes::nextCodes>;
         addHandler(29u,action);
+        action.m_exec=&Action::execImpl<EngineCodes,&EngineCodes::setProfile<true> >;
+        addHandler(30u,action);
+        action.m_exec=&Action::execImpl<EngineCodes,&EngineCodes::setProfile<false> >;
+        addHandler(31u,action);
         code_size_=0;
         code_page_=0;
         clearRows();
-        updateModel(80u,bmw::BasicString<char>("Select Read engine codes"));
+        prefs_.load(preferences_);
+        profile_saved_=true;
+        showProfile();
         updateModel(89u,bmw::BasicString<char>("Engine fault memory"));
         updateModel(90u,bmw::BasicString<char>("Clears stored codes and freeze-frame data"));
         if (codes_pid_>0) postPoll();
@@ -133,7 +165,8 @@ void EngineCodes::startCodes(bool clear) {
         return;
     }
     const DiagnosticGateway gateway("/var/opt/hmi/data/ID5/Plugins/" "EngineCodes" "/gateway-ip.txt");
-    const char *args[]={worker_,"--host",gateway.host(),clear ? "--clear" : "--codes",0};
+    const char *args[]={worker_,"--host",gateway.host(),clear ? "--clear" : "--codes",
+                        "--status-mask",clear ? "--confirm-clear" : 0,0};
     if (fcntl(channel[0],F_SETFL,O_NONBLOCK)>=0 &&
         fcntl(channel[0],F_SETFD,FD_CLOEXEC)>=0 && fcntl(channel[1],F_SETFD,FD_CLOEXEC)>=0)
         codes_pid_=launch(args,channel[1]);
@@ -179,8 +212,8 @@ void EngineCodes::renderCodes() {
     char text[160];
     int header=first ? static_cast<int>(first-code_result_) : static_cast<int>(code_size_);
     if (header>110) header=110;
-    if (pages>1) snprintf(text,sizeof text,"%.*s  (%u/%u)",header,code_result_,code_page_+1,pages);
-    else snprintf(text,sizeof text,"%.*s",header,code_result_);
+    if (pages>1) snprintf(text,sizeof text,"%.*s [%s] (%u/%u)",header,code_result_,prefs_.raw ? "DDE/raw" : "gas ref",code_page_+1,pages);
+    else snprintf(text,sizeof text,"%.*s [%s]",header,code_result_,prefs_.raw ? "DDE/raw" : "gas ref");
     updateModel(80u,bmw::BasicString<char>(text));
     const char *line=first ? first+1 : "";
     for (unsigned i=0;i<code_page_*kCodePageSize && *line;++i) {
@@ -191,7 +224,7 @@ void EngineCodes::renderCodes() {
         const char *end=strchr(line,'\n');
         int length=end ? static_cast<int>(end-line) : static_cast<int>(strlen(line));
         char detail[160];
-        format_code_line(text,sizeof text,line,length,detail,sizeof detail);
+        format_code_line(text,sizeof text,line,length,detail,sizeof detail,prefs_.raw);
         updateModel(81u+i,bmw::BasicString<char>(text));
         updateModel(91u+i,bmw::BasicString<char>(detail));
         line=end ? end+1 : "";

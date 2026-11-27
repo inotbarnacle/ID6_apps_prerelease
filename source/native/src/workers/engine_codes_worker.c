@@ -3,6 +3,7 @@
 #include "diagnostic_lease.h"
 #include "gauge_coexistence.h"
 #include "diag_link.h"
+#include "fault_codes.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <math.h>
@@ -49,7 +50,7 @@ static void restore_code_session(struct diag_link *link) {
 }
 
 /* Include active, pending, confirmed and historical failure bits, plus warnings. */
-enum { fault_status = 0xaf };
+enum { fault_status = FAULT_REQUEST_MASK };
 
 static int read_codes(struct diag_link *link, unsigned char *reply, unsigned capacity,
                       unsigned *negative, int trace) {
@@ -69,13 +70,15 @@ static int read_codes(struct diag_link *link, unsigned char *reply, unsigned cap
     return count;
 }
 
-static void fault_codes(struct diag_link *link, int clear, int trace) {
+static void fault_codes(struct diag_link *link, int clear, int trace, int status_mask) {
     enum { clear_timeout = 15000 };
     const unsigned char clear_request[]={0x14,0xff,0xff,0xff}, clear_reply[]={0x54};
     unsigned char reply[4094];
     unsigned negative;
-    unsigned supported_fault_status;
-    int n, i, count=0, shown=0, full, extended=0;
+    struct fault_reply faults;
+    struct fault_record record;
+    int n, count=0, shown=0, full, extended=0;
+    size_t i;
     if (!diag_link_up(link)) { puts("Diagnostic gateway unavailable"); return; }
     if (clear) {
         n=diag_link_request(link,0x12,clear_request,4,clear_reply,1,reply,sizeof reply,clear_timeout,&negative);
@@ -125,16 +128,27 @@ static void fault_codes(struct diag_link *link, int clear, int trace) {
     }
     full = diag_link_on_most(link) && n==MOST_INNER_MAX;   /* the tunnel reply filled its cap */
     if (full) n-=(n-3)%4;   /* it may end mid-record */
-    if (n<3 || (n-3)%4!=0) { puts(clear ? "Clear acknowledged; recheck unavailable" : "No valid code response"); return; }
-    supported_fault_status=reply[2] & fault_status;
-    for (i=3;i<n;i+=4)
-        if (reply[i+3] & supported_fault_status) ++count;
+    if (n<0 || !fault_parse_reply(reply,(size_t)n,&faults)) {
+        puts(clear ? "Clear acknowledged; recheck unavailable" : "No valid code response");
+        return;
+    }
+    if (!(faults.available & fault_status)) {
+        puts(clear ? "Clear accepted; requested fault-status flags unavailable" : "Requested fault-status flags unavailable");
+        return;
+    }
+    for (i=0;i<faults.count;++i) {
+        if (!fault_record_at(&faults,i,&record)) return;
+        if (record.status & record.available & fault_status) ++count;
+    }
     if (clear) printf("Clear accepted; %d engine %s remain%s\n",count,
                       count==1 ? "code" : "codes",count==1 ? "s" : "");
     else printf("Engine: %d %s\n",count,count==1 ? "code" : "codes");
-    for (i=3;i<n && shown<128;i+=4) {
-        if (!(reply[i+3] & supported_fault_status)) continue;
-        printf("%02X%02X%02X  status %02X\n",reply[i],reply[i+1],reply[i+2],reply[i+3]);
+    for (i=0;i<faults.count && shown<128;++i) {
+        if (!fault_record_at(&faults,i,&record)) return;
+        if (!(record.status & record.available & fault_status)) continue;
+        printf("%06lX  status %02X",(unsigned long)record.code,record.status);
+        if (status_mask) printf(" mask %02X",record.available);
+        putchar('\n');
         ++shown;
     }
     if (count>128) puts("More codes returned; first 128 shown");
@@ -144,7 +158,7 @@ static void fault_codes(struct diag_link *link, int clear, int trace) {
 int main(int argc, char **argv) {
     const char *host=0;
     unsigned port=6801;
-    int mode=0, transport=DIAG_AUTO, trace=0, i;
+    int mode=0, transport=DIAG_AUTO, trace=0, confirm_clear=0, status_mask=0, i;
     struct diag_link link;
     struct diag_link_cfg cfg;
     for (i=1;i<argc;++i) {
@@ -154,12 +168,16 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i],"--transport") && i+1<argc && !strcmp(argv[i+1],"hsfz")) { transport=DIAG_HSFZ; ++i; }
         else if (!strcmp(argv[i],"--transport") && i+1<argc && !strcmp(argv[i+1],"most")) { transport=DIAG_MOST; ++i; }
         else if (!strcmp(argv[i],"--trace")) trace=1;
+        else if (!strcmp(argv[i],"--status-mask") && !status_mask) status_mask=1;
+        else if (!strcmp(argv[i],"--confirm-clear") && !confirm_clear) confirm_clear=1;
         else if (!strcmp(argv[i],"--codes") && !mode) mode=1;
         else if (!strcmp(argv[i],"--clear") && !mode) mode=2;
         else break;
     }
-    if (i!=argc || !mode || (trace && mode!=1) || (transport==DIAG_HSFZ && !host)) {
-        fprintf(stderr,"Usage: %s [--host IPv4] [--transport auto|hsfz|most] [--port 6801] (--codes [--trace] | --clear)\n",argv[0]);
+    if (!mode) mode=1; // read-only is the default operation
+    if (i!=argc || (mode==2 && !confirm_clear) || (confirm_clear && mode!=2) ||
+        (trace && mode!=1) || (transport==DIAG_HSFZ && !host)) {
+        fprintf(stderr,"Usage: %s [--host IPv4] [--transport auto|hsfz|most] [--port 6801] [--status-mask] [--codes [--trace] | --clear --confirm-clear]\n",argv[0]);
         return 2;
     }
     diag_link_signals();
@@ -171,7 +189,7 @@ int main(int argc, char **argv) {
                                : "Could not reserve the diagnostics connection");
         return 0;
     }
-    fault_codes(&link,mode==2,trace);
+    fault_codes(&link,mode==2,trace,status_mask);
     result_done();
     diag_link_close(&link);
     return 0;

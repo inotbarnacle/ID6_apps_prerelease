@@ -1,0 +1,39 @@
+name: Engine fault handling
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - cc: gcc
+            cxx: g++
+          - cc: clang
+            cxx: clang++
+    steps:
+      - uses: actions/checkout@v4
+      - name: Host worker, decoder, production UI and resource regressions
+        run: make -C source/native test CC=${{ matrix.cc }} CXX=${{ matrix.cxx }}
+      - name: Production plugin syntax check
+        run: ${{ matrix.cxx }} -std=gnu++98 -Wall -Wextra -Werror -Isource/native/sdk -Isource/native/src/common -Isource/native/src/ipc -fsyntax-only source/native/src/plugins/engine_codes.cpp
+      - name: Static analysis
+        if: matrix.cc == 'clang'
+        run: |
+          clang++ --analyze -Xanalyzer -analyzer-output=text -std=gnu++98 -Isource/native/sdk -Isource/native/src/common -Isource/native/src/ipc source/native/src/plugins/engine_codes.cpp
+          clang --analyze -Xanalyzer -analyzer-output=text -std=c99 -DMOST_HOST -Isource/native/src/common -Isource/native/src/ipc -Isource/native/src/workers source/native/src/workers/engine_codes_worker.c
+  memory:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fault decoder, status/profile and production callback memory checks
+        env:
+          ASAN_OPTIONS: detect_leaks=1
+          UBSAN_OPTIONS: halt_on_error=1
+        run: make -C source/native test-faults CC=clang CXX=clang++ CFLAGS='-O1 -g -std=c99 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer' CXXFLAGS='-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'
