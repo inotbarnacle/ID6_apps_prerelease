@@ -21,7 +21,7 @@ application ZIPs are separate maintainer build artifacts.
 | WarmDeck | Three temperatures expire independently and trend estimates require all three. Main queries oil unconditionally and displays generic RPM guidance. Thresholds 85/75/40 C are application choices. | #202 gates oil by advertised support. [Draft #209](https://github.com/inotbarnacle/iDriveDeck/pull/209) adds independent target states, measured estimates and advisory vehicle-guidance text, with production UDP/UI and resource tests. |
 | ShiftDeck | Source artwork/preferences retain five gasoline targets while the latest installer release advertises 6000–8000 RPM. Neither establishes an N57 limit. | [Draft #203](https://github.com/inotbarnacle/iDriveDeck/pull/203) adds manually selected diesel targets/display scales, legacy settings migration and asset/plugin tests. No universal diesel redline or physical validation is claimed. |
 | Faults | Worker reads 24-bit UDS codes; the old UI discarded status availability and always used a reference gasoline table. | [Draft #204](https://github.com/inotbarnacle/iDriveDeck/pull/204) preserves status support, adds a DDE/raw view and clear confirmation, plus separate standard confirmed/pending/permanent emissions reads. The counted CAN format is host-tested; target support and licensed DDE descriptions remain open. |
-| DPF | [#196](https://github.com/inotbarnacle/iDriveDeck/issues/196) contributor confirms no implementation branch yet and plans B47 collection once ENET hardware arrives. No verified native DPF mapping in this checkout. | #201 adds a separate standard pressure/temperature evidence profile. Share sanitized B47/N57 captures before an app/profile decision. No guessed DIDs, thresholds or regeneration controls. |
+| DPF | [#196](https://github.com/inotbarnacle/iDriveDeck/issues/196) contributor confirms no implementation branch yet and plans B47 collection once ENET hardware arrives. #201 provides standard pressure/temperature evidence collection; a separate native backend is in development. | Complete DPFDeck HMI/resources/installer work. Shared captures remain required for validated B47/N57 profiles. No guessed DIDs, soot/ash thresholds or regeneration controls. |
 | Installer / rollback | Desktop installer checks framework pairs and display layouts, inventories/stages managed folders and preserves backups; uninstall is documented in `Installer.md`. | Run compatibility check only after authorized vehicle discovery. No installation or restart is authorized yet. |
 | Factory integration | Native Android Auto installation currently disables gauge MOST fallback; [PR #138](https://github.com/inotbarnacle/iDriveDeck/pull/138) proposes a startup process check. This does not establish CarPlay/HUD coexistence. | Keep current guards pending reproducible evidence and maintainer review. |
 
@@ -101,12 +101,49 @@ This description is not diagnostic confirmation.
 | Standard EGT bank/sensor channels | Simulation / host tests only | Exact DDE support for PID 78/79, sensor bits, physical sensor locations and independently compared temperatures. No regeneration inference. |
 | Standard EGR request, actual and error channels | Simulation / host tests only | Exact DDE support for PID 2C/2D/69, per-field bits and independent comparisons. Actual is reported normalized duty/position, not inferred flow or a value reconstructed from error. |
 | Standard requested/actual rail and boost | Simulation / host tests only | Exact DDE support for PID 6D/70, per-field bits, physical A/B identity and independent comparisons. Rail is gauge pressure; boost is absolute. |
-| Standard DPF bank pressure and inlet/outlet temperature | Simulation / host tests only, discovery #201 | Exact DDE support for PID 7A/7B/7C, field support, physical layout and independent comparisons. No native app, regeneration, soot or ash mapping is established. |
+| Standard DPF bank pressure and inlet/outlet temperature | Simulation / host tests only, discovery #201 and the separate DPFDeck backend | Exact DDE support for PID 7A/7B/7C, field support, physical layout and independent comparisons. The native app is incomplete; no regeneration, soot or ash mapping is established. |
 | Standard emissions fault codes | Simulation / host tests only | Confirm that the exact DDE/gateway supports services 03/07/0A and the counted CAN reply format. A category's zero count does not clear other categories. |
 | Fixed BMW diesel, DPF, SCR, oil pressure | Unsupported in this effort | Credible ECU-specific definitions and repeatable sanitized captures. Standard EGR support does not establish a BMW-specific mapping. |
 | Physical installation / factory regression / rollback | Not performed | Separate owner-authorized milestone; staged plan in [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201). |
 
 ## Progress and next actions
+
+- DPFDeck native development has started on the separate
+  [fork branch](https://github.com/voioo/iDriveDeck/tree/6f9176ced52678b3c1c0b48eb93753e5143e1c6a),
+  based on unchanged upstream `8567aba`. The documented standard formats permit
+  a generic capability-gated backend to be developed offline; B47/N57 captures
+  remain necessary to validate any vehicle profile. This is an unfinished app,
+  with no upstream DPFDeck PR or installable package yet. Native HMI/resources,
+  production callback/UDP ownership checks and installer/rollback integration
+  are the next work, followed by a focused draft PR.
+
+  The backend reads only advertised 05/7A/7B/7C after the exact supported-PID
+  chain. It reuses #202's capability helper and #213's receiver allocator
+  unchanged. Eleven independent fields retain signed pressure, explicit sensor
+  support and conservative sample ages. Its 1800 C temperature envelope is an
+  application plausibility choice, not a BMW/regeneration limit; #201's evidence
+  report still retains the full protocol range. Unknown, unsupported,
+  unavailable, stale and valid remain distinct. No soot/ash, regeneration or
+  completion estimate is implemented.
+
+  The separate locale-independent DPF1 packet avoids BoostDeck ID/wire
+  collisions. Data/activity/MOST ports 42867/42868/42869 occupy unused roles
+  within the existing host-test exclusion range. The new MOST marker joins
+  HUD handoff checks, and projection-hook installation disables this worker's
+  MOST fallback. A project lease still cannot exclude an external tester.
+  Group reads are spaced at least two seconds from actual requests, failures
+  back off five seconds and the worker sends at most one request per 250-ms
+  tick. SIGTERM, parent exit and normal shutdown use the shared cleanup path.
+
+  Local checks and [exact-source CI](https://github.com/voioo/iDriveDeck/actions/runs/46039335802)
+  pass nine native programs and 93 Python cases, including 13 new production-
+  worker transport cases. Both GCC/Clang jobs pass; core ASan/UBSan, static
+  analysis, C++98 header syntax and a generated German comma-decimal locale
+  check also pass. Ownership is inspected while the mock worker is alive, then
+  checked for release after termination; queued final datagrams do not imply
+  continuing ownership. No QNX build or physical X5 validation
+  is claimed; [backend scope and limits](https://github.com/voioo/iDriveDeck/blob/6f9176ced52678b3c1c0b48eb93753e5143e1c6a/source/docs/DPFDECK.md)
+  describe the outstanding app work.
 
 - Standard DPF evidence follow-up in
   [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201): the separately
@@ -803,7 +840,9 @@ The overall N57 objective remains active. These drafts do not complete it.
 Still required: ShiftDeck QNX/runtime validation; licensed, ECU-scoped DDE fault
 descriptions and exact-target validation of the counted CAN standard fault path;
 verified ECU-specific signals and profiles beyond the standard PID/default pool;
-DPFDeck decision after the agreed shared evidence collection; reproducible F15/F16 fixes coordinated with
+DPFDeck HMI/resources, lifecycle and installer/rollback integration, followed by
+vehicle-profile validation from the agreed shared evidence collection;
+reproducible F15/F16 fixes coordinated with
 existing PRs; exact target vehicle identification/firmware/transport evidence;
 and any applicable QNX and separately authorized physical validation.
 Maintain this scope rather than treating host tests or these drafts as proof
