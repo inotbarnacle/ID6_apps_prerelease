@@ -28,6 +28,28 @@ static void test_round_trip(const char* path) {
     CHECK(loaded.previous_ms == 5600 && loaded.third_ms == 5800);
 }
 
+static void test_legacy_and_file_boundaries(const char* path) {
+    unsigned char data[kLaunchRecordBytes+1]={'L',1};
+    writeRecord(data+2,5000);
+    writeRecord(data+6,6000);
+    writeRaw(path,data,10);
+    LaunchRecords legacy=loadLaunchRecords(path);
+    CHECK(legacy.best_ms==5000 && legacy.last_ms==6000);
+    CHECK(legacy.previous_ms==0 && legacy.third_ms==0);
+
+    data[1]=2;
+    writeRecord(data+10,7000);
+    writeRecord(data+14,8000);
+    for (size_t length=0;length<kLaunchRecordBytes;++length) {
+        writeRaw(path,data,length);
+        LaunchRecords truncated=loadLaunchRecords(path);
+        CHECK(!truncated.best_ms && !truncated.last_ms && !truncated.previous_ms && !truncated.third_ms);
+    }
+    writeRaw(path,data,kLaunchRecordBytes+1);
+    LaunchRecords extra=loadLaunchRecords(path);
+    CHECK(!extra.best_ms && !extra.last_ms && !extra.previous_ms && !extra.third_ms);
+}
+
 static void test_rejects_corrupt_files(const char* path) {
     const unsigned char wrongMagic[kLaunchRecordBytes] = {'X', 1, 1, 0, 0, 0, 1, 0, 0, 0};
     writeRaw(path, wrongMagic, sizeof wrongMagic);
@@ -68,6 +90,7 @@ int main() {
     close(fd);
     test_missing_file_has_no_records(path);
     test_round_trip(path);
+    test_legacy_and_file_boundaries(path);
     test_rejects_corrupt_files(path);
     test_finished_run_updates_records_without_mutating_input();
     unlink(path);

@@ -7,6 +7,9 @@ make -C native test
 python3 tools/test_probe_signals.py
 ```
 
+The native suite includes [LaunchDeck record-file and read-error checks](LAUNCH-RECORDS.md).
+Run just these checks with `make -C native test-launch-records`.
+
 ## Native payload
 
 If you need the toolchain for a native build, the [QNX SDP 6.5 archive](https://archive.org/details/qnxsdp-65.7z) includes the SDK and a license key generator, according to the archive listing.
