@@ -22,6 +22,11 @@ The OMAP has its own ENET address (separate from the Jacinto's SSH address) and 
 
 Installing matters here too: the plugin directory `/var/opt/hmi/data/ID5/Plugins` lives on the OMAP. On a split-node unit, stage the app folders either over SSH to the OMAP's own address (`hmi_node_ip`) or over the Qnet write path from the Jacinto (`/var` resolves under `/net/hu-omap/fs/sda1/...`). The Jacinto's own filesystem is not the HMI.
 
+After approval of the additional read, `capture_headunit.py --storage` can
+record free-space counts for the HMI data filesystem. It runs `df` on the OMAP
+for a split-node unit and reports unknown output as unavailable. See
+[storage evidence](HEADUNIT-STORAGE.md) for the exact command and limits.
+
 ## 2. Capture a few explicit reads
 
 Exit BoostDeck and ShiftDeck and close other diagnostic clients so the probe has the gateway to itself. Start with RPM, standard OBD coolant, and the existing BMW coolant and oil-pressure candidates. Replace the example IPs with the detected IPs. This probe works with Python 3 on macOS or Windows and does not require head-unit SSH.
