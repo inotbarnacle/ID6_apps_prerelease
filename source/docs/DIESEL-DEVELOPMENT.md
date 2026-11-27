@@ -21,7 +21,7 @@ application ZIPs are separate maintainer build artifacts.
 | WarmDeck | Three temperatures expire independently and trend estimates require all three. Main queries oil unconditionally and displays generic RPM guidance. Thresholds 85/75/40 C are application choices. | #202 gates oil by advertised support. [Draft #209](https://github.com/inotbarnacle/iDriveDeck/pull/209) adds independent target states, measured estimates and advisory vehicle-guidance text, with production UDP/UI and resource tests. |
 | ShiftDeck | Source artwork/preferences retain five gasoline targets while the latest installer release advertises 6000–8000 RPM. Neither establishes an N57 limit. | [Draft #203](https://github.com/inotbarnacle/iDriveDeck/pull/203) adds manually selected diesel targets/display scales, legacy settings migration and asset/plugin tests. No universal diesel redline or physical validation is claimed. |
 | Faults | Worker reads 24-bit UDS codes; the old UI discarded status availability and always used a reference gasoline table. | [Draft #204](https://github.com/inotbarnacle/iDriveDeck/pull/204) preserves status support, adds a DDE/raw view and clear confirmation, plus separate standard confirmed/pending/permanent emissions reads. The counted CAN format is host-tested; target support and licensed DDE descriptions remain open. |
-| DPF | [#196](https://github.com/inotbarnacle/iDriveDeck/issues/196) offers B47 capture and DPFDeck development; no verified DPF mapping in this checkout. | Coordinate with the contributor before a separate DPFDeck implementation. No guessed DIDs, thresholds or regeneration controls. |
+| DPF | [#196](https://github.com/inotbarnacle/iDriveDeck/issues/196) contributor confirms no implementation branch yet and plans B47 collection once ENET hardware arrives. No verified DPF mapping in this checkout. | Share the sanitized evidence format; decide on a shared B47/N57 profile only after captures. No guessed DIDs, thresholds or regeneration controls. |
 | Installer / rollback | Desktop installer checks framework pairs and display layouts, inventories/stages managed folders and preserves backups; uninstall is documented in `Installer.md`. | Run compatibility check only after authorized vehicle discovery. No installation or restart is authorized yet. |
 | Factory integration | Native Android Auto installation currently disables gauge MOST fallback; [PR #138](https://github.com/inotbarnacle/iDriveDeck/pull/138) proposes a startup process check. This does not establish CarPlay/HUD coexistence. | Keep current guards pending reproducible evidence and maintainer review. |
 
@@ -35,7 +35,7 @@ application ZIPs are separate maintainer build artifacts.
 | [#68](https://github.com/inotbarnacle/iDriveDeck/issues/68) | Open | N57/B47 owners still report blank telemetry. Its drivetrain-control request is outside this effort. |
 | [#105](https://github.com/inotbarnacle/iDriveDeck/issues/105) | Open | Freeze cause unconfirmed; maintainer requests matching firmware and watchdog/core evidence. No factory-file cleanup or firmware flash is justified. |
 | [#162](https://github.com/inotbarnacle/iDriveDeck/issues/162) | Open | Unsupported oil PID and intermittent transport/lifecycle failures. Owner corrected the ENET dependency report: the failure also recurs with ENET connected. |
-| [#196](https://github.com/inotbarnacle/iDriveDeck/issues/196) | Open | B47 capture and DPFDeck contribution offer; no maintainer response at audit time. |
+| [#196](https://github.com/inotbarnacle/iDriveDeck/issues/196) | Open | Contributor replied on 27 November: no implementation branch; B47 read-only collection planned with #201's sanitized format after ENET hardware arrives. No maintainer approval or verified mapping inferred. |
 
 [PR #143](https://github.com/inotbarnacle/iDriveDeck/pull/143) is open and proposes
 SGBD-specific fixed signals, EGS-over-MOST and lifecycle fixes. Its diesel rows
@@ -64,7 +64,7 @@ This description is not diagnostic confirmation.
 
 ## Progress and next actions
 
-- Standard EGT follow-up on `diesel/egt-telemetry`: eight named bank/sensor
+- Standard EGT follow-up in [#202](https://github.com/inotbarnacle/iDriveDeck/pull/202): eight named bank/sensor
   channels use advertised PID 78/79 and a valid per-bank support layout.
   Polling is grouped per bank, at most every two seconds with five-second
   malformed/NRC backoff; conflicting layouts invalidate the bank. Automatic
@@ -75,6 +75,15 @@ This description is not diagnostic confirmation.
   two new C/C++ tests, eleven transport tests, all 2,097,152 default subsets and
   six resource checks preserving all 906 image pixels. Static analysis and
   sanitizer checks pass; all 49 host BMW imports match the pinned old source.
+  [Telemetry CI](https://github.com/voioo/iDriveDeck/actions/runs/46009126701)
+  passes on exact source `f398f78dbbae87077a0fc232cc17a4cea603746e`: 12 native
+  C/C++ programs, 103 native-suite Python cases, six resources and eight
+  collection-tool cases, with GCC/Clang, C++98 syntax, static analysis and
+  ASan/UBSan. Clang exposed cancellation around raw 400 (exactly 0 C); the
+  decoder now applies its integer offset before division. A delayed-capability
+  regression also proved a 1.7-second bank interval was possible; the interval
+  is now measured from the actual EGT request. The combined MOST simulator
+  retains all fault/EGT fixtures and fails loudly on future capacity overflow.
   Exact target support, QNX and physical validation remain unverified.
 
 - Completed: upstream clone, authenticated fork at
@@ -231,11 +240,23 @@ This description is not diagnostic confirmation.
   definitions prevent an honest functional DPF dashboard for this vehicle.
 - Community coordination: [comment on #196](https://github.com/inotbarnacle/iDriveDeck/issues/196#issuecomment-7215061142)
   asks the existing DPFDeck contributor to align signal/evidence and worker
-  responsibilities before a competing implementation. No reply assumed.
+  responsibilities before a competing implementation. The contributor's
+  [reply](https://github.com/inotbarnacle/iDriveDeck/issues/196#issuecomment-7219135140)
+  confirms no implementation branch yet and offers B47 read-only evidence in
+  #201's sanitized format once their ENET equipment arrives. Both sides retain
+  monitoring-only scope and require ECU-specific evidence before mappings or
+  thresholds. Their planned collection is not a completed capture, approval of
+  this owner's vehicle work, or a verified B47/N57 profile.
+- Next offline discovery work: add sanitized replay support for standard EGT
+  evidence while keeping the current live collector's reviewed 16-request set
+  explicit. Its current plan stops at bitmap 40 and does not collect PID 78/79;
+  do not describe it as a complete EGT capture or silently expand that plan for
+  the B47 contributor. An extended collection plan needs separate review before
+  any owner-authorized parked run.
 - Pull requests opened by this effort: [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201)
   (draft; discovery/reporting and validation plan) and
   [#202](https://github.com/inotbarnacle/iDriveDeck/pull/202)
-  (draft; capability-gated telemetry and pressure saturation), and
+  (draft; capability-gated telemetry, supported defaults, pressure saturation and standard EGT), and
   [#203](https://github.com/inotbarnacle/iDriveDeck/pull/203)
   (draft; configurable ShiftDeck diesel profile, persistence and resources), and
   [#204](https://github.com/inotbarnacle/iDriveDeck/pull/204)
@@ -257,7 +278,33 @@ Conflicts in `CHANGELOG.md`, `source/README.md` and `source/native/Makefile` wer
 retaining every feature, documentation link and test target. The common MIT
 framework fake is identical across the ShiftDeck, fault and BoostDeck scale branches.
 
-The latest combined revision `6ca7162` includes the standard emissions-code
+The latest combined revision `498dff2` includes standard EGT from #202 and its
+valid-zero and delayed-capability rate regressions. Validation passes **35 native
+C/C++ programs and 160 distinct Python tests**: 121 native-suite cases (36 app,
+24 one-shot MOST, eight standard OBD faults, 26 transport, 12 capability, four
+fault resources and 11 EGT transport), plus 39 separate tool/resource cases.
+All 43 tool/resource cases pass; four are already included in the native suite.
+The previous complete local run at `c1244d3` passed the same native programs and
+120 Python native-suite cases; the final request-based polling change then
+passed all 11 EGT transport cases locally. CI reruns the complete final suite
+with GCC and Clang. All eight workflows pass on exact final combined source
+`498dff202d67b054d88cc7f8d794d972a24b873f`:
+[diagnostics](https://github.com/voioo/iDriveDeck/actions/runs/46009207186),
+[faults](https://github.com/voioo/iDriveDeck/actions/runs/46009207074),
+[WarmDeck](https://github.com/voioo/iDriveDeck/actions/runs/46009207244),
+[worker ownership](https://github.com/voioo/iDriveDeck/actions/runs/46009207124),
+[record reads](https://github.com/voioo/iDriveDeck/actions/runs/46009207252),
+[ShiftDeck](https://github.com/voioo/iDriveDeck/actions/runs/46009207217),
+[discovery](https://github.com/voioo/iDriveDeck/actions/runs/46009207235), and
+[rail scale](https://github.com/voioo/iDriveDeck/actions/runs/46009207309).
+The inherited worker ownership fix, R1 rail settings, independent warm-up,
+fault categories and legacy records remain covered. Local worker suites sharing
+the fixed diagnostic lease ports must run sequentially; concurrent worktrees
+can otherwise interfere with a simulated MOST case. These results establish
+host/simulation behavior, not an N57 sensor mapping, QNX build or vehicle result.
+The later progress-only commit on #202 does not change this pinned source.
+
+The earlier combined revision `6ca7162` includes the standard emissions-code
 follow-up in #204. Validation passes **33 native C/C++ programs and 147 distinct
 Python tests**: 110 native-suite cases (36 app, 24 one-shot MOST, eight standard
 OBD faults, 26 transport, 12 capability and four fault-resource cases), plus
@@ -355,7 +402,10 @@ The existing `dme_descriptions.h` cites `gediz/bmw-unified-db`. Its
 limits the MIT grant to the repository's original tooling/compilation and
 explicitly excludes underlying BMW-derived data rights. Therefore its DDE
 dictionary is not treated as an established MIT-redistributable dataset. No new
-BMW fault dictionary or diagnostic database was downloaded or incorporated.
+BMW fault dictionary or proprietary BMW diagnostic database was downloaded or
+incorporated. The publicly offered standard-OBD vendor archive inspected for
+EGT protocol facts is documented separately in [STANDARD-EGT.md](STANDARD-EGT.md);
+none of its database, descriptions or sample logs is vendored.
 The existing upstream gasoline table is unchanged. A DDE description extension
 still needs independently established provenance, permission and ECU applicability;
 raw fault parsing/status improvements can proceed without importing that data.
@@ -366,8 +416,7 @@ The overall N57 objective remains active. These drafts do not complete it.
 Still required: ShiftDeck QNX/runtime validation; licensed, ECU-scoped DDE fault
 descriptions and exact-target validation of the counted CAN standard fault path;
 verified ECU-specific signals and profiles beyond the standard PID/default pool;
-DPFDeck decision
-after contributor coordination; reproducible F15/F16 fixes coordinated with
+DPFDeck decision after the agreed shared evidence collection; reproducible F15/F16 fixes coordinated with
 existing PRs; exact target vehicle identification/firmware/transport evidence;
 and any applicable QNX and separately authorized physical validation.
 Maintain this scope rather than treating host tests or these drafts as proof
