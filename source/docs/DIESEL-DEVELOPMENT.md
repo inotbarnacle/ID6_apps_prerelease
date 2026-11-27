@@ -30,18 +30,42 @@ the current publication and validation.
   sanitizers. Frozen NBG7 bytes and 4096 round trips per period/comma/multibyte
   locale pass. The actual head-unit locale remains unknown.
 
+WarmDeck follow-up in [#209](https://github.com/inotbarnacle/iDriveDeck/pull/209):
+the old worker timestamped temperatures after receiving replies. A local HSFZ
+peer delayed a reply by 150 ms and reproduced that much extra freshness in two
+age checks; a timeout invalidation control already passed. Signed `51bdd9a`
+records the measurement request start instead, after any capability checks.
+Only a fully decoded positive reply gets a nonzero timestamp, including valid
+0 C; refusals, malformed widths and timeouts remain unavailable. Requests,
+decoding, units, targets, lifecycle and the 48-byte frame are unchanged.
+Eight standalone native programs and 83 Python cases pass, including three
+new actual-worker cases, with worker/UI sanitizers and C static analysis.
+The combined focused cases also pass with capability gating, as do the three
+existing WarmDeck capability/independence regressions.
+[Standalone source CI](https://github.com/voioo/iDriveDeck/actions/runs/46068887362)
+passes both compilers, resources and sanitizer jobs. All eleven source
+workflows also pass at combined `61aea75`, including the
+[WarmDeck matrix and worker sanitizers](https://github.com/voioo/iDriveDeck/actions/runs/46069152329)
+and [diagnostic regressions](https://github.com/voioo/iDriveDeck/actions/runs/46069152292).
+The completed native log contains 47 test programs and 190 Python cases. With
+the unchanged 148-case tool/resource suite and four shared cases counted once,
+the latest combined coverage is 334 distinct Python cases. Documentation
+updates preserve all native, tool and workflow bytes tested at this source
+checkpoint. No actual ECU measurement timestamp, QNX or physical X5 result
+is inferred.
+
 Signed combined branch `diesel/integration-published` reconstructs the tested
 source using the real feature histories. CI at its first head `e8b32b9` caught
 the coexistence test's missing `--session`; older overlap observations used
 that incomplete setup. Corrected tests pass, including a controlled observer
-check that detects two genuinely pending requests. The fresh full combined run
+check that detects two genuinely pending requests. The earlier full combined run
 passes 47 native programs and 187 Python cases at `dc7840e`, including the
 independent locale fix. The unchanged 148-case tool/resource suite brings
 coverage to 331 distinct Python cases, with four shared fault-resource cases
 counted once. Paired pre/post-fix host codecs also preserve NBG7–NBG11 bytes and
 decoded frames in period/comma/multibyte locales. Native source, tools and
 workflows are retained at source tree `ab2f7419` before documentation updates.
-All eleven source workflows pass at this checkpoint, including
+All eleven source workflows passed at that checkpoint, including
 [GCC/Clang and sanitizers](https://github.com/voioo/iDriveDeck/actions/runs/46066166317),
 [numeric locales](https://github.com/voioo/iDriveDeck/actions/runs/46066166323),
 [DPF packaging/installer](https://github.com/voioo/iDriveDeck/actions/runs/46066166338)
@@ -1041,20 +1065,22 @@ Offline reference review found additional candidates in the vendor's
 The 7A/7B/7C layouts now have independent corroboration in
 [DashLogic's PID reference](https://www.dashlogic.com/docs/technical/obdii_pids)
 and host-tested decoding in #201's separately selected v5 evidence profile.
-Offline follow-up also corroborates the 85/8B field layouts against DashLogic;
-a separate local evidence profile now decodes them, awaiting publication. The
-8F remains a single-vendor lead. A4 now has independent format evidence with
-unresolved gear interpretation, described below. No row establishes this X5's support.
+Offline follow-up also corroborates the 85/8B field layouts against DashLogic.
+Published #201 v6/v7 evidence profiles decode them; native #202 adds optional
+85 gauges, and #216 adds a hidden-by-default 8B progress/type display. PID 8F
+has the additional J1699-3 corroboration described below but no implemented
+request or decoder policy. A4 has independent format evidence with unresolved
+gear interpretation. No row establishes this X5's support.
 No database entries or descriptions are copied into project code; earlier
-published collector plans are unchanged. Higher-page reads are isolated to the
-new opt-in local profile pending signing and CI.
+published collector plans are unchanged. Higher-page reads remain isolated to
+separate optional evidence profiles and explicitly selected native features.
 
-| Candidate | Distinction required before implementation |
+| Reference | Current coverage and distinctions |
 | --- | --- |
 | 7A/7B particulate-filter pressures | #201 v5 retains separate delta, inlet and outlet fields. Delta is signed 16-bit / 100 kPa; inlet/outlet are unsigned / 100 kPa with no assumed absolute/atmospheric reference. Field support is required. No soot estimate is inferred; the separate DPFDeck source uses these standard fields. |
 | 7C particulate-filter temperatures | #201 v5 retains explicitly supported bank/inlet/outlet fields, separate from generic EGT 78/79. The full unsigned / 10 - 40 C protocol domain is evidence, not a BMW plausibility limit. Neither format proves regeneration or the physical N57 sensor location. |
-| 85 reagent data | Ten data bytes: low-four support bits, separate average/demanded consumption (u16 / 200 L/h), tank fraction (u8 × 100 / 255 percent) and NOx-warning runtime (u32 seconds). Per-field support is essential; none establishes SCR health or remaining driving range. The local v6 profile collects evidence only; no app mapping is added. |
-| 8B particulate-filter regeneration data | Seven data bytes: support byte, independently supported status/type bits, normalized trigger, average interval and average distance. The two u16 averages are minutes/km between events, not time/distance since the last regeneration. Trigger is not completion percentage or measured soot. The local v6 profile collects evidence only; no app state is added. |
+| 85 reagent data | Ten data bytes: low-four support bits, separate average/demanded consumption (u16 / 200 L/h), tank fraction (u8 × 100 / 255 percent) and NOx-warning runtime (u32 seconds). #201 v6/v7 retains evidence; #202 exposes only level and the two consumption fields as optional gauges. NOx-warning runtime remains evidence only. Per-field support is essential; none establishes SCR health or remaining driving range. |
+| 8B particulate-filter regeneration data | Seven data bytes: support byte, independently supported status/type bits, normalized trigger, average interval and average distance. #201 v6/v7 retains evidence; #216 optionally displays supported progress/type. The two u16 averages are minutes/km between events, not time/distance since the last regeneration. Trigger is not completion percentage or measured soot; these additional fields are not displayed as such. |
 | 8F particulate-sensor data | Sensor regeneration/measurement status must not be relabelled as DPF regeneration. |
 | A4 transmission data | Actual gear and gear ratio are separate fields. The reference allows ambiguity between first and reverse; it does not establish selected P/R/N/D mode or torque-converter state. Preserve uncertainty rather than infer either from a ratio. |
 
@@ -1078,18 +1104,15 @@ car supplying A4. These references do not resolve a safe complete gear mapping
 or establish this X5's support. No gear decoder, collector read or selected
 P/R/N/D/torque-converter inference is added from them.
 
-The shared native capability cache deliberately retains four pages through 60
-and rejects measurement PIDs above 80. DPFDeck's local optional 8B follow-up
-uses a separate bounded extension after verified continuation through bitmap
-80, with its own tests and default-off request policy. Native 85/8F would need
-their own reviewed policies; A4 requires bitmap A0 as well. Do not add reads to
-an existing reviewed plan. The local 85/8B evidence profile and boundary/flag
-tests await publication; exact-ECU comparisons remain necessary before any
-physical app trial. For 8F, range/sentinel policies and complete fixtures still
-need review; A4 still needs resolved
-gear semantics, invalid/reserved states and exact-ECU evidence. All readings require exact DDE
-applicability, independent comparisons and the agreed #196 evidence path before
-use in a monitoring application.
+The shared native capability cache deliberately retains bitmap pages 00/20/40/60.
+The published native 85 and 8B features use separate bounded bitmap-80 caches
+after verified continuation. Original selections/defaults preserve their request
+sets. Native 8F still needs a reviewed policy; A4 requires bitmap A0 as well.
+Do not add reads to an existing reviewed live plan. Exact-ECU comparisons remain
+necessary before any physical app trial. For 8F, range/sentinel policies and
+complete fixtures still need review; A4 needs resolved gear semantics,
+invalid/reserved states and exact-ECU evidence. Physical use requires exact DDE
+applicability, independent comparisons and the agreed #196 evidence path.
 
 Further reference inspection distinguishes PID 8F's PM **sensor** regeneration
 from DPF system regeneration. [DashLogic](https://www.dashlogic.com/docs/technical/obdii_pids)
@@ -1100,7 +1123,7 @@ uses signed 16-bit / 100 output. Its additional minimum-value conformance check
 does not establish a BMW operating limit. No 8F read, decoder or DPF-state alias
 is added here.
 
-PID 88 now has the local optional v7 evidence policy described above. J1699-3's
+PID 88 has the published optional v7 evidence policy described above. J1699-3's
 thirteen-byte shape and all five counter offsets agree with the manufacturer
 and pinned OBDb layouts. A historical cause or reagent level must not become
 a current DPF regeneration state. The full counter domain remains explicit
