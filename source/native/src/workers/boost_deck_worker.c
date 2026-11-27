@@ -7,6 +7,8 @@
 #include "boost_defaults.h"
 #include "obd_egr.h"
 #include "obd_pressure.h"
+#include "obd_capabilities_extra.h"
+#include "obd_reagent.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <math.h>
@@ -186,6 +188,17 @@ static int read_pressure(struct diag_link *link, unsigned pid, struct obd_pressu
     return decoded;
 }
 
+static int read_reagent(struct diag_link *link,struct obd_reagent_sample *sample,uint64_t *started) {
+    const unsigned char request[]={1,0x85},prefix[]={0x41,0x85};
+    unsigned char reply[16];unsigned negative;
+    *started=bd_mono_ms();
+    const int n=diag_link_request(link,0x12,request,2,prefix,2,reply,sizeof reply,500,&negative);
+    if (n==-2) { fprintf(stderr,"ECU 12 PID 85 NRC %02X\n",negative);return 0; }
+    if (n==-3) return -3;
+    if (n<0) return -1;
+    return n>=2 && !memcmp(reply,prefix,2) && obd_reagent_decode(reply+2,(size_t)n-2,sample);
+}
+
 static int send_frame(int sock, struct sockaddr_in *dest, bd_frame *f, uint64_t *observed,
                       uint64_t auto_token, const struct obd_capabilities *caps, int trans_observed,
                       const struct obd_egt_evidence *egt) {
@@ -238,10 +251,12 @@ int main(int argc, char **argv) {
     uint64_t failed_until[sizeof dids/sizeof dids[0]] = {0};
     int ethanol=0, diesel=0;
     struct obd_capabilities capabilities = {{0}, {0}, 0};
+    struct obd_extra_capabilities extra_capabilities = {0,0,0};
     struct obd_egt_evidence egt = {0,{0}};
     uint64_t egt_due[OBD_EGT_BANKS]={0}, egt_failed_until[OBD_EGT_BANKS]={0};
     uint64_t egr_due=0, egr_failed_until=0;
     uint64_t pressure_due[OBD_PRESSURE_GROUPS]={0}, pressure_failed_until[OBD_PRESSURE_GROUPS]={0};
+    uint64_t reagent_due=0,reagent_failed_until=0;
     uint64_t auto_token=0;
     int trans_observed=0, explicit_signals=0;
     uint64_t next_hud=0;
@@ -583,6 +598,47 @@ int main(int argc, char **argv) {
                 }
                 if (diag_link_on_most(&link) && !send_frame(sock,&dest,&f,observed,auto_token,&capabilities,trans_observed,&egt)) {
                     perror("send frame"); diag_running=0;
+                }
+            }
+            /* Selecting a reagent gauge is the only opt-in to bitmap 80/PID 85.
+             * Detected defaults and older selections never enter this group. */
+            {
+                const bd_mask group_mask=(BD_BIT(OBD_REAGENT_FIELDS)-1)<<BD_REAGENT_LEVEL;
+                const uint64_t now=bd_mono_ms();
+                if (up && diag_running && (selected & group_mask) && now>=reagent_due && now>=reagent_failed_until &&
+                    !diag_link_lost(&link) && (diag_link_on_most(&link) || link.fd>=0)) {
+                    reagent_due=now+2000;
+                    int rc=obd_pid_advertised_extra(&capabilities,&extra_capabilities,&link,0x85);
+                    if (rc==OBD_CAPABILITY_PENDING) reagent_due=bd_mono_ms()+100;
+                    else {
+                        uint64_t started=0;
+                        struct obd_reagent_sample sample={0,{0}};
+                        if (rc==1) {
+                            rc=read_reagent(&link,&sample,&started);
+                            reagent_due=started+2000;
+                        }
+                        if (rc==-3) reagent_failed_until=bd_mono_ms()+OBD_REAGENT_RETRY_MS;
+                        else {
+                            f.valid &= ~group_mask;
+                            if (rc<0) {
+                                diag_link_drop(&link);
+                                if (diag_link_lost(&link)) { most_lost=1;diag_running=0; }
+                                else if (session) reagent_failed_until=bd_mono_ms()+OBD_REAGENT_RETRY_MS;
+                                else { f.valid=0;have_ambient=0; }
+                            } else if (!rc) reagent_failed_until=bd_mono_ms()+OBD_REAGENT_RETRY_MS;
+                            else {
+                                for (unsigned field=0;field<OBD_REAGENT_FIELDS;++field) {
+                                    const unsigned signal=BD_REAGENT_LEVEL+field;
+                                    if (!(selected & BD_BIT(signal)) || !(sample.present & (1u<<field))) continue;
+                                    f.value[signal]=sample.value[field];observed[signal]=started;
+                                    f.valid|=BD_BIT(signal);
+                                }
+                                if (diag_link_on_most(&link) && !send_frame(sock,&dest,&f,observed,auto_token,&capabilities,trans_observed,&egt)) {
+                                    perror("send frame");diag_running=0;
+                                }
+                            }
+                        }
+                    }
                 }
             }
             // Supply RPM over the existing HSFZ connection only while HUD needs it.

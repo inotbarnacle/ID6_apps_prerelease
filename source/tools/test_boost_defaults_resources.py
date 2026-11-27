@@ -15,6 +15,17 @@ class BoostDefaultsResources(unittest.TestCase):
     def setUp(self):
         self.current = ET.parse(XML)
 
+    def test_reagent_gauges_append_named_actions_and_models_without_changing_layouts(self):
+        for signal, name in ((55, "Reagent tank level"), (56, "Average reagent consumption"),
+                             (57, "Average demanded reagent consumption")):
+            for slot in range(9):
+                node = self.current.find(f".//hmiState[@id='{510+slot}']/components/radiobutton[@model='{5300+signal}']")
+                self.assertIsNotNone(node)
+                self.assertEqual(node.get("text"), name)
+                self.assertEqual(node.get("action"), str(3500+signal))
+            node = self.current.find(f".//combinedAction[@id='{3500+signal}']/actions/raAction")
+            self.assertEqual(node.get("id"), str(600+signal))
+
     def test_generator_reproduces_committed_xml(self):
         spec = importlib.util.spec_from_file_location("boost_defaults_generator", ROOT / "tools/make_boostdeck_extended.py")
         generator = importlib.util.module_from_spec(spec)
@@ -68,7 +79,7 @@ class BoostDefaultsResources(unittest.TestCase):
             match = re.match(r'SIGNAL\((\w+), "([^"]+)"', line)
             if match:
                 names.append(match.groups())
-        self.assertEqual(len(names), 55)
+        self.assertEqual(len(names), 58)
         self.assertEqual(names[30][0], "THROTTLE_TARGET")
         for index in range(31, 39):
             bank, sensor = divmod(index - 31, 4)

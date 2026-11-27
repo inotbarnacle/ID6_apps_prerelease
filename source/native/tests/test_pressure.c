@@ -57,12 +57,12 @@ int main(void) {
     assert(bd_parse(wire,(size_t)n,&frame) && frame.valid==old.valid && !frame.value[BD_RAIL_A_REQUEST]);
     memset(wire+n,' ',BD_WIRE9_PACKET-(size_t)n); wire[BD_WIRE9_PACKET-1]='\n';
     assert(!bd_parse(wire,BD_WIRE9_PACKET,&frame));
-    memset(&frame,0,sizeof frame); frame.seq=UINT32_MAX; frame.sent_ms=UINT64_MAX; frame.valid=BD_ALL_MASK;
+    memset(&frame,0,sizeof frame); frame.seq=UINT32_MAX; frame.sent_ms=UINT64_MAX; frame.valid=BD_WIRE10_MASK;
     frame.value[BD_RAIL_B_ACTUAL]=6553.5; frame.value[BD_BOOST_B_ACTUAL]=2047.96875;
     for (unsigned i=0;i<BD_COUNT;++i) frame.age_ms[i]=999999;
     n=bd_encode(&frame,wire,sizeof wire);
     assert(n>0 && n<BD_MAX_PACKET && !memcmp(wire,"NBG10 ",6));
-    assert(bd_parse(wire,(size_t)n,&old) && old.valid==BD_ALL_MASK && old.sent_ms==UINT64_MAX);
+    assert(bd_parse(wire,(size_t)n,&old) && old.valid==BD_WIRE10_MASK && old.sent_ms==UINT64_MAX);
     assert(old.value[BD_RAIL_B_ACTUAL]==6553.5 && old.value[BD_BOOST_B_ACTUAL]==2047.96875);
     for (int length=0;length<n;++length) assert(!bd_parse(wire,(size_t)length,&old));
     for (unsigned i=0;i<6;++i) {
@@ -78,7 +78,7 @@ int main(void) {
     n=bd_encode(&frame,wire,sizeof wire); assert(n>0 && !bd_parse(wire,(size_t)n,&old));
     frame.value[BD_BOOST_A_ACTUAL]=0; frame.value[BD_RAIL_A_ACTUAL]=6553.6;
     n=bd_encode(&frame,wire,sizeof wire); assert(n>0 && !bd_parse(wire,(size_t)n,&old));
-    frame.valid=BD_BIT(55); assert(bd_encode(&frame,wire,sizeof wire)<0);
+    frame.valid=BD_BIT(BD_COUNT); assert(bd_encode(&frame,wire,sizeof wire)<0);
     frame.valid=BD_BIT(BD_RAIL_A_ACTUAL); frame.age_ms[BD_RAIL_A_ACTUAL]=0;
     assert(bd_is_fresh(&frame,BD_RAIL_A_ACTUAL,3499) && !bd_is_fresh(&frame,BD_RAIL_A_ACTUAL,3500));
     assert(fabs(bd_display_selected(BD_RAIL_A_ACTUAL,100,0)-1450.37738)<1e-6);

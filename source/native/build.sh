@@ -28,7 +28,7 @@ c -Isrc/common -O2 -fPIC -c src/common/boost_defaults.c -o out/boost-defaults.o
 worker() { c -Isrc/common -Isrc/ipc -Isrc/workers -O2 "$@" src/common/diag_link.c src/common/obd_capabilities.c src/common/most/*.c -Lout -lm -lsocket; }
 
 # Workers
-worker src/workers/boost_deck_worker.c src/workers/boost_tone.c out/core.o out/boost-defaults.o -o out/boostdeck-collector-qnx
+worker src/workers/boost_deck_worker.c src/workers/boost_tone.c src/common/obd_capabilities_extra.c out/core.o out/boost-defaults.o -o out/boostdeck-collector-qnx
 worker src/workers/mhd_maps_worker.c src/common/gauge_core.c -o out/mhd-maps-qnx
 worker src/workers/exhaust_flap_worker.c out/core.o -o out/exhaust-flap-worker-qnx
 worker src/workers/shift_deck_worker.c out/core.o -o out/shift-deck-qnx
