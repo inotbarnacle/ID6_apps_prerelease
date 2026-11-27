@@ -1,6 +1,5 @@
 """Synthetic standard EGT replies through production workers; no vehicle captures."""
 from pathlib import Path
-from contextlib import contextmanager
 import os
 import socket
 import subprocess
@@ -9,6 +8,7 @@ import unittest
 from unittest.mock import patch
 
 import test_diesel_capabilities as capabilities
+from udp_test_socket import telemetry_socket
 
 BUILD = Path(__file__).resolve().parents[1] / "build"
 EGT = tuple(range(31, 39))
@@ -48,27 +48,12 @@ def decode(packet):
     return fields[0], int(fields[3]), [float(value) for value in fields[5::2]], report
 
 
-@contextmanager
-def telemetry_receiver():
-    # A receiver on HUD port 42870 makes the worker publish binary HUD samples
-    # to it. Ephemeral test ports must avoid all project IPC ports, including
-    # the diagnostic lease and activity markers (42860..42879).
-    for _ in range(16):
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:
-            udp.bind(("127.0.0.1", 0))
-            if 42860 <= udp.getsockname()[1] <= 42879:
-                continue
-            udp.settimeout(.05)
-            yield udp
-            return
-    raise RuntimeError("could not allocate telemetry receiver outside project IPC ports")
-
-
 class EgtTransportTest(unittest.TestCase):
     def run_worker(self, replies, selected=ALL_EGT, *, diesel=True, automatic=False, cycles=80, most=False, most_mode="egt-up"):
         env = dict(os.environ)
         env.pop("ID6_FAKE_MOST", None)
-        with capabilities.ecu_server(replies, idle_timeout=8) as (port, requests), telemetry_receiver() as udp:
+        with capabilities.ecu_server(replies, idle_timeout=8) as (port, requests), telemetry_socket() as udp:
+            udp.settimeout(.05)
             args = [BUILD / "boost-deck", "--cycles", str(cycles), "--udp-port", str(udp.getsockname()[1])]
             args += ["--auto-diesel", "1234"] if automatic else ["--signals", str(selected)]
             if diesel: args.append("--diesel")

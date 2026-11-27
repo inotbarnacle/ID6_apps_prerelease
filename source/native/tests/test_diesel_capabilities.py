@@ -13,6 +13,7 @@ import threading
 import unittest
 
 from test_transport import exact, frame
+from udp_test_socket import telemetry_socket
 
 BUILD = Path(__file__).resolve().parents[1] / "build"
 
@@ -87,8 +88,7 @@ class DieselCapabilitiesTest(unittest.TestCase):
     def run_boost(self, responses, selected=None, diesel=True, automatic=False):
         if selected is None:
             selected = (1 << 9) | (1 << 7) | (1 << 5) | (1 << 3)
-        with ecu_server(responses) as (port, requests), socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:
-            udp.bind(("127.0.0.1", 0))
+        with ecu_server(responses) as (port, requests), telemetry_socket() as udp:
             udp.settimeout(3)
             env = dict(os.environ)
             env.pop("ID6_FAKE_MOST", None)
