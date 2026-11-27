@@ -21,6 +21,7 @@ EGT_PIDS = (0x78, 0x79)
 EGR_PIDS = (0x69, 0x2c, 0x2d)
 PRESSURE_PIDS = (0x6d, 0x70)
 DPF_PIDS = (0x7a, 0x7b, 0x7c)
+AFTERTREATMENT_PIDS = (0x8b, 0x85)
 FRAMEWORKS = ("libAppFramework.A.so", "libCoreFramework.A.so")
 ALLOWLIST = {(ecu, bytes.fromhex("22f150")) for ecu in (0x12, 0x18)} | {
     (0x12, bytes((1, pid))) for pid in (0, 0x20, 0x40, *PIDS)
@@ -43,6 +44,12 @@ POLICIES = {
         (0x12, bytes((1, pid))) for pid in (0x60, *DPF_PIDS, *PRESSURE_PIDS, *EGR_PIDS, *EGT_PIDS)
     }),
 }
+# Explicitly selected higher-page evidence; the five earlier policies stay frozen.
+POLICIES["standard-aftertreatment"] = (
+    AFTERTREATMENT_PIDS + POLICIES["standard-dpf"][0],
+    (0, 0x20, 0x40, 0x60, 0x80), 30,
+    POLICIES["standard-dpf"][3] | {(0x12, bytes((1, pid))) for pid in (0x80, *AFTERTREATMENT_PIDS)},
+)
 
 
 def policy(profile):
@@ -266,6 +273,53 @@ def dpf_fields(pid, state, reply):
     return complete, fields
 
 
+def aftertreatment_fields(pid, state, reply):
+    """Keep standard status, trigger, averages and reagent quantities separate.
+
+    These are evidence fields, not exact-ECU validation or app state. In
+    particular neither an average nor a trigger means 'since last' or completion.
+    Only the explicitly supported fields of an exact response are exported.
+    """
+    if pid not in AFTERTREATMENT_PIDS:
+        raise ValueError("unknown standard aftertreatment PID")
+    reagent = pid == 0x85
+    definitions = (
+        (("average_reagent_consumption", "L/h"),
+         ("average_demanded_reagent_consumption", "L/h"),
+         ("reagent_tank_level", "percent"), ("nox_warning_runtime", "s")) if reagent else
+        (("dpf_regeneration_in_progress", "boolean"), ("dpf_regeneration_type", "category"),
+         ("nox_adsorber_regeneration_in_progress", "boolean"),
+         ("nox_adsorber_desulfurization_in_progress", "boolean"),
+         ("normalized_regeneration_trigger", "percent"),
+         ("average_regeneration_interval", "min"), ("average_regeneration_distance", "km"))
+    )
+    complete = (state == "advertised" and reply is not None and len(reply) == (12 if reagent else 9)
+                and reply[:2] == bytes((0x41, pid)) and not reply[2] & (0xf0 if reagent else 0x80)
+                and (reagent or not reply[3] & 0xf0))
+    values = ()
+    if complete:
+        if reagent:
+            values = (int.from_bytes(reply[3:5], "big") / 200,
+                      int.from_bytes(reply[5:7], "big") / 200,
+                      reply[7] * 100 / 255, int.from_bytes(reply[8:12], "big"))
+        else:
+            values = (bool(reply[3] & 1), "active" if reply[3] & 2 else "passive",
+                      bool(reply[3] & 4), bool(reply[3] & 8), reply[4] * 100 / 255,
+                      int.from_bytes(reply[5:7], "big"), int.from_bytes(reply[7:9], "big"))
+    fields = []
+    for index, (quantity, unit) in enumerate(definitions):
+        item = {"quantity": quantity, "unit": unit,
+                "capability": "unsupported" if state == "unsupported" else "unknown",
+                "measurement": "unavailable"}
+        if complete:
+            supported = bool(reply[2] & (1 << index))
+            item["capability"] = "supported" if supported else "unsupported"
+            if supported:
+                item.update(value=values[index], measurement="decoded_requires_independent_validation")
+        fields.append(item)
+    return complete, fields
+
+
 def report(rows, headunit=None, evidence="replay", *, profile="standard"):
     """Export only known fixed requests and validated response shapes.
 
@@ -321,11 +375,16 @@ def report(rows, headunit=None, evidence="replay", *, profile="standard"):
         reply = reply_bytes(row)
         state = "unknown" if pid not in checked else "unsupported" if pid not in advertised else "advertised"
         entry = {"pid": f"{pid:02X}", "capability": state, "measurement": "unavailable"}
-        if profile in ("standard-diesel", "standard-pressure", "standard-dpf"):
+        if profile in ("standard-diesel", "standard-pressure", "standard-dpf", "standard-aftertreatment"):
             entry["record_status"] = ("not_present" if key not in records else
                                       "ambiguous_duplicate" if row is None else
                                       "present_no_valid_reply" if not reply else "present_reply_bytes")
-        if pid in DPF_PIDS:
+        if pid in AFTERTREATMENT_PIDS:
+            complete, entry["fields"] = aftertreatment_fields(pid, state, reply)
+            if complete:
+                entry["reply"] = reply.hex(" ")
+                entry["measurement"] = "field_layout_requires_independent_validation"
+        elif pid in DPF_PIDS:
             complete, entry["fields"] = dpf_fields(pid, state, reply)
             if complete:
                 entry["reply"] = reply.hex(" ")
@@ -368,7 +427,8 @@ def report(rows, headunit=None, evidence="replay", *, profile="standard"):
         "format": ("idrive-diesel-discovery-v1" if profile == "standard" else
                    "idrive-diesel-discovery-v2" if profile == "standard-egt" else
                    "idrive-diesel-discovery-v3" if profile == "standard-diesel" else
-                   "idrive-diesel-discovery-v4" if profile == "standard-pressure" else "idrive-diesel-discovery-v5"),
+                   "idrive-diesel-discovery-v4" if profile == "standard-pressure" else
+                   "idrive-diesel-discovery-v5" if profile == "standard-dpf" else "idrive-diesel-discovery-v6"),
         "evidence": evidence,
         "vehicle_platform": "not_inferred",
         "ecu_identification": identities,
@@ -386,18 +446,23 @@ def report(rows, headunit=None, evidence="replay", *, profile="standard"):
     if profile != "standard":
         result["profile"] = profile
         result["limitations"].append("EGT bank/sensor fields do not establish physical sensor locations or regeneration")
-    if profile in ("standard-diesel", "standard-pressure", "standard-dpf"):
+    if profile in ("standard-diesel", "standard-pressure", "standard-dpf", "standard-aftertreatment"):
         result["limitations"][1] = "No DPF, SCR or BMW-specific oil/EGR mapping is established"
         result["limitations"].append("EGR A/B actual is reported normalized duty/position, not inferred flow or an independent position measurement")
         result["limitations"].append("Legacy EGR request/error never establishes A/B actual values")
-    if profile in ("standard-pressure", "standard-dpf"):
+    if profile in ("standard-pressure", "standard-dpf", "standard-aftertreatment"):
         result["limitations"].append("Standard pressure A/B fields do not establish physical rail/turbo identity or exact ECU support")
         result["limitations"].append("Boost pressure is absolute, not manifold or derived gauge boost; no atmospheric value is assumed")
-    if profile == "standard-dpf":
+    if profile in ("standard-dpf", "standard-aftertreatment"):
         result["limitations"][1] = "No DPF regeneration/soot/ash, SCR or BMW-specific oil/EGR mapping is established"
         result["limitations"].append("DPF bank/inlet/outlet labels do not establish this vehicle's physical sensor layout or exact ECU support")
         result["limitations"].append("DPF pressures and temperatures do not establish regeneration status, soot/ash mass, completion or service thresholds")
         result["limitations"].append("DPF inlet/outlet pressure reference is not established; full protocol ranges are not BMW plausibility limits")
+    if profile == "standard-aftertreatment":
+        result["limitations"][1] = "No BMW-specific oil/EGR, DPF soot/ash or exact-ECU SCR/DPF mapping is established"
+        result["limitations"].append("Regeneration status/type are reported independently; supported passive type alone does not mean regeneration is in progress")
+        result["limitations"].append("Normalized regeneration trigger is not completion percentage or measured soot; average interval/distance are not since-last values")
+        result["limitations"].append("Reagent level/consumption and NOx-warning runtime do not establish SCR health, range or a DPF state")
     return result
 
 
@@ -408,7 +473,7 @@ def main():
     mode.add_argument("--replay", type=Path, help="offline probe JSONL input; no connection")
     mode.add_argument("--collect", action="store_true", help="execute the reviewed parked read-only plan")
     parser.add_argument("--profile", choices=POLICIES, default="standard",
-                        help="standard: 16 reads/v1; standard-egt: 19 reads/v2; standard-diesel: 22 reads/v3; standard-pressure: 24 reads/v4; standard-dpf: separate 27-read plan/v5")
+                        help="standard: 16 reads/v1; standard-egt: 19 reads/v2; standard-diesel: 22 reads/v3; standard-pressure: 24 reads/v4; standard-dpf: 27 reads/v5; standard-aftertreatment: separate 30-read plan/v6")
     parser.add_argument("--owner-approved-parked", action="store_true", help="owner has explicitly approved this exact collection")
     parser.add_argument("--local", type=enet_address)
     parser.add_argument("--gateway", type=enet_address)

@@ -1066,6 +1066,289 @@ class DpfDiscoveryTest(unittest.TestCase):
         self.assertEqual(signals["7B"]["fields"][0]["value"],-327.68)
         self.assertEqual(signals["7C"]["fields"][1]["value"],0.1)
 
+class AftertreatmentDiscoveryTest(unittest.TestCase):
+    profile = "standard-aftertreatment"
+
+    @staticmethod
+    def records():
+        records = dpf_rows()
+        records[3] = row("0160", "4160008901f1")
+        return records + [row("0180", "418008200000"),
+                          row("0185", "41850f010000c88001000001"),
+                          row("018b", "418b7f03ff01000200")]
+
+    def signals(self, records):
+        return {s["pid"]: s for s in discovery.report(records, profile=self.profile)["signals"]}
+
+    def test_five_frozen_plans_and_reports_ignore_higher_page_records(self):
+        for name, profile in (("standard-v1", "standard"), ("egt-v2", "standard-egt"),
+                              ("diesel-v3", "standard-diesel"), ("pressure-v4", "standard-pressure"),
+                              ("dpf-v5", "standard-dpf")):
+            fixture = json.loads((TOOL.parent/"fixtures"/("discovery-"+name+".json")).read_text())
+            self.assertEqual(discovery.plan(profile), fixture["plan"])
+            self.assertEqual(discovery.report(fixture["input_records"], profile=profile), fixture["report"])
+            self.assertEqual(discovery.report(fixture["input_records"]+self.records()[-3:], profile=profile), fixture["report"])
+
+    def test_v6_keeps_status_type_trigger_and_averages_separate(self):
+        result = discovery.report(self.records(), profile=self.profile)
+        self.assertEqual(result["format"], "idrive-diesel-discovery-v6")
+        self.assertEqual(result["profile"], self.profile)
+        self.assertEqual(len(result["signals"]), 23)
+        self.assertEqual([s["pid"] for s in result["signals"][:5]], ["8B", "85", "7A", "7B", "7C"])
+        signals = self.signals(self.records())
+        fields = signals["8B"]["fields"]
+        self.assertEqual([f["value"] for f in fields], [True, "active", False, False, 100, 256, 512])
+        self.assertEqual([f["unit"] for f in fields], ["boolean", "category", "boolean", "boolean", "percent", "min", "km"])
+        self.assertNotIn("since", str([f["quantity"] for f in fields]))
+        self.assertEqual([f["value"] for f in signals["85"]["fields"]], [1.28, 1, 128*100/255, 16777217])
+        self.assertEqual([f["unit"] for f in signals["85"]["fields"]], ["L/h", "L/h", "percent", "s"])
+        self.assertTrue(any("not completion" in s for s in result["limitations"]))
+        self.assertTrue(any("not since-last" in s for s in result["limitations"]))
+        self.assertEqual(result["firmware_approval"], "not_established")
+        self.assertEqual(signals["7A"]["fields"][0]["value"], -.1)
+
+    def test_all_support_and_status_bytes_require_exact_reserved_bits(self):
+        for pid, suffix in ((0x85, b"\xff"*9), (0x8b, b"\0"*6)):
+            for flags in range(256):
+                statuses = range(256) if pid == 0x8b else (0,)
+                for status in statuses:
+                    tail = bytes((status,))+suffix[1:] if pid == 0x8b else suffix
+                    reply = bytes((0x41, pid, flags))+tail
+                    complete, fields = discovery.aftertreatment_fields(pid, "advertised", reply)
+                    valid = flags < (16 if pid == 0x85 else 128) and (pid == 0x85 or status < 16)
+                    self.assertEqual(complete, valid)
+                    for index, field in enumerate(fields):
+                        supported = valid and bool(flags & (1 << index))
+                        self.assertEqual("value" in field, supported)
+                        self.assertEqual(field["capability"], "supported" if supported else "unsupported" if valid else "unknown")
+
+    def test_entire_16bit_rate_and_average_domains_preserve_units(self):
+        for raw in range(65536):
+            pair = raw.to_bytes(2, "big")
+            complete, fields = discovery.aftertreatment_fields(0x85, "advertised", b"\x41\x85\x0f"+pair*2+b"\xff\xff\xff\xff\xff")
+            self.assertTrue(complete)
+            self.assertEqual([f["value"] for f in fields[:2]], [float(Fraction(raw,200))]*2)
+            self.assertEqual(fields[2]["value"], 100)
+            self.assertEqual(fields[3]["value"], 4294967295)
+            complete, fields = discovery.aftertreatment_fields(0x8b, "advertised", b"\x41\x8b\x7f\0\0"+pair*2)
+            self.assertTrue(complete)
+            self.assertIs(fields[0]["value"], False)
+            self.assertEqual(fields[1]["value"], "passive")
+            self.assertEqual([f["value"] for f in fields[-2:]], [raw, raw])
+
+    def test_all_trigger_tank_bytes_and_warning_runtime_endian_boundaries(self):
+        for raw in range(256):
+            _, fields = discovery.aftertreatment_fields(0x85,"advertised",b"\x41\x85\x04"+b"\0"*4+bytes((raw,))+b"\0"*4)
+            self.assertEqual(fields[2]["value"], raw*100/255)
+            _, fields = discovery.aftertreatment_fields(0x8b,"advertised",b"\x41\x8b\x10\0"+bytes((raw,))+b"\0"*4)
+            self.assertEqual(fields[4]["value"], raw*100/255)
+        for raw in (0,1,255,256,65535,65536,16777215,16777216,2147483648,4294967295):
+            _, fields = discovery.aftertreatment_fields(0x85,"advertised",b"\x41\x85\x08"+b"\0"*5+raw.to_bytes(4,"big"))
+            self.assertEqual(fields[3]["value"], raw)
+
+    def test_status_and_type_support_do_not_imply_each_other(self):
+        for flags,status,expected in ((1,2,[False,None]), (2,0,[None,"passive"]),
+                                      (2,2,[None,"active"]), (3,0,[False,"passive"]),
+                                      (3,1,[True,"passive"]), (3,3,[True,"active"])):
+            _, fields = discovery.aftertreatment_fields(0x8b,"advertised",bytes((0x41,0x8b,flags,status))+b"\0"*5)
+            self.assertEqual([f.get("value") for f in fields[:2]], expected)
+
+    def test_truncation_extra_bytes_wrong_prefix_and_nonadvertisement_export_no_values(self):
+        for record in self.records()[-2:]:
+            good = bytes.fromhex(record["reply"]);pid=good[1]
+            bad = [None,good+b"\0",b"\x40"+good[1:],good[:1]+bytes((pid^1,))+good[2:],b"\x7f\x01\x31"]
+            bad += [good[:i] for i in range(len(good))]
+            for reply in bad:
+                complete, fields = discovery.aftertreatment_fields(pid,"advertised",reply)
+                self.assertFalse(complete)
+                self.assertTrue(all("value" not in f and f["capability"]=="unknown" for f in fields))
+            for state in ("unknown","unsupported"):
+                complete, fields = discovery.aftertreatment_fields(pid,state,good)
+                self.assertFalse(complete)
+                self.assertTrue(all("value" not in f and f["capability"]==state for f in fields))
+        with self.assertRaises(ValueError): discovery.aftertreatment_fields(0x8f,"advertised",b"")
+
+    def test_missing_and_broken_continuations_never_authorize_higher_page_values(self):
+        records=self.records()
+        for missing in range(5):
+            shortened=[r for r in records if r["request"] != ("0100","0120","0140","0160","0180")[missing]]
+            for pid in ("85","8B"):
+                self.assertEqual(self.signals(shortened)[pid]["capability"],"unknown")
+                self.assertNotIn("reply",self.signals(shortened)[pid])
+        for pid in ("85","8B"):
+            no_continuation=dpf_rows()+records[-3:]
+            self.assertEqual(self.signals(no_continuation)[pid]["capability"],"unsupported")
+            self.assertNotIn("reply",self.signals(no_continuation)[pid])
+        for suffix in ([row("0180","4180082000")], [row("0180","7f0131")],
+                       [row("0180","418008200000")]*2):
+            malformed=[r for r in records if r["request"]!="0180"]+suffix
+            for pid in ("85","8B"):
+                signal=self.signals(malformed)[pid]
+                self.assertEqual(signal["capability"],"unknown")
+                self.assertNotIn("reply",signal)
+
+    def test_duplicates_wrong_ecu_nrc_and_private_metadata_remain_sanitized(self):
+        for record in self.records()[-2:]:
+            pid=record["request"][-2:].upper()
+            duplicate=self.signals(self.records()+[record])[pid]
+            self.assertEqual(duplicate["record_status"],"ambiguous_duplicate")
+            self.assertNotIn("reply",duplicate)
+            records=self.records()[:-2]+[dict(record,ecu="18")]
+            self.assertEqual(self.signals(records)[pid]["record_status"],"not_present")
+            records=self.records()[:-2]+[row(record["request"],"7f0131")]
+            signal=self.signals(records)[pid]
+            self.assertEqual(signal["nrc"],"31")
+            self.assertNotIn("reply",signal)
+        records=[dict(r,VIN="PRIVATEVIN",error="PRIVATE SECRET",hostname="PRIVATEHOST") for r in self.records()]
+        records += [row("22f190","62f19050524956415445"),row("018f","418f50524956415445")]
+        result=discovery.report(records,{"vin":"PRIVATEVIN"},profile=self.profile)
+        text=json.dumps(result)
+        self.assertNotIn("PRIVATE",text)
+        self.assertNotIn("SECRET",text)
+        self.assertNotIn("22f190",text)
+
+    @patch("discover_diesel.time.sleep")
+    @patch("discover_diesel.exchange")
+    @patch("discover_diesel.socket.create_connection")
+    def test_exact_30_read_policy_with_no_writes_retries_and_aftertreatment_first(self,connect,exchange,sleep):
+        def answer(connection,ecu,request):
+            if request[0]==0x22: return {"reply":"7f2231"}
+            if request[1] in (0,0x20,0x40,0x60,0x80): return {"reply":bytes((0x41,request[1])).hex()+"ffffffff"}
+            return {"reply":"7f0131"}
+        exchange.side_effect=answer
+        records=discovery.collect("169.254.10.2","169.254.10.3",profile=self.profile)
+        requests=[(int(r["ecu"],16),bytes.fromhex(r["request"])) for r in records]
+        self.assertEqual(len(records),30)
+        self.assertEqual(len(set(requests)),30)
+        self.assertEqual(set(requests),discovery.policy(self.profile)[3])
+        self.assertEqual([r["request"] for r in records[7:12]],["01 8b","01 85","01 7a","01 7b","01 7c"])
+        self.assertEqual(connect.call_count,30)
+        self.assertEqual(sleep.call_count,30)
+        self.assertTrue(all(c.args==(0.2,) for c in sleep.call_args_list))
+        self.assertTrue(all(c.kwargs["source_address"]==("169.254.10.2",0) for c in connect.call_args_list))
+
+    @patch("discover_diesel.time.sleep")
+    @patch("discover_diesel.exchange")
+    @patch("discover_diesel.socket.create_connection")
+    def test_live_chain_follows_80_only_when_advertised_and_each_field_pid_independently(self,connect,exchange,sleep):
+        for continuation,page,expected in ((1,"418008000000",{"01 85"}),(1,"418000200000",{"01 8b"}),
+                                           (1,"418000000000",set()),(0,"418008200000",set()),
+                                           (1,"4180082000",set()),(1,"7f0131",set())):
+            def answer(connection,ecu,request):
+                replies={"0100":"410000000001","0120":"412000000001","0140":"414000000001",
+                         "0160":"41600000000"+str(continuation),"0180":page}
+                return {"reply":replies.get(request.hex(),"7f0131")}
+            exchange.side_effect=answer
+            records=discovery.collect("169.254.10.2","169.254.10.3",profile=self.profile)
+            sent={r["request"] for r in records}
+            self.assertEqual(sent & {"01 85","01 8b"},expected)
+            self.assertEqual("01 80" in sent,bool(continuation))
+
+    def test_slow_45_second_session_may_end_after_capabilities_without_measurements(self):
+        clock=[0.0]
+        def advance(seconds): clock[0]+=seconds
+        def answer(connection,ecu,request):
+            advance(6)
+            return {"reply":bytes((0x41,request[1])).hex()+"ffffffff" if request[0]==1 else "7f2231"}
+        with patch("discover_diesel.time.monotonic",side_effect=lambda:clock[0]), \
+             patch("discover_diesel.time.sleep",side_effect=advance), patch("discover_diesel.exchange",side_effect=answer), \
+             patch("discover_diesel.socket.create_connection"):
+            records=discovery.collect("169.254.10.2","169.254.10.3",profile=self.profile)
+        self.assertEqual(len(records),7)
+        self.assertLessEqual(clock[0],45)
+        self.assertEqual(records[-1]["request"],"01 80")
+        self.assertTrue(all(f["measurement"]=="unavailable" for pid in ("85","8B") for f in self.signals(records)[pid]["fields"]))
+
+    def test_offline_plan_replay_approval_and_exclusive_private_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source,output=Path(directory)/"synthetic.jsonl",Path(directory)/"public.json"
+            source.write_text("\n".join(json.dumps(r) for r in self.records()))
+            for args in (("--plan",),("--replay",str(source),"--out",str(output))):
+                with patch.object(sys,"argv",[str(TOOL),"--profile",self.profile,*args]), \
+                     patch("discover_diesel.socket.create_connection") as connect, redirect_stdout(io.StringIO()):
+                    discovery.main()
+                connect.assert_not_called()
+            original=output.read_bytes()
+            self.assertEqual(output.stat().st_mode&0o777,0o600)
+            self.assertEqual(json.loads(original)["evidence"],"replay_unverified_provenance")
+            for args in (("--replay",str(source),"--out",str(output)),
+                         ("--collect","--local","169.254.10.2","--gateway","169.254.10.3")):
+                with patch.object(sys,"argv",[str(TOOL),"--profile",self.profile,*args]), \
+                     patch("discover_diesel.socket.create_connection") as connect, redirect_stdout(io.StringIO()), \
+                     patch("sys.stderr",io.StringIO()), self.assertRaises(SystemExit):
+                    discovery.main()
+                connect.assert_not_called()
+            self.assertEqual(output.read_bytes(),original)
+
+    def test_real_hsfz_stream_collects_30_reads_with_heartbeat_pending_and_wrong_replies(self):
+        replies={bytes.fromhex(r["request"]):bytes.fromhex(r["reply"]) for r in self.records()}
+        seen,threads,failures=[],[],[]
+        def exact(connection,size):
+            result=b""
+            while len(result)<size:
+                part=connection.recv(size-len(result))
+                if not part: raise ConnectionError("synthetic gateway closed")
+                result+=part
+            return result
+        def frame(control,payload): return struct.pack(">IH",len(payload),control)+payload
+        def respond(gateway):
+            with gateway:
+                gateway.settimeout(2)
+                try:
+                    size,control=struct.unpack(">IH",exact(gateway,6))
+                    payload=exact(gateway,size)
+                    self.assertEqual(control,1)
+                    self.assertEqual(payload[0],0xf4)
+                    ecu,request=payload[1],payload[2:]
+                    seen.append((ecu,request))
+                    if request[0]==0x22: reply=bytes.fromhex("62f150010203")
+                    elif request[1] in (0,0x20,0x40,0x60,0x80): reply=bytes((0x41,request[1]))+b"\xff"*4
+                    else: reply=replies.get(request,bytes((0x41,request[1]))+b"\0"*discovery.WIDTHS.get(request[1],1))
+                    if request in (b"\x01\x85",b"\x01\x8b"):
+                        gateway.sendall(frame(0x12,b""))
+                        self.assertEqual(exact(gateway,8),frame(0x13,b"\0\xf4"))
+                        gateway.sendall(frame(1,bytes((ecu^1,0xf4))+reply))
+                        gateway.sendall(frame(1,bytes((ecu,0xf4))+b"\x7f\x01\x78"))
+                        gateway.sendall(frame(1,bytes((ecu,0xf4))+b"\x41\x05\xff"))
+                    packet=frame(1,bytes((ecu,0xf4))+reply)
+                    for part in (packet[:2],packet[2:7],packet[7:]): gateway.sendall(part)
+                except Exception as error: failures.append(error)
+        def connect(endpoint,*,timeout,source_address):
+            self.assertEqual(endpoint,("169.254.10.3",6801))
+            self.assertEqual(timeout,2)
+            self.assertEqual(source_address,("169.254.10.2",0))
+            client,gateway=socket.socketpair()  # Local stream pair, never a vehicle/network endpoint.
+            thread=threading.Thread(target=respond,args=(gateway,),daemon=True)
+            threads.append(thread);thread.start()
+            return client
+        with patch("discover_diesel.socket.create_connection",side_effect=connect), patch("discover_diesel.time.sleep"):
+            records=discovery.collect("169.254.10.2","169.254.10.3",profile=self.profile)
+        for thread in threads:
+            thread.join(3);self.assertFalse(thread.is_alive())
+        self.assertFalse(failures,failures)
+        self.assertEqual(len(seen),30)
+        self.assertEqual(set(seen),discovery.policy(self.profile)[3])
+        self.assertEqual(self.signals(records)["8B"]["fields"][1]["value"],"active")
+        self.assertEqual(self.signals(records)["85"]["fields"][3]["value"],16777217)
+
+    @patch("discover_diesel.time.sleep")
+    @patch("discover_diesel.socket.create_connection")
+    def test_failed_aftertreatment_read_is_not_retried_or_shared_with_other_pid(self,connect,sleep):
+        replies={bytes.fromhex(r["request"]):r["reply"] for r in self.records()}
+        for failure in ("7f0131",OSError("PRIVATE FAILURE")):
+            def answer(connection,ecu,request):
+                if request==b"\x01\x8b":
+                    if isinstance(failure,OSError): raise failure
+                    return {"reply":failure}
+                return {"reply":replies.get(request,"7f2231")}
+            with patch("discover_diesel.exchange",side_effect=answer):
+                records=discovery.collect("169.254.10.2","169.254.10.3",profile=self.profile)
+            self.assertEqual(sum(r["request"]=="01 8b" for r in records),1)
+            signals=self.signals(records)
+            self.assertTrue(all("value" not in f for f in signals["8B"]["fields"]))
+            self.assertEqual(signals["85"]["fields"][0]["value"],1.28)
+            self.assertNotIn("PRIVATE",json.dumps(signals))
+
 
 if __name__ == "__main__":
     unittest.main()

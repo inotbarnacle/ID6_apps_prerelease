@@ -347,6 +347,76 @@ split frames; those pairs cannot reach a vehicle or external network. The new
 `tools/fixtures/discovery-pressure-v4.json` freezes synthetic v4 output from
 unchanged source `f18cf1c`; it contains no vehicle data.
 
+## Optional standard aftertreatment evidence profile
+
+`standard-aftertreatment` is a separately selected **30-read maximum** plan and
+v6 report. The five earlier plans and report contracts (16/19/22/24/27 reads)
+stay unchanged. It adds the continuation-checked bitmap 80 and advertised 85/8B
+reads; after the two identity candidates and five bitmap pages, it prioritizes
+8B, then 85, followed by the existing DPF/pressure/EGR/EGT/standard measurements.
+Neither the native capability cache nor DPFDeck's wire format or UI is changed.
+
+Prepare or replay offline, from `source/`:
+
+```sh
+python3 tools/discover_diesel.py --plan --profile standard-aftertreatment
+python3 tools/discover_diesel.py --replay /private/probe.jsonl \
+  --profile standard-aftertreatment --out /private/aftertreatment-public.json
+```
+
+Physical use needs separate owner review/approval of this exact plan while
+parked. Approval for an earlier plan does not cover the added reads. There are
+no retries, scans, SSH/MOST connections, session changes, ECU writes or active
+commands. The same 200-ms gap, six-second transaction reserve and 45-second
+session budget apply. A slow session may finish after capability negotiation
+without collecting a measurement; the report keeps those fields unavailable.
+Only DME/DDE 12 receives these standard measurements.
+
+The two payload formats are independently corroborated by
+[DashLogic's reference](https://www.dashlogic.com/docs/technical/obdii_pids) and the
+[pinned OBDb catalog](https://github.com/OBDb/SAEJ1979/blob/1abdef6ae0c1b9134c8f2a10911a9daa1354649d/signalsets/v3/default.json).
+This is protocol-format evidence, not proof of N57/B47/B57 support. No database
+or proprietary standard is vendored; fixtures are synthetic.
+
+| PID | Exact payload after 41/PID | Report meaning |
+| --- | --- | --- |
+| 85 | Ten bytes. A low-four bits support each field; high bits must be zero. B-C and D-E are independent unsigned / 200 L/h rates. F is × 100 / 255 percent; G-J is unsigned big-endian seconds. | Separate average/demanded reagent consumption, tank level and NOx-warning runtime. |
+| 8B | Seven bytes. A bits 0–6 support seven fields; bit 7 and B bits 4–7 must be zero. B bits 0–3 contain four independent statuses/type. C is × 100 / 255 percent. D-E and F-G are unsigned minutes/km. | DPF in-progress status, passive/active type, two NOx-adsorber states, normalized trigger, average interval and average distance. |
+
+The report retains full protocol domains, with no invented all-ones sentinel:
+rates 0–327.675 L/h, fractions 0–100 percent, runtime 0–4294967295 seconds and
+averages 0–65535 minutes/km. The warning-runtime support caption in DashLogic
+mentions minutes, but its numeric formula and the independent catalog specify
+seconds; the exported quantity uses seconds. None of these domains is a BMW
+plausibility or maintenance limit.
+
+Every field has independent support and availability. Valid false status,
+passive type and numeric zero are retained. A supported type alone does not
+establish that regeneration is in progress. Unsupported fields omit `value`;
+missing/duplicate/malformed evidence remains unknown/unavailable. Rejected
+responses do not leak payload bytes or free-text metadata into the report.
+
+Average interval/distance are **between regenerations**, not time/distance
+since the last event. The normalized trigger is not measured soot or completion
+percentage. NOx-adsorber states are not a declaration of SCR health. Reagent
+level may reflect the ECU's level sensing strategy; neither it nor average
+consumption/runtime establishes remaining range or a current warning state.
+No requested/inhibited regeneration state, soot/ash measurement, threshold,
+alert or DPFDeck state is inferred.
+
+Fifteen added discovery tests cover all support/status bytes, full 16-bit rate
+and average domains, every fraction byte, 32-bit runtime boundaries, independent
+status/type flags, exact shapes, the bitmap-80 chain, duplicates/NRCs/privacy,
+request ordering/bounds, slow-session limits and offline/exclusive-output gates.
+A complete 30-read run uses real HSFZ framing over local stream socket pairs,
+including heartbeat acknowledgement, pending, wrong-ECU/PID and split replies.
+All 77 discovery cases plus four probe and six capture cases pass locally.
+The v5 fixture freezes unchanged synthetic output from `683e9c2`.
+
+Exact ECU advertisement, independent diagnostic comparisons and the shared
+#196 evidence process remain necessary before application use. This profile
+has not been run on the owner's vehicle.
+
 ## Stage A — non-invasive parked discovery
 
 1. Obtain the owner's explicit approval for the printed bounded collection
