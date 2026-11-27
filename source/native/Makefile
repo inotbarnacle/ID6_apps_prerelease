@@ -10,7 +10,7 @@ MOST_HEADERS = src/common/most/most_link.h src/common/most/dsi_client.h src/comm
 FAKE_DSI = tests/fake_dsi.c tests/fake_dme.c tests/fake_dsi.h tests/fake_dme.h
 WORKER_COMMON = $(CORE_LINK) $(MOST) tests/fake_most_env.c $(FAKE_DSI) $(HEADERS) $(MOST_HEADERS)
 HOST_LINK = $(CC) $(CFLAGS) -pthread -DMOST_HOST -Isrc/common -Isrc/ipc -Isrc/workers -Itests
-.PHONY: assets launch-assets test
+.PHONY: assets launch-assets test test-shift-profiles
 
 assets: | build
 	unzip -p ../../packages/dashboard.zip BoostDeck/BoostDeck_ALL_Images.zip > build/boostdeck-base-images.zip
@@ -19,8 +19,9 @@ assets: | build
 	@set -e; for app in MhdMaps ShiftDeck; do \
 		name=$${app}_ALL_Images.zip; \
 		unzip -p ../../packages/dashboard.zip "$$app/$$name" > "build/$$name"; \
-		mv "build/$$name" manifests/; \
+		cp "build/$$name" manifests/; \
 	done
+	$(PYTHON) ../tools/make_shift_profiles.py --base-images build/ShiftDeck_ALL_Images.zip
 	$(PYTHON) ../tools/make_warmdeck.py
 	$(PYTHON) ../tools/make_hybrid_and_mg.py
 
@@ -84,10 +85,22 @@ build/boost-test-core.o: $(CORE) $(HEADERS) | build
 build/test-boost-preferences: tests/test_boost_preferences.cpp build/boost-test-core.o src/plugins/boost_preferences.h src/common/gauge_preferences.h | build
 	$(CXX) -O2 -std=gnu++98 -Wall -Wextra -Werror -Isrc/plugins -Isrc/common $(filter %.cpp %.o,$^) -o $@
 
+build/test-shift-preferences: tests/test_shift_preferences.cpp src/plugins/shift_preferences.h src/plugins/shift_assets.h src/common/gauge_preferences.h | build
+	$(CXX) $(CXXFLAGS) -std=gnu++98 -Wall -Wextra -Werror -Isrc/plugins -Isrc/common $< -o $@
+
+# Framework fake borrowed from AndreasBoehm's PR #143 (MIT); no factory libraries.
+build/test-shift-profile-plugin: tests/test_shift_profile_plugin.cpp tests/fake_bmw.cpp tests/fake_bmw.h src/plugins/shift_deck.cpp src/plugins/shift_preferences.h src/plugins/shift_profile_assets.h src/plugins/shift_assets.h sdk/bmw_list.h | build
+	$(CXX) $(CXXFLAGS) -std=gnu++98 -fno-access-control -Isdk -Isrc/common -Isrc/ipc -Isrc/plugins -Itests $< tests/fake_bmw.cpp -o $@
+
+test-shift-profiles: build/test-shift-preferences build/test-shift-profile-plugin
+	./build/test-shift-preferences
+	mkdir -p build/shift-preview-models
+	./build/test-shift-profile-plugin build/shift-preview-models
+
 launch-assets:
 	$(PYTHON) ../tools/launch_art.py
 
-test: build/xdrive-control build/boost-deck build/shift-deck build/mhd-maps build/engine-codes build/test-core build/test-most build/test-diag-link build/bootmod3 build/exhaust-flap build/test-launch-timer build/test-launch-records build/test-boost-preferences build/test-warm-progress build/warmdeck-collector build/mgflasher build/hybriddeck-collector
+test: test-shift-profiles build/xdrive-control build/boost-deck build/shift-deck build/mhd-maps build/engine-codes build/test-core build/test-most build/test-diag-link build/bootmod3 build/exhaust-flap build/test-launch-timer build/test-launch-records build/test-boost-preferences build/test-warm-progress build/warmdeck-collector build/mgflasher build/hybriddeck-collector
 	./build/test-warm-progress
 	./build/test-boost-preferences
 	./build/test-launch-timer
