@@ -44,8 +44,9 @@ def collect(local, gateway):
 
     def read(ecu, request):
         assert (ecu, request) in ALLOWLIST
-        # Two seconds to connect plus the exchange's two-second deadline.
-        if len(rows) >= MAX_REQUESTS or time.monotonic() + 4.2 > deadline:
+        # Reserve connect, send and receive deadlines (two seconds each),
+        # plus the inter-request gap, before beginning another transaction.
+        if len(rows) >= MAX_REQUESTS or time.monotonic() + 6.2 > deadline:
             return None
         row = {"ecu": f"{ecu:02x}", "request": request.hex(" ")}
         try:
