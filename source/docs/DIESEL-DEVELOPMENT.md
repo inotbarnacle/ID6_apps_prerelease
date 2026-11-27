@@ -14,7 +14,7 @@ application ZIPs are separate maintainer build artifacts.
 | QNX / renderer | `native/build.sh` requires licensed SDP 6.5 and private framework link inputs. Framework fingerprint comparison checks static imports, not runtime behavior. | Host validation first. Ask [QNX licensing/support](https://qnx.software/en/contact) about a legitimate legacy SDP 6.5 entitlement. The current SDP 8 evaluation does not supply this toolchain. Do not use key generators or unauthorized archives mentioned in older project instructions. |
 | HSFZ / gateway | Shared link filters target ECU and response prefix, bounds replies and deadlines, and discovers a unique wired link-local gateway. | Reuse the link and diagnostic lease. Do not scan arbitrary addresses or DIDs. |
 | MOST / standalone | Current MOST tunnel accepts DME only; EGS transmission temperature requires HSFZ. A worker that has connected HSFZ does not subsequently switch to MOST. | Coordinate with [PR #143](https://github.com/inotbarnacle/iDriveDeck/pull/143); do not duplicate its multi-ECU tunnel work. |
-| Ownership / lifecycle | Loopback leases coordinate project workers, not external tools. Parent monitoring, signals and MOST watchdogs bound worker lifetime. Plugin `ECHILD` handling and polling remain under review upstream. | PR #143 and [PR #50](https://github.com/inotbarnacle/iDriveDeck/pull/50) cover lifecycle changes. Close other diagnostic clients for parked validation. |
+| Ownership / lifecycle | Loopback leases coordinate project workers, not external tools. The original reapers can forget a live PID on `ECHILD`, permitting duplicate workers after retry deadlines and losing the PID needed for close. | Reuse PR #143's existing process-existence fix. [Fork test review #1](https://github.com/voioo/iDriveDeck/pull/1) adds production-plugin/baseline/owned-child regressions. Hidden polling changes in #143/#50 and actual vehicle cleanup remain separate. |
 | Diesel telemetry | Explicit Diesel selection substitutes standard OBD coolant, IAT, rail and boost for unverified gasoline DIDs. Only fuel-rate polling currently checks a supported-PID bitmap. No automatic ECU-specific verified N57 profile exists on main. | Add shared capability checks first. Preserve fixed gasoline decoders and persisted signal IDs. |
 | Oil temperature | [#21](https://github.com/inotbarnacle/iDriveDeck/issues/21), [#162](https://github.com/inotbarnacle/iDriveDeck/issues/162): DDE741 rejects fixed reads and does not advertise PID 5C. Temporary F303 is reused for different signals. | Leave unavailable without a verified fixed source. Never define or poll somebody else's dynamic DID. |
 | Pressure | PID 23 is direct-injection rail gauge pressure, 0.1 bar per count. MAP PID 0B is limited to 255 kPa absolute; subtracting barometric pressure does not extend that range. The original graphic fills at only 250 bar. | #202 blanks saturated diesel MAP/boost. [Draft #205](https://github.com/inotbarnacle/iDriveDeck/pull/205) adds a configurable diesel rail display scale, not an ECU pressure limit. Requested rail/boost require separate evidence. |
@@ -129,8 +129,35 @@ This description is not diagnostic confirmation.
   of QNX compatibility. [Fork CI](https://github.com/voioo/iDriveDeck/actions/runs/45985869445)
   passed GCC/Clang, static, resource and sanitizer jobs on the exact pushed
   source commit. No diagnostic worker or decoder changed.
-- Next: continue reproducible lifecycle work. Keep lifecycle/MOST work coordinated
-  with #143/#138/#141 rather than replacing their pending fixes.
+- Lifecycle dependency: Andreas Böhm's original `d63bd1f` from #143 is preserved
+  with authorship and cherry-pick reference as `6e46890` on
+  [fork branch `diesel/worker-lifecycle`](https://github.com/voioo/iDriveDeck/tree/diesel/worker-lifecycle).
+  New regression commit `76a062d` is independently reviewable in
+  [fork draft #1](https://github.com/voioo/iDriveDeck/pull/1), based on that fix;
+  the original source contribution remains under upstream #143.
+  The 13 current reaper plugins cover 14 process paths, including both BoostDeck
+  processes. Tests simulate wait errors, use real inert owned children for
+  signal-zero/termination checks, and advance the four monitor/read controllers
+  through ten retry deadlines without duplicate launches. All diagnostic
+  launches are intercepted. Each pinned original plugin must compile and fail
+  specifically for losing a live PID; the four controllers independently
+  reproduce duplicate starts. Twenty native programs, 80 existing Python cases,
+  all reaper sanitizer runs and the negative controls pass locally.
+  [Fork push CI](https://github.com/voioo/iDriveDeck/actions/runs/45992828635)
+  passed GCC/Clang, baseline controls, production syntax/analysis and sanitizers.
+  All 13 host BMW undefined-symbol sets match the baseline; this is not QNX ABI
+  evidence. New source behavior is the existing #143 fix, not a newly guessed
+  ECU/firmware workaround. The original patch's text-count guard is replaced
+  by explicit behavioral coverage in this test contribution.
+- Static follow-up: modern host syntax checks suppress an inherited SDK
+  callback-overload hiding warning in menus such as BEAMer. Clang reports two
+  inherited stream-read findings at `launch_records.h:39`, also reproduced in
+  the pinned baseline. These are documented separately; analysis is not claimed
+  warning-free and no F15/F16 freeze cause is asserted from these host tests.
+- Next: evaluate the existing WarmDeck RPM guide against the requirement for
+  measured/advisory cold-operation information, address the LaunchRecords
+  read-error path separately, and clean up obsolete toolchain acquisition links.
+  Keep remaining lifecycle/MOST work coordinated with #143/#138/#141.
 - Vehicle status: no vehicle connection, SSH, ECU requests, installation,
   head-unit restart or QNX build has been performed.
 - Owner update: ENET/captures are not yet available; continue offline. No live
@@ -200,6 +227,16 @@ The merged scale test explicitly selects Custom layout and both mode/scale
 sidecars are cleaned up by the host fixtures. The combined plugin links the
 new common object in host and native build rules. The previous five draft PRs
 remain separate; these local/fork merges do not merge an upstream contribution.
+
+The lifecycle dependency and new tests are integrated at `51600be`. The complete
+host run passes 30 native programs and the same 101 native-suite Python cases.
+All 34 separate discovery/probe/capture/asset/resource cases above pass as well:
+135 Python tests in total. The new lifecycle harness compiles the combined
+production plugins and links their additional defaults object. Host process
+cleanup, retry and retained-PID behavior now have regression evidence alongside
+the diesel features. This remains simulation/host evidence; it does not establish
+the target HMI's signal disposition, diagnose a specific freeze, or validate QNX
+installation, factory functionality or standalone transport.
 
 ## Fault-data licensing finding
 
