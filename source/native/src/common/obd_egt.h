@@ -22,7 +22,9 @@ static inline int obd_egt_decode(const unsigned char* data, size_t n, struct obd
     for (unsigned i=0;i<OBD_EGT_SENSORS;++i) {
         if (!(out->present & (1u<<i))) continue;
         const unsigned raw=((unsigned)data[1+2*i]<<8)|data[2+2*i];
-        const double value=raw*.1-40;
+        /* Apply the integer offset first so raw 400 stays exactly 0 C even
+         * when an optimizing compiler contracts floating-point operations. */
+        const double value=((int)raw-400)/10.0;
         if (value>1800) continue;
         out->celsius[i]=value;
         out->valid|=1u<<i;

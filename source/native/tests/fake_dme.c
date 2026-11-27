@@ -4,6 +4,7 @@
  * inner UDS into a one-slot mailbox; the responder thread answers. The mailbox lock is never held across a
  * delivery, because delivering takes the link's own lock. */
 #define _POSIX_C_SOURCE 200809L
+#include <assert.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <string.h>
@@ -20,7 +21,7 @@
 #define DATA_MAX    64
 #define MAX_PLAIN   16
 #define MAX_REFUSE  4
-#define MAX_RAW     24
+#define MAX_RAW     32
 
 static struct {
     struct { uint16_t did; uint8_t data[DATA_MAX]; size_t n; } plain[MAX_PLAIN];
@@ -314,12 +315,12 @@ void fake_dme_plain(uint16_t did, const uint8_t *data, size_t n)
 void fake_dme_raw(const char *hex_request_prefix, const uint8_t *reply, size_t n)
 {
     pthread_mutex_lock(&g_mu);
-    if (g.n_raw < MAX_RAW && n <= REPLY_MAX) {
-        snprintf(g.raw[g.n_raw].prefix, HEX_MAX, "%s", hex_request_prefix);
-        memcpy(g.raw[g.n_raw].reply, reply, n);
-        g.raw[g.n_raw].n = n;
-        g.n_raw++;
-    }
+    /* Fail at setup rather than silently dropping a combined feature's reply. */
+    assert(g.n_raw < MAX_RAW && n <= REPLY_MAX);
+    snprintf(g.raw[g.n_raw].prefix, HEX_MAX, "%s", hex_request_prefix);
+    memcpy(g.raw[g.n_raw].reply, reply, n);
+    g.raw[g.n_raw].n = n;
+    g.n_raw++;
     pthread_mutex_unlock(&g_mu);
 }
 
