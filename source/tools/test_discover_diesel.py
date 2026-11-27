@@ -1,11 +1,14 @@
 from contextlib import redirect_stdout
 import io
 import json
+import socket
+import struct
 from fractions import Fraction
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -15,6 +18,7 @@ TOOL = Path(__file__).with_name("discover_diesel.py")
 V1_FIXTURE = TOOL.parent / "fixtures" / "discovery-standard-v1.json"
 V2_FIXTURE = TOOL.parent / "fixtures" / "discovery-egt-v2.json"
 V3_FIXTURE = TOOL.parent / "fixtures" / "discovery-diesel-v3.json"
+V4_FIXTURE = TOOL.parent / "fixtures" / "discovery-pressure-v4.json"
 
 
 def row(request, reply, ecu="12"):
@@ -40,6 +44,14 @@ def pressure_rows():
     records[3] = row("0160", "416000890180")  # 69, 6D, 70, 78, 79
     return records + [row("016d", "416d3f27102328ff4e20ffffff"),
                       row("0170", "41703f1900192a3200ffffff")]
+
+
+def dpf_rows():
+    records = pressure_rows()
+    records[3] = row("0160", "4160008901f0")  # also 7A, 7B and 7C
+    return records + [row("017a", "417a07fff600002710"),
+                      row("017b", "417b058000ffffffff"),
+                      row("017c", "417c0f0190019147e0ffff")]
 
 
 class DiscoveryTest(unittest.TestCase):
@@ -746,6 +758,313 @@ class PressureDiscoveryTest(unittest.TestCase):
             self.assertTrue(all("value" not in f for f in signals["6D"]["fields"]))
             self.assertEqual(signals["70"]["fields"][1]["value"],201.3125)
             self.assertNotIn("PRIVATE",json.dumps(signals))
+
+
+class DpfDiscoveryTest(unittest.TestCase):
+    def signals(self, records):
+        return {s["pid"]: s for s in discovery.report(records, profile="standard-dpf")["signals"]}
+
+    def test_four_old_contracts_ignore_unsolicited_dpf_evidence(self):
+        for path, profile in ((V1_FIXTURE,"standard"), (V2_FIXTURE,"standard-egt"),
+                              (V3_FIXTURE,"standard-diesel"), (V4_FIXTURE,"standard-pressure")):
+            fixture = json.loads(path.read_text())
+            self.assertEqual(discovery.plan(profile), fixture["plan"])
+            self.assertEqual(discovery.report(fixture["input_records"], profile=profile), fixture["report"])
+            self.assertEqual(discovery.report(fixture["input_records"]+dpf_rows()[-3:], profile=profile), fixture["report"])
+
+    def test_v5_keeps_signed_delta_bank_and_sensor_position_distinct(self):
+        result = discovery.report(dpf_rows(), profile="standard-dpf")
+        self.assertEqual(result["format"], "idrive-diesel-discovery-v5")
+        self.assertEqual(result["profile"], "standard-dpf")
+        self.assertEqual(len(result["signals"]), 21)
+        signals = {s["pid"]:s for s in result["signals"]}
+        self.assertEqual([f["value"] for f in signals["7A"]["fields"]], [-0.1,0,100])
+        self.assertEqual([f["quantity"] for f in signals["7A"]["fields"]],
+                         ["delta_pressure","inlet_pressure","outlet_pressure"])
+        self.assertEqual([f["pressure_reference"] for f in signals["7A"]["fields"]],
+                         ["differential","not_established","not_established"])
+        self.assertEqual([f["bank"] for f in signals["7A"]["fields"]], [1]*3)
+        bank2 = signals["7B"]["fields"]
+        self.assertEqual([f["bank"] for f in bank2], [2]*3)
+        self.assertEqual(bank2[0]["value"], -327.68)
+        self.assertNotIn("value",bank2[1])
+        self.assertEqual(bank2[2]["value"],655.35)
+        temperatures = signals["7C"]["fields"]
+        self.assertEqual([(f["bank"],f["quantity"],f["value"]) for f in temperatures],
+                         [(1,"inlet_temperature",0), (1,"outlet_temperature",0.1),
+                          (2,"inlet_temperature",1800), (2,"outlet_temperature",6513.5)])
+        self.assertTrue(all(f["unit"]=="celsius" for f in temperatures))
+        self.assertTrue(all(f["unit"]=="kPa" for f in signals["7A"]["fields"]+bank2))
+        self.assertEqual(signals["6D"]["fields"][1]["value"],900)
+        self.assertEqual(signals["70"]["fields"][1]["value"],201.3125)
+        self.assertEqual(signals["69"]["fields"][2]["percent"],0)
+        self.assertEqual(signals["78"]["sensors"][0]["celsius"],0)
+        for key in ("vehicle_platform","firmware_approval"):
+            self.assertIn("not_",result[key])
+        self.assertTrue(any("regeneration status" in s for s in result["limitations"]))
+        self.assertTrue(any("full protocol ranges" in s for s in result["limitations"]))
+
+    def test_every_support_byte_authorizes_only_its_own_fields(self):
+        for record in dpf_rows()[-3:]:
+            reply = bytes.fromhex(record["reply"])
+            count = 4 if reply[1]==0x7c else 3
+            for flags in range(256):
+                complete, fields = discovery.dpf_fields(reply[1],"advertised",reply[:2]+bytes((flags,))+reply[3:])
+                self.assertEqual(complete,flags < 1 << count)
+                for index,field in enumerate(fields):
+                    supported = flags < 1 << count and bool(flags & (1 << index))
+                    self.assertEqual("value" in field,supported)
+                    self.assertEqual(field["capability"],"supported" if supported else
+                                     "unsupported" if complete else "unknown")
+
+    def test_complete_signed_and_unsigned_domains_and_temperature_zero(self):
+        for raw in range(65536):
+            pair = raw.to_bytes(2,"big")
+            complete, fields = discovery.dpf_fields(0x7a,"advertised",b"\x41\x7a\x07"+pair*3)
+            self.assertTrue(complete)
+            self.assertEqual(fields[0]["value"],float(Fraction(raw if raw < 32768 else raw-65536,100)))
+            self.assertEqual([fields[1]["value"],fields[2]["value"]],[float(Fraction(raw,100))]*2)
+            complete, fields = discovery.dpf_fields(0x7c,"advertised",b"\x41\x7c\x0f"+pair*4)
+            self.assertTrue(complete)
+            self.assertEqual([f["value"] for f in fields],[float(Fraction(raw-400,10))]*4)
+        for pid in discovery.DPF_PIDS:
+            count = 4 if pid==0x7c else 3
+            complete, fields = discovery.dpf_fields(pid,"advertised",bytes((0x41,pid,0))+b"\xff\xff"*count)
+            self.assertTrue(complete)
+            self.assertTrue(all("value" not in f for f in fields))
+
+    def test_prefix_exact_lengths_reserved_bits_and_unknown_pids(self):
+        for record in dpf_rows()[-3:]:
+            good = bytes.fromhex(record["reply"])
+            for length in range(len(good)+2):
+                complete, fields = discovery.dpf_fields(good[1],"advertised",(good+b"\0")[:length])
+                self.assertEqual(complete,length==len(good))
+                if not complete: self.assertTrue(all("value" not in f for f in fields))
+            for bad in (b"\x42"+good[1:],good[:1]+b"\x78"+good[2:],good[:2]+b"\x80"+good[3:]):
+                complete, fields = discovery.dpf_fields(good[1],"advertised",bad)
+                self.assertFalse(complete)
+                self.assertTrue(all("value" not in f for f in fields))
+        for pid in (0x78,0x79,0x8b):
+            with self.assertRaises(ValueError): discovery.dpf_fields(pid,"advertised",None)
+
+    def test_unknown_unsupported_and_duplicate_capabilities_never_authorize_values(self):
+        for records,state in ((dpf_rows()[4:],"unknown"),
+                              ([row("0100","410000000000"),*dpf_rows()[4:]],"unsupported"),
+                              ([*dpf_rows(),dpf_rows()[3]],"unknown")):
+            signals = self.signals(records)
+            for pid in ("7A","7B","7C"):
+                self.assertEqual(signals[pid]["capability"],state)
+                self.assertNotIn("reply",signals[pid])
+                self.assertTrue(all(f["capability"]==state and "value" not in f for f in signals[pid]["fields"]))
+
+    def test_record_statuses_distinguish_absence_ambiguity_and_failed_reads(self):
+        for pid,record in zip(("7A","7B","7C"),dpf_rows()[-3:]):
+            variants = [(dpf_rows()[:4],"not_present"),
+                        ([*dpf_rows()[:4],dict(ecu="12",request=record["request"],error="PRIVATE")],"present_no_valid_reply"),
+                        ([*dpf_rows()[:4],row(record["request"],"not hex")],"present_no_valid_reply"),
+                        ([*dpf_rows(),record],"ambiguous_duplicate"),
+                        ([*dpf_rows()[:4],row(record["request"],"7f0131")],"present_reply_bytes")]
+            for records,status in variants:
+                signal = self.signals(records)[pid]
+                self.assertEqual(signal["record_status"],status)
+                self.assertNotIn("reply",signal)
+                self.assertTrue(all("value" not in f for f in signal["fields"]))
+                if status=="present_reply_bytes": self.assertEqual(signal["nrc"],"31")
+
+    def test_no_pressure_or_temperature_fallback_and_no_regeneration_inference(self):
+        records = dpf_rows()
+        records[-3]["reply"] = "417a06ffff27104e20"  # Inlet/outlet only, no delta.
+        records[-1]["reply"] = "417c000000000000000000"  # No supported DPF temperature.
+        signals = self.signals(records)
+        self.assertNotIn("value",signals["7A"]["fields"][0])
+        self.assertTrue(all("value" not in f for f in signals["7C"]["fields"]))
+        self.assertEqual(signals["78"]["sensors"][0]["celsius"],0)
+        self.assertTrue(all(not ({"regeneration","soot","ash","completion"} & set(f))
+                            for pid in ("7A","7B","7C") for f in signals[pid]["fields"]))
+
+    def test_private_metadata_wrong_ecus_and_appended_bytes_are_filtered(self):
+        secret = "PRIVATE-VIN-SERIAL-CREDENTIAL-NAVIGATION"
+        records = dpf_rows()
+        records[-3].update(error=secret,hostname=secret,vin=secret)
+        records[-1]["reply"] += secret.encode().hex()
+        records += [row("017b",dpf_rows()[-2]["reply"],"18"),row("018b",secret.encode().hex()),
+                    row("22f190",secret.encode().hex())]
+        result = discovery.report(records,{"vin":secret,"gateway_ip":"169.254.10.3"},profile="standard-dpf")
+        encoded = json.dumps(result)
+        for value in (secret,secret.encode().hex(),"169.254.10.3","f190"):
+            self.assertNotIn(value,encoded)
+        signals = {s["pid"]:s for s in result["signals"]}
+        self.assertIn("reply",signals["7A"])
+        self.assertNotIn("reply",signals["7C"])
+        self.assertTrue(all("value" not in f for f in signals["7C"]["fields"]))
+        self.assertEqual(self.signals(dpf_rows()[:4]+[row("017b",dpf_rows()[-2]["reply"],"18")])["7B"]["record_status"],"not_present")
+
+    @patch("discover_diesel.time.sleep")
+    @patch("discover_diesel.exchange")
+    @patch("discover_diesel.socket.create_connection")
+    def test_exact_27_read_policy_prioritizes_dpf_with_bound_gaps_no_writes_or_retries(self, connect, exchange, sleep):
+        replies = {bytes.fromhex(r["request"]):r["reply"] for r in dpf_rows()[4:]}
+        def answer(connection,ecu,request):
+            if request==bytes.fromhex("22f150"): return {"reply":"7f2231"}
+            if request[1] in (0,0x20,0x40,0x60): return {"reply":bytes((0x41,request[1])).hex()+"ffffffff"}
+            return {"reply":replies.get(request,bytes((0x41,request[1])).hex()+"00"*discovery.WIDTHS.get(request[1],1))}
+        exchange.side_effect = answer
+        records = discovery.collect("169.254.10.2","169.254.10.3",profile="standard-dpf")
+        requests = [(int(r["ecu"],16),bytes.fromhex(r["request"])) for r in records]
+        self.assertEqual(len(records),27)
+        self.assertEqual(len(set(requests)),27)
+        self.assertEqual(set(requests),discovery.policy("standard-dpf")[3])
+        self.assertEqual([r["request"] for r in records[6:16]],
+                         ["01 7a","01 7b","01 7c","01 6d","01 70","01 69","01 2c","01 2d","01 78","01 79"])
+        self.assertEqual(connect.call_count,27)
+        self.assertEqual(sleep.call_count,27)
+        self.assertTrue(all(c.args==(0.2,) for c in sleep.call_args_list))
+        self.assertTrue(all(c.kwargs["source_address"]==("169.254.10.2",0) for c in connect.call_args_list))
+        self.assertTrue(all(request[0] in (1,0x22) for _,request in requests))
+
+    @patch("discover_diesel.time.sleep")
+    @patch("discover_diesel.exchange")
+    @patch("discover_diesel.socket.create_connection")
+    def test_collector_only_reads_advertised_dpf_after_a_valid_continuation_chain(self, connect, exchange, sleep):
+        for fourth,expected in (("416000000050",{"01 7a","01 7c"}), ("416000000020",{"01 7b"}),
+                                ("416000000000",set()), ("4160000000",set()), ("7f0131",set())):
+            def answer(connection,ecu,request):
+                return {"reply":{"0100":"410000000001","0120":"412000000001",
+                                 "0140":"414000000001","0160":fourth}.get(request.hex(),"7f0131")}
+            exchange.side_effect = answer
+            records = discovery.collect("169.254.10.2","169.254.10.3",profile="standard-dpf")
+            self.assertEqual({r["request"] for r in records if r["request"] in ("01 7a","01 7b","01 7c")},expected)
+
+    def test_slow_session_prioritizes_dpf_and_reserves_complete_deadlines(self):
+        clock = [0.0]
+        def advance(seconds): clock[0] += seconds
+        def answer(connection,ecu,request):
+            advance(6)
+            if request==bytes.fromhex("017a"): return {"reply":dpf_rows()[-3]["reply"]}
+            return {"reply":bytes((0x41,request[1])).hex()+"ffffffff" if request[0]==1 else "7f2231"}
+        with patch("discover_diesel.time.monotonic",side_effect=lambda:clock[0]), \
+             patch("discover_diesel.time.sleep",side_effect=advance), \
+             patch("discover_diesel.exchange",side_effect=answer), patch("discover_diesel.socket.create_connection") as connect:
+            records = discovery.collect("169.254.10.2","169.254.10.3",profile="standard-dpf")
+        self.assertEqual(connect.call_count,7)
+        self.assertLessEqual(clock[0],45)
+        self.assertEqual(records[-1]["request"],"01 7a")
+        self.assertEqual(self.signals(records)["7A"]["fields"][0]["value"],-0.1)
+        self.assertEqual(self.signals(records)["7B"]["record_status"],"not_present")
+
+    @patch("discover_diesel.time.sleep")
+    @patch("discover_diesel.exchange")
+    @patch("discover_diesel.socket.create_connection")
+    def test_failed_dpf_reads_are_not_retried_and_do_not_hide_other_fields(self, connect, exchange, sleep):
+        for failure in ("7f0131",OSError("PRIVATE ERROR")):
+            def answer(connection,ecu,request):
+                if request==bytes.fromhex("017a"):
+                    if isinstance(failure,OSError): raise failure
+                    return {"reply":failure}
+                for record in dpf_rows()[-2:]:
+                    if request==bytes.fromhex(record["request"]): return {"reply":record["reply"]}
+                return {"reply":bytes((0x41,request[1])).hex()+"ffffffff" if request[0]==1 else "7f2231"}
+            exchange.side_effect = answer
+            records = discovery.collect("169.254.10.2","169.254.10.3",profile="standard-dpf")
+            self.assertEqual(sum(r["request"]=="01 7a" for r in records),1)
+            signals = self.signals(records)
+            self.assertTrue(all("value" not in f for f in signals["7A"]["fields"]))
+            self.assertEqual(signals["7B"]["fields"][0]["value"],-327.68)
+            self.assertEqual(signals["7C"]["fields"][0]["value"],0)
+            self.assertNotIn("PRIVATE",json.dumps(signals))
+
+    def test_plan_replay_and_collect_approval_gate_remain_separate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            source,output = path/"synthetic.jsonl",path/"public.json"
+            source.write_text("\n".join(json.dumps(r) for r in dpf_rows()))
+            for args in (("--plan",),("--replay",str(source),"--out",str(output))):
+                with patch.object(sys,"argv",[str(TOOL),"--profile","standard-dpf",*args]), \
+                     patch("discover_diesel.socket.create_connection") as connect, redirect_stdout(io.StringIO()):
+                    discovery.main()
+                connect.assert_not_called()
+            original = output.read_bytes()
+            self.assertEqual(output.stat().st_mode&0o777,0o600)
+            result = json.loads(original)
+            self.assertEqual(result["evidence"],"replay_unverified_provenance")
+            self.assertEqual(result["format"],"idrive-diesel-discovery-v5")
+            for args in (("--replay",str(source),"--out",str(output)),
+                         ("--collect","--local","169.254.10.2","--gateway","169.254.10.3")):
+                with patch.object(sys,"argv",[str(TOOL),"--profile","standard-dpf",*args]), \
+                     patch("discover_diesel.socket.create_connection") as connect, redirect_stdout(io.StringIO()), \
+                     patch("sys.stderr",io.StringIO()), self.assertRaises(SystemExit):
+                    discovery.main()
+                connect.assert_not_called()
+            self.assertEqual(output.read_bytes(),original)
+
+
+    def test_full_profile_uses_real_hsfz_framing_with_an_in_memory_gateway(self):
+        replies = {bytes.fromhex(r["request"]):bytes.fromhex(r["reply"]) for r in dpf_rows()[4:]}
+        seen, threads, failures = [], [], []
+
+        def exact(connection,size):
+            data = b""
+            while len(data)<size:
+                part = connection.recv(size-len(data))
+                if not part: raise ConnectionError("synthetic gateway connection closed")
+                data += part
+            return data
+
+        def frame(control,payload):
+            return struct.pack(">IH",len(payload),control)+payload
+
+        def respond(gateway):
+            with gateway:
+                gateway.settimeout(2)
+                try:
+                    size,control = struct.unpack(">IH",exact(gateway,6))
+                    payload = exact(gateway,size)
+                    self.assertEqual(control,1)
+                    self.assertEqual(payload[0],0xf4)
+                    ecu,request = payload[1],payload[2:]
+                    seen.append((ecu,request))
+                    if request==bytes.fromhex("22f150"):
+                        reply = bytes.fromhex("62f150010203")
+                    elif request[1] in (0,0x20,0x40,0x60):
+                        reply = bytes((0x41,request[1]))+b"\xff"*4
+                    else:
+                        reply = replies.get(request,bytes((0x41,request[1]))+b"\0"*discovery.WIDTHS.get(request[1],1))
+                    if request[0]==1 and request[1] in discovery.DPF_PIDS:
+                        gateway.sendall(frame(0x12,b""))
+                        self.assertEqual(exact(gateway,8),frame(0x13,b"\0\xf4"))
+                        gateway.sendall(frame(1,bytes((ecu^1,0xf4))+reply))
+                        gateway.sendall(frame(1,bytes((ecu,0xf4))+b"\x7f\x01\x78"))
+                        gateway.sendall(frame(1,bytes((ecu,0xf4))+b"\x41\x05\xff"))
+                    packet = frame(1,bytes((ecu,0xf4))+reply)
+                    for part in (packet[:3],packet[3:9],packet[9:]):
+                        gateway.sendall(part)
+                except Exception as error:
+                    failures.append(error)
+
+        def connect(endpoint,*,timeout,source_address):
+            self.assertEqual(endpoint,("169.254.10.3",6801))
+            self.assertEqual(timeout,2)
+            self.assertEqual(source_address,("169.254.10.2",0))
+            # AF_UNIX stream pairs cannot reach a car or external network.
+            client,gateway = socket.socketpair()
+            thread = threading.Thread(target=respond,args=(gateway,),daemon=True)
+            threads.append(thread)
+            thread.start()
+            return client
+
+        with patch("discover_diesel.socket.create_connection",side_effect=connect), \
+             patch("discover_diesel.time.sleep"):
+            records = discovery.collect("169.254.10.2","169.254.10.3",profile="standard-dpf")
+        for thread in threads:
+            thread.join(3)
+            self.assertFalse(thread.is_alive())
+        self.assertFalse(failures,failures)
+        self.assertEqual(len(seen),27)
+        self.assertEqual(set(seen),discovery.policy("standard-dpf")[3])
+        signals = self.signals(records)
+        self.assertEqual(signals["7A"]["fields"][0]["value"],-0.1)
+        self.assertEqual(signals["7B"]["fields"][0]["value"],-327.68)
+        self.assertEqual(signals["7C"]["fields"][1]["value"],0.1)
 
 
 if __name__ == "__main__":

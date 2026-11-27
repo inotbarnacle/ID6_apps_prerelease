@@ -262,6 +262,90 @@ wrong ECU, negative replies, the exact 24-read policy, budget priority and
 offline/exclusive 0600 output. Replay provenance remains unverified; locally
 review every report before sharing it.
 
+## Optional standard DPF pressure and temperature evidence profile
+
+`standard-dpf` is a separate **27-read maximum** plan and v5 report. The earlier
+16/19/22/24-read plans and v1/v2/v3/v4 reports remain unchanged. It adds only
+standard `01 7A`, `01 7B` and `01 7C`, after advertisement through the existing
+00/20/40/60 continuation chain. Measurements are prioritized as DPF 7A/7B/7C,
+pressure 6D/70, EGR 69/2C/2D, EGT 78/79, then the original eleven channels.
+The unchanged 45-second budget, full 6.2-second transaction reservation,
+200-ms gaps, explicit wired endpoints and no-retry rule still apply.
+
+Planning and replay remain offline:
+
+```sh
+python3 tools/discover_diesel.py --plan --profile standard-dpf
+python3 tools/discover_diesel.py --replay /private/dpf-probe.jsonl \
+  --profile standard-dpf --out /private/dpf-public-report.json
+```
+
+Review this exact plan and obtain separate explicit owner approval before
+any physical collection. An earlier profile's approval does not cover it.
+No physical use is authorized or performed by this source contribution.
+
+The v5 report identifies `profile: standard-dpf`. It retains the earlier
+standard fields and fixed `record_status` values, adding ten optional DPF
+`fields` across three PIDs:
+
+| PID | Data after `41 <pid>` | Fields in wire order | Conversion |
+| --- | --- | --- | --- |
+| 7A | Exactly seven bytes | Bank 1 delta, inlet, outlet pressure | Signed big-endian delta / 100 kPa; unsigned inlet/outlet / 100 kPa |
+| 7B | Exactly seven bytes | Bank 2 delta, inlet, outlet pressure | Same conversions, separate bank |
+| 7C | Exactly nine bytes | Bank 1 inlet/outlet, bank 2 inlet/outlet temperature | Unsigned big-endian raw / 10 - 40 C |
+
+A is the support byte. Pressure bits 0/1/2 authorize B-C/D-E/F-G respectively;
+temperature bits 0/1/2/3 authorize B-C/D-E/F-G/H-I. Reserved support bits reject
+the layout. Each numeric `value` requires an exact positive reply, valid PID
+advertisement and its own field support. A missing field stays unavailable;
+delta is never computed from inlet/outlet, and generic EGT is never used as a
+DPF inlet/outlet fallback. Bank/position names preserve protocol labels and do
+not establish the hardware fitted to this vehicle.
+
+Fields carry `bank`, `quantity`, `unit`, `capability` and `measurement`.
+Pressure uses `kPa`; temperature uses `celsius`. Delta has
+`pressure_reference: differential`; inlet/outlet use `not_established`, since
+the inspected references do not establish an absolute or atmospheric reference.
+No atmospheric value is assumed or subtracted.
+
+This evidence report preserves the full protocol domains: delta -327.68 to
+327.67 kPa, inlet/outlet 0 to 655.35 kPa, temperature -40 to 6513.5 C. Supported
+zero remains numeric. FFFF means -0.01 kPa delta, 655.35 kPa inlet/outlet or
+6513.5 C temperature; it is not an invented unavailable marker. These ranges
+are protocol arithmetic, not BMW plausibility limits. Values remain
+`decoded_requires_independent_validation` and are not promoted to application
+readiness or a physical compatibility claim.
+
+[DashLogic's published PID reference](https://www.dashlogic.com/docs/technical/obdii_pids)
+independently corroborates the layouts, per-field flags, signed delta and
+temperature conversion in the previously inspected
+[pinned OBDb catalog](https://github.com/OBDb/SAEJ1979/blob/1abdef6ae0c1b9134c8f2a10911a9daa1354649d/signalsets/v3/default.json).
+The German Environment Agency's
+[exhaust-emissions research report](https://www.umweltbundesamt.de/system/files/medien/1410/publikationen/2020-01-29_texte_22-2020_fortentwicklung-abgasuntersuchung_kurz_en.pdf)
+also identifies these standard DPF pressure/temperature PIDs. None establishes
+this X5's support. No vendor tables, descriptions, captures or proprietary
+standard are copied; the implementation uses protocol arithmetic and synthetic
+fixtures.
+
+Pressure and temperature alone do not establish regeneration status, soot/ash
+mass, time/distance since regeneration, inhibition reasons, completion or a
+service threshold. No such estimate, regeneration command, counter reset,
+dynamic DID, session change or new native app is added. PID 8B and other higher
+pages remain outside this plan. Exact DDE support, independent measurements
+and the shared B47/N57 evidence requested in #196 are still needed before a
+DPFDeck implementation decision.
+
+The 15 added discovery cases cover the entire signed/unsigned 16-bit domains,
+every support byte, exact prefix/length, no fallback/inference, all four frozen
+earlier contracts, missing/duplicate/negative evidence, privacy, wrong ECU,
+exact request/gap/budget bounds, no retries, offline planning/replay, explicit
+collection approval and exclusive 0600 report output. A complete 27-read run
+also exercises the real HSFZ exchange through local stream socket pairs,
+including heartbeat acknowledgement, pending and wrong-ECU/PID replies and
+split frames; those pairs cannot reach a vehicle or external network. The new
+`tools/fixtures/discovery-pressure-v4.json` freezes synthetic v4 output from
+unchanged source `f18cf1c`; it contains no vehicle data.
+
 ## Stage A — non-invasive parked discovery
 
 1. Obtain the owner's explicit approval for the printed bounded collection

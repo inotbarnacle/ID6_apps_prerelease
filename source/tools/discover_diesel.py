@@ -20,6 +20,7 @@ MAX_REQUESTS, MAX_SECONDS = 16, 45
 EGT_PIDS = (0x78, 0x79)
 EGR_PIDS = (0x69, 0x2c, 0x2d)
 PRESSURE_PIDS = (0x6d, 0x70)
+DPF_PIDS = (0x7a, 0x7b, 0x7c)
 FRAMEWORKS = ("libAppFramework.A.so", "libCoreFramework.A.so")
 ALLOWLIST = {(ecu, bytes.fromhex("22f150")) for ecu in (0x12, 0x18)} | {
     (0x12, bytes((1, pid))) for pid in (0, 0x20, 0x40, *PIDS)
@@ -36,6 +37,10 @@ POLICIES = {
     # A separate plan retains the three older request sets and their ordering.
     "standard-pressure": (PRESSURE_PIDS + EGR_PIDS + EGT_PIDS + PIDS, (0, 0x20, 0x40, 0x60), 24, ALLOWLIST | {
         (0x12, bytes((1, pid))) for pid in (0x60, *PRESSURE_PIDS, *EGR_PIDS, *EGT_PIDS)
+    }),
+    # DPF pressure/temperature evidence only; no inferred regeneration or soot.
+    "standard-dpf": (DPF_PIDS + PRESSURE_PIDS + EGR_PIDS + EGT_PIDS + PIDS, (0, 0x20, 0x40, 0x60), 27, ALLOWLIST | {
+        (0x12, bytes((1, pid))) for pid in (0x60, *DPF_PIDS, *PRESSURE_PIDS, *EGR_PIDS, *EGT_PIDS)
     }),
 }
 
@@ -227,6 +232,40 @@ def pressure_fields(pid, state, reply):
     return complete, fields
 
 
+def dpf_fields(pid, state, reply):
+    """Decode explicit standard bank/position fields, not soot or regeneration.
+
+    Delta pressure is signed; inlet/outlet pressure has no assumed atmospheric
+    reference. Full protocol ranges are retained for independent validation.
+    Format/scaling sources are documented in DIESEL-VALIDATION.md.
+    """
+    if pid not in DPF_PIDS:
+        raise ValueError("unknown standard DPF PID")
+    temperature = pid == 0x7c
+    count = 4 if temperature else 3
+    complete = (state == "advertised" and reply is not None and len(reply) == 3 + 2*count
+                and reply[:2] == bytes((0x41, pid)) and not reply[2] & (0xf0 if temperature else 0xf8))
+    fields = []
+    for index in range(count):
+        capability = "unsupported" if state == "unsupported" else "unknown"
+        item = {"bank": index // 2 + 1 if temperature else pid - 0x79,
+                "quantity": (("inlet_temperature", "outlet_temperature")[index % 2] if temperature else
+                             ("delta_pressure", "inlet_pressure", "outlet_pressure")[index]),
+                "unit": "celsius" if temperature else "kPa",
+                "capability": capability, "measurement": "unavailable"}
+        if not temperature:
+            item["pressure_reference"] = "differential" if index == 0 else "not_established"
+        if complete:
+            supported = bool(reply[2] & (1 << index))
+            item["capability"] = "supported" if supported else "unsupported"
+            if supported:
+                raw = int.from_bytes(reply[3+2*index:5+2*index], "big", signed=not temperature and index == 0)
+                item.update(value=(raw - 400) / 10 if temperature else raw / 100,
+                            measurement="decoded_requires_independent_validation")
+        fields.append(item)
+    return complete, fields
+
+
 def report(rows, headunit=None, evidence="replay", *, profile="standard"):
     """Export only known fixed requests and validated response shapes.
 
@@ -282,11 +321,16 @@ def report(rows, headunit=None, evidence="replay", *, profile="standard"):
         reply = reply_bytes(row)
         state = "unknown" if pid not in checked else "unsupported" if pid not in advertised else "advertised"
         entry = {"pid": f"{pid:02X}", "capability": state, "measurement": "unavailable"}
-        if profile in ("standard-diesel", "standard-pressure"):
+        if profile in ("standard-diesel", "standard-pressure", "standard-dpf"):
             entry["record_status"] = ("not_present" if key not in records else
                                       "ambiguous_duplicate" if row is None else
                                       "present_no_valid_reply" if not reply else "present_reply_bytes")
-        if pid in PRESSURE_PIDS:
+        if pid in DPF_PIDS:
+            complete, entry["fields"] = dpf_fields(pid, state, reply)
+            if complete:
+                entry["reply"] = reply.hex(" ")
+                entry["measurement"] = "field_layout_requires_independent_validation"
+        elif pid in PRESSURE_PIDS:
             complete, entry["fields"] = pressure_fields(pid, state, reply)
             if complete:
                 entry["reply"] = reply.hex(" ")
@@ -323,7 +367,8 @@ def report(rows, headunit=None, evidence="replay", *, profile="standard"):
     result = {
         "format": ("idrive-diesel-discovery-v1" if profile == "standard" else
                    "idrive-diesel-discovery-v2" if profile == "standard-egt" else
-                   "idrive-diesel-discovery-v3" if profile == "standard-diesel" else "idrive-diesel-discovery-v4"),
+                   "idrive-diesel-discovery-v3" if profile == "standard-diesel" else
+                   "idrive-diesel-discovery-v4" if profile == "standard-pressure" else "idrive-diesel-discovery-v5"),
         "evidence": evidence,
         "vehicle_platform": "not_inferred",
         "ecu_identification": identities,
@@ -341,13 +386,18 @@ def report(rows, headunit=None, evidence="replay", *, profile="standard"):
     if profile != "standard":
         result["profile"] = profile
         result["limitations"].append("EGT bank/sensor fields do not establish physical sensor locations or regeneration")
-    if profile in ("standard-diesel", "standard-pressure"):
+    if profile in ("standard-diesel", "standard-pressure", "standard-dpf"):
         result["limitations"][1] = "No DPF, SCR or BMW-specific oil/EGR mapping is established"
         result["limitations"].append("EGR A/B actual is reported normalized duty/position, not inferred flow or an independent position measurement")
         result["limitations"].append("Legacy EGR request/error never establishes A/B actual values")
-    if profile == "standard-pressure":
+    if profile in ("standard-pressure", "standard-dpf"):
         result["limitations"].append("Standard pressure A/B fields do not establish physical rail/turbo identity or exact ECU support")
         result["limitations"].append("Boost pressure is absolute, not manifold or derived gauge boost; no atmospheric value is assumed")
+    if profile == "standard-dpf":
+        result["limitations"][1] = "No DPF regeneration/soot/ash, SCR or BMW-specific oil/EGR mapping is established"
+        result["limitations"].append("DPF bank/inlet/outlet labels do not establish this vehicle's physical sensor layout or exact ECU support")
+        result["limitations"].append("DPF pressures and temperatures do not establish regeneration status, soot/ash mass, completion or service thresholds")
+        result["limitations"].append("DPF inlet/outlet pressure reference is not established; full protocol ranges are not BMW plausibility limits")
     return result
 
 
@@ -358,7 +408,7 @@ def main():
     mode.add_argument("--replay", type=Path, help="offline probe JSONL input; no connection")
     mode.add_argument("--collect", action="store_true", help="execute the reviewed parked read-only plan")
     parser.add_argument("--profile", choices=POLICIES, default="standard",
-                        help="standard: 16 reads/v1; standard-egt: 19 reads/v2; standard-diesel: 22 reads/v3; standard-pressure: separate 24-read plan/v4")
+                        help="standard: 16 reads/v1; standard-egt: 19 reads/v2; standard-diesel: 22 reads/v3; standard-pressure: 24 reads/v4; standard-dpf: separate 27-read plan/v5")
     parser.add_argument("--owner-approved-parked", action="store_true", help="owner has explicitly approved this exact collection")
     parser.add_argument("--local", type=enet_address)
     parser.add_argument("--gateway", type=enet_address)
