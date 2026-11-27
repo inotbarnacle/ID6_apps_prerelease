@@ -417,6 +417,74 @@ Exact ECU advertisement, independent diagnostic comparisons and the shared
 #196 evidence process remain necessary before application use. This profile
 has not been run on the owner's vehicle.
 
+## Optional standard SCR inducement evidence profile
+
+`standard-scr` is a separate **31-read maximum** plan and v7 report. It adds
+advertised `01 88` to the v6 evidence policy and prioritizes it before 8B/85.
+The six older plans, allowlists and report contracts (16/19/22/24/27/30 reads)
+stay unchanged. A frozen synthetic v6 fixture records the local v6 source tree
+`65afc57368160ecb378f36a125004f16b26eeb4a`, before the SCR change; that is a
+source-tree checkpoint, not a published commit or a vehicle capture.
+
+Prepare or replay offline, from `source/`:
+
+```sh
+python3 tools/discover_diesel.py --plan --profile standard-scr
+python3 tools/discover_diesel.py --replay /private/probe.jsonl \
+  --profile standard-scr --out /private/scr-public.json
+python3 tools/test_discover_scr.py
+```
+
+Physical collection requires separate owner review and approval of this exact
+parked plan. Approval of an older plan does not cover PID 88. The same wired
+link-local addressing, DME/DDE 12 target, 200-ms gap, six-second transaction
+reserve, 45-second limit and no-retry policy apply. No scan, write, session
+change, SSH/MOST access, reset or actuator command is added. A slow session may
+end before a measurement; unavailable evidence is not filled from another PID.
+
+PID 88 must have exactly thirteen data bytes after `41 88`. Byte A bit 7 is
+the current inducement-active flag; bits 3/2/1/0 separately report excessive
+NOx, reagent-consumption deviation, incorrect reagent and low reagent causes.
+Bits 6–4 are reserved and rejected. Unlike PID 85, these are status/cause bits,
+not per-field support bits: a valid advertised all-zero reply is supported
+false/zero data. Cause bits alone do not establish that inducement is active.
+
+Byte B's low/high nibbles contain the 0–10000 / 10000–20000 km history blocks;
+byte C's low/high nibbles contain 20000–30000 / 30000–40000 km blocks. Their
+cause flags stay explicitly historical. D-E is current-block distance with
+inducement active, F-G is current-block distance travelled, and H-I/J-K/L-M
+are the remaining three historical distance counters. Each is big-endian
+unsigned km. No ratio, remaining range, odometer, DPF state or since-last
+regeneration quantity is derived.
+
+These layouts are corroborated by
+[DashLogic](https://www.dashlogic.com/docs/technical/obdii_pids), the same
+[pinned OBDb catalog](https://github.com/OBDb/SAEJ1979/blob/1abdef6ae0c1b9134c8f2a10911a9daa1354649d/signalsets/v3/default.json),
+and source inspection of the official
+[J1699-3 release 17.00.00](https://sourceforge.net/projects/j1699-3/files/j1699/j1699-17.00.00/j1699-ver-17.00.00.zip/download)
+(archive SHA-256 `fa7f6349a5fd57f20295c7b3a01a144f160d1715ffc1bf211a6da20838a4fd39`).
+`SidSaveResponseData.c` checks thirteen bytes;
+`VerifyDiagnosticSupportAndData.c` decodes all five counter pairs at their own
+offsets. This resolves the manufacturer's repeated B/C formula text under
+different byte-pair rows. No reference implementation or restricted standard
+is copied or executed.
+
+Counters retain their full 0–65535 wire domain for evidence review. Values
+above the documented 10000-km block size carry
+`outside_documented_block_range: true`; they are not silently clamped or
+given an invented FFFF sentinel. This flag is an evidence check, not an OEM
+fault diagnosis or a maintenance threshold. Exact ECU semantics and an
+independent comparison remain necessary before application use.
+
+Thirteen added tests cover current/reserved status bytes, every historical
+byte, the full counter domain, all five endian offsets, valid false/zero,
+nonadvertisement, duplicates, malformed/refused replies, privacy, all six
+frozen contracts, 31-read ordering/limits, slow sessions and offline/output
+approval gates. A complete local HSFZ stream-pair run checks heartbeat/pending,
+wrong ECU/PID and split replies. No native app, firmware profile, regeneration
+control or confirmed N57/B47/B57 support is added. The owner's vehicle has not
+been queried with this profile.
+
 ## Stage A — non-invasive parked discovery
 
 1. Obtain the owner's explicit approval for the printed bounded collection

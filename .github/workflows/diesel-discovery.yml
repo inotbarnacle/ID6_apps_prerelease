@@ -20,6 +20,8 @@ jobs:
           python3 -B source/tools/discover_diesel.py --plan --profile standard-pressure
           python3 -B source/tools/discover_diesel.py --plan --profile standard-dpf
           python3 -B source/tools/discover_diesel.py --plan --profile standard-aftertreatment
+          python3 -B source/tools/discover_diesel.py --plan --profile standard-scr
           python3 -B source/tools/test_discover_diesel.py
+          python3 -B source/tools/test_discover_scr.py
           python3 -B source/tools/test_probe_signals.py
           python3 -B source/tools/test_capture_headunit.py
