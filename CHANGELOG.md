@@ -2,8 +2,10 @@
 
 ## Unreleased source changes
 
+- BoostDeck adds optional read-only EGR request/error and A/B request/actual/error gauges. PID and per-field support gates, grouped polling and explicit labels keep error separate from actual duty/position. Automatic diesel defaults are unchanged.
+- Existing EGT packets and B3 channel bounds are preserved. EGR uses appended IDs, NBG9 and B4 assignments; older binaries need their backed-up settings restored on rollback.
 - BoostDeck adds standard EGT bank/sensor gauges with PID and sensor-support gating, independent freshness and bounded polling. Detected defaults choose at most one EGT. No exhaust-location or regeneration inference is added.
-- Existing signal IDs, ordinary NBG7 packets and B1/B2 settings retain their original meaning. Extended readings use 64-bit masks, NBG8/NBC2 frames and B3 assignments; matching plugin and worker builds are required. These changes are host-tested source, not N57 or QNX runtime approval.
+- Existing signal IDs, ordinary NBG7 packets and B1/B2 settings retain their original meaning. EGT readings use 64-bit masks, NBG8/NBC2 frames and B3 assignments; matching plugin and worker builds are required. These changes are host-tested source, not N57 or QNX runtime approval.
 
 ## v0.7.18
 

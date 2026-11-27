@@ -6,7 +6,7 @@ evidence reported by its current collector. This replaces the fixed nine-gauge
 diesel default, which could reserve slots for unsupported signals.
 
 Choose **BoostDeck settings → Diesel gauges → Custom layout** to use saved gauge
-selections. Valid B1/B2 and extended B3 configuration files retain Custom mode when no
+selections. Valid B1/B2 and extended B3/B4 configuration files retain Custom mode when no
 mode preference exists. The automatic layout never overwrites either profile's
 saved selections. **Configure custom gauges** edits those selections; its page
 explains when Detected defaults are active. Gasoline continues to use its saved
@@ -35,6 +35,8 @@ Derived boost needs both MAP `0B` and barometric pressure `33` advertisements.
 The 255-kPa absolute MAP ceiling still makes both MAP and derived boost invalid
 at saturation. There is no guessed fixed or temporary diesel oil DID, DPF,
 requested pressure, EGR, SCR or oil-pressure mapping in this default pool.
+Optional [standard EGR gauges](STANDARD-EGR.md) remain in Custom layout and
+do not change this automatic candidate pool.
 
 Transmission is a separate EGS endpoint and has no Mode 01 capability bit here.
 It enters the layout only after the existing `22 DA12` request returns a positive
@@ -62,7 +64,8 @@ capability header (token, worker PID, monotonic timestamp, known mask, supported
 mask) and its measurement frame. Legacy masks retain `NBC1`; extended evidence
 uses `NBC2`. `NBG7` retains its original 31 channels, while valid extended
 readings use `NBG8` with 39 channels and a mandatory final newline. Their
-timestamps must match. The maximum receive buffer is 1184 bytes; the UI still drains at most eight datagrams
+timestamps must match. The shared receive buffer is 1440 bytes to also accommodate
+optional manual EGR frames; the UI still drains at most eight datagrams
 per tick. This does not change the ECU protocol or HUD's separate sharing format.
 
 The plugin accepts an automatic frame only while visible, from its current
@@ -72,18 +75,20 @@ cannot disappear or flip within a worker lifetime. Restarting collection clears
 capabilities and chooses a new launch token. Queued old-worker frames, ordinary
 unwrapped packets and demo samples cannot populate an automatic dashboard.
 Custom/Gasoline collection retains ordinary NBG7 encoding when no extended
-channel is valid. Old packet parsing is retained; new EGT readings use NBG8.
+channel is valid. Old packet parsing is retained; EGT readings use NBG8 and
+valid optional EGR readings use NBG9. Automatic selection never requests EGR.
 Automatic mode needs the matching new plugin and collector, deployed together.
 
 The three-byte D1 mode sidecar is `BoostDeck.signals.defaults` beside the existing
 assignments file, normally under `/var/opt/hmi/data/ID5/`. It uses the existing
 atomic 0600 temporary-file/rename helper. Saving a mode writes only that sidecar;
 the assignment writer also preserves the current mode before writing its usual
-B2 file for old IDs or B3 when an EGT is selected. Failed mode saves retain the
+B2 file for old IDs, B3 when an EGT is selected or B4 for EGR IDs. Failed mode saves retain the
 prior mode and show an error. Invalid or newer sidecars leave the mode derived
 from the existing assignments. B1/B2 keep their original ID bounds, G1/G2 are
-unchanged, and EGT IDs are appended. An older binary ignores D1 and reads an
-old-format custom layout; it cannot interpret B3 or automatic mode. Back up
+unchanged, and EGT/EGR IDs are appended. B3 retains its original ID limit even
+with the new EGR options. An older binary ignores D1 and reads an
+old-format custom layout; it cannot interpret newer B3/B4 revisions or automatic mode. Back up
 the complete app and preference files before any separately authorized update.
 
 ## Offline checks and limits

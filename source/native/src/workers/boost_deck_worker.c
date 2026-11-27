@@ -5,6 +5,7 @@
 #include "diag_link.h"
 #include "obd_capabilities.h"
 #include "boost_defaults.h"
+#include "obd_egr.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <math.h>
@@ -104,7 +105,8 @@ static const struct {
     {0x06, BD_STFT_B1, 0}, {0x07, BD_LTFT_B1, 0},
     {0x08, BD_STFT_B2, 0}, {0x09, BD_LTFT_B2, 0},
     {0x44, BD_LAMBDA_TARGET, 0}, {0x3c, BD_CAT_TEMP, 0},
-    {0x4c, BD_THROTTLE_TARGET, 0}
+    {0x4c, BD_THROTTLE_TARGET, 0},
+    {0x2c, BD_EGR_REQUEST, 0}, {0x2d, BD_EGR_ERROR, 0}
 };
 
 /* Same contract as read_did: 1 decoded, 0 unavailable or refused, -1 link lost, -3 kept. */
@@ -142,6 +144,24 @@ static int read_egt(struct diag_link *link, unsigned bank, struct obd_egt_sample
         fprintf(stderr,"RAW mono_ms=%llu ecu=12 pid=%02X payload=",(unsigned long long)bd_mono_ms(),request[1]);
         for (int i=2;i<n;++i) fprintf(stderr,"%02X",reply[i]);
         if (decoded) fprintf(stderr," present=%X valid=%X\n",sample->present,sample->valid);
+        else fputs(" unavailable reason=invalid-layout\n",stderr);
+    }
+    return decoded;
+}
+
+static int read_egr(struct diag_link *link, struct obd_egr_sample *sample) {
+    const unsigned char request[]={1,0x69}, prefix[]={0x41,0x69};
+    unsigned char reply[16];
+    unsigned negative;
+    const int n=diag_link_request(link,0x12,request,2,prefix,2,reply,sizeof reply,500,&negative);
+    if (n==-2) { fprintf(stderr,"ECU 12 PID 69 NRC %02X\n",negative); return 0; }
+    if (n==-3) return -3;
+    if (n<0) return -1;
+    const int decoded=n>=2 && obd_egr_decode(reply+2,(size_t)n-2,sample);
+    if (trace_reads) {
+        fprintf(stderr,"RAW mono_ms=%llu ecu=12 pid=69 payload=",(unsigned long long)bd_mono_ms());
+        for (int i=2;i<n;++i) fprintf(stderr,"%02X",reply[i]);
+        if (decoded) fprintf(stderr," present=%X\n",sample->present);
         else fputs(" unavailable reason=invalid-layout\n",stderr);
     }
     return decoded;
@@ -201,6 +221,7 @@ int main(int argc, char **argv) {
     struct obd_capabilities capabilities = {{0}, {0}, 0};
     struct obd_egt_evidence egt = {0,{0}};
     uint64_t egt_due[OBD_EGT_BANKS]={0}, egt_failed_until[OBD_EGT_BANKS]={0};
+    uint64_t egr_due=0, egr_failed_until=0;
     uint64_t auto_token=0;
     int trans_observed=0, explicit_signals=0;
     uint64_t next_hud=0;
@@ -292,8 +313,10 @@ int main(int argc, char **argv) {
             f.value[BD_STFT_B2]=1.6; f.value[BD_LTFT_B2]=-0.8;
             f.value[BD_LAMBDA_TARGET]=.95; f.value[BD_CAT_TEMP]=580;
             f.value[BD_THROTTLE_TARGET]=46;
-            for (unsigned sensor=BD_EGT_B1S1;sensor<BD_COUNT;++sensor)
+            for (unsigned sensor=BD_EGT_B1S1;sensor<BD_WIRE8_COUNT;++sensor)
                 f.value[sensor]=400+10*(sensor-BD_EGT_B1S1)+20*sin(t);
+            for (unsigned signal=BD_EGR_REQUEST;signal<=BD_EGR_B_ERROR;++signal)
+                f.value[signal]=signal==BD_EGR_ERROR || signal==BD_EGR_A_ERROR || signal==BD_EGR_B_ERROR ? -12.5 : 40;
             f.valid=BD_LEGACY_MASK | (selected & ~BD_LEGACY_MASK);
             for (i=0;i<BD_COUNT;++i) observed[i]=bd_mono_ms();
         } else {
@@ -380,14 +403,18 @@ int main(int argc, char **argv) {
                 /* A DDE may reset the connection on an unsupported PID, including
                  * oil temperature. Never probe an unadvertised diesel channel.
                  * Keep legacy gasoline fixed-DID/fallback selection unchanged. */
-                rc = diesel || k == BD_OIL_TEMP || k == BD_FUEL_RATE ?
+                const int egr_scalar=k==BD_EGR_REQUEST || k==BD_EGR_ERROR;
+                rc = diesel || egr_scalar || k == BD_OIL_TEMP || k == BD_FUEL_RATE ?
                      obd_pid_advertised(&capabilities,&link,obd_pids[i].pid) : 1;
                 if (rc == OBD_CAPABILITY_PENDING) {
                     obd_due[i] = bd_mono_ms()+100;
                     continue;
                 }
-                if (rc == 1) rc = read_pid(&link,obd_pids[i].pid,&v);
-                if (rc == -3) { obd_failed_until[i]=bd_mono_ms()+read_retry_ms; continue; }
+                if (rc == 1) {
+                    if (egr_scalar) obd_due[i]=bd_mono_ms()+2000;
+                    rc = read_pid(&link,obd_pids[i].pid,&v);
+                }
+                if (rc == -3) { obd_failed_until[i]=bd_mono_ms()+(egr_scalar ? OBD_EGR_RETRY_MS : read_retry_ms); continue; }
                 if (rc < 0) {
                     diag_link_drop(&link);
                     if (diag_link_lost(&link)) { most_lost = 1; diag_running = 0; }
@@ -398,7 +425,11 @@ int main(int argc, char **argv) {
                     }
                     break;
                 }
-                if (!rc) { f.valid &= ~(UINT64_C(1)<<k); continue; }
+                if (!rc) {
+                    f.valid &= ~(UINT64_C(1)<<k);
+                    if (egr_scalar) obd_failed_until[i]=bd_mono_ms()+OBD_EGR_RETRY_MS;
+                    continue;
+                }
                 /* The 8-bit standard MAP saturates at 255 kPa absolute. It
                  * cannot establish the real diesel manifold pressure there. */
                 if (diesel && (k == BD_BOOST || k == BD_MAP) && v >= 255) {
@@ -459,6 +490,40 @@ int main(int argc, char **argv) {
                 }
                 if (diag_link_on_most(&link) && !send_frame(sock,&dest,&f,observed,auto_token,&capabilities,trans_observed,&egt)) {
                     perror("send frame"); diag_running=0;
+                }
+            }
+            /* PID 69 serves its six selected fields with one read. No derived
+             * actual value or fallback between unspecified and A/B fields. */
+            const bd_mask egr_mask=(BD_BIT(OBD_EGR_FIELDS)-1)<<BD_EGR_A_REQUEST;
+            if (up && diag_running && (selected & egr_mask) && start>=egr_due && start>=egr_failed_until &&
+                !diag_link_lost(&link) && (diag_link_on_most(&link) || link.fd>=0)) {
+                egr_due=bd_mono_ms()+2000;
+                int rc=obd_pid_advertised(&capabilities,&link,0x69);
+                if (rc==OBD_CAPABILITY_PENDING) egr_due=bd_mono_ms()+100;
+                else {
+                    struct obd_egr_sample sample;
+                    if (rc==1) { egr_due=bd_mono_ms()+2000; rc=read_egr(&link,&sample); }
+                    if (rc==-3) egr_failed_until=bd_mono_ms()+OBD_EGR_RETRY_MS;
+                    else {
+                        f.valid &= ~egr_mask;
+                        if (rc<0) {
+                            diag_link_drop(&link);
+                            if (diag_link_lost(&link)) { most_lost=1; diag_running=0; }
+                            else if (session) egr_failed_until=bd_mono_ms()+OBD_EGR_RETRY_MS;
+                            else { f.valid=0; have_ambient=0; }
+                        } else if (!rc) egr_failed_until=bd_mono_ms()+OBD_EGR_RETRY_MS;
+                        else {
+                            for (unsigned field=0;field<OBD_EGR_FIELDS;++field) {
+                                const unsigned signal=BD_EGR_A_REQUEST+field;
+                                if (!(selected & BD_BIT(signal)) || !(sample.present & (1u<<field))) continue;
+                                f.value[signal]=sample.value[field]; observed[signal]=bd_mono_ms();
+                                f.valid |= BD_BIT(signal);
+                            }
+                            if (diag_link_on_most(&link) && !send_frame(sock,&dest,&f,observed,auto_token,&capabilities,trans_observed,&egt)) {
+                                perror("send frame"); diag_running=0;
+                            }
+                        }
+                    }
                 }
             }
             // Supply RPM over the existing HSFZ connection only while HUD needs it.

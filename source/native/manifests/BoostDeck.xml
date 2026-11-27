@@ -555,6 +555,54 @@
           <hmiAction id="4538" target="500" />
         </actions>
       </combinedAction>
+      <combinedAction id="3539">
+        <actions>
+          <raAction id="639" />
+          <hmiAction id="4539" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3540">
+        <actions>
+          <raAction id="640" />
+          <hmiAction id="4540" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3541">
+        <actions>
+          <raAction id="641" />
+          <hmiAction id="4541" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3542">
+        <actions>
+          <raAction id="642" />
+          <hmiAction id="4542" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3543">
+        <actions>
+          <raAction id="643" />
+          <hmiAction id="4543" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3544">
+        <actions>
+          <raAction id="644" />
+          <hmiAction id="4544" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3545">
+        <actions>
+          <raAction id="645" />
+          <hmiAction id="4545" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3546">
+        <actions>
+          <raAction id="646" />
+          <hmiAction id="4546" target="500" />
+        </actions>
+      </combinedAction>
       <hmiAction id="510" target="510" />
       <hmiAction id="511" target="511" />
       <hmiAction id="512" target="512" />
@@ -708,6 +756,14 @@
       <raBoolModel id="5336" />
       <raBoolModel id="5337" />
       <raBoolModel id="5338" />
+      <raBoolModel id="5339" />
+      <raBoolModel id="5340" />
+      <raBoolModel id="5341" />
+      <raBoolModel id="5342" />
+      <raBoolModel id="5343" />
+      <raBoolModel id="5344" />
+      <raBoolModel id="5345" />
+      <raBoolModel id="5346" />
       <raDataModel id="300" modelType="Richtext" />
       <raDataModel id="340" modelType="Richtext" />
       <raDataModel id="370" modelType="Richtext" />
@@ -1280,6 +1336,14 @@
           <radiobutton id="3536" action="3536" model="5336" text="EGT bank 2 sensor 2" />
           <radiobutton id="3537" action="3537" model="5337" text="EGT bank 2 sensor 3" />
           <radiobutton id="3538" action="3538" model="5338" text="EGT bank 2 sensor 4" />
+          <radiobutton id="3539" action="3539" model="5339" text="EGR requested (PID 2C)" />
+          <radiobutton id="3540" action="3540" model="5340" text="EGR error (PID 2D)" />
+          <radiobutton id="3541" action="3541" model="5341" text="EGR A requested duty/position" />
+          <radiobutton id="3542" action="3542" model="5342" text="EGR A actual duty/position" />
+          <radiobutton id="3543" action="3543" model="5343" text="EGR A error" />
+          <radiobutton id="3544" action="3544" model="5344" text="EGR B requested duty/position" />
+          <radiobutton id="3545" action="3545" model="5345" text="EGR B actual duty/position" />
+          <radiobutton id="3546" action="3546" model="5346" text="EGR B error" />
         </components>
       </hmiState>
       <hmiState id="511" parentId="500" text="Gauge 2">
@@ -1323,6 +1387,14 @@
           <radiobutton id="3576" action="3536" model="5336" text="EGT bank 2 sensor 2" />
           <radiobutton id="3577" action="3537" model="5337" text="EGT bank 2 sensor 3" />
           <radiobutton id="3578" action="3538" model="5338" text="EGT bank 2 sensor 4" />
+          <radiobutton id="3579" action="3539" model="5339" text="EGR requested (PID 2C)" />
+          <radiobutton id="3580" action="3540" model="5340" text="EGR error (PID 2D)" />
+          <radiobutton id="3581" action="3541" model="5341" text="EGR A requested duty/position" />
+          <radiobutton id="3582" action="3542" model="5342" text="EGR A actual duty/position" />
+          <radiobutton id="3583" action="3543" model="5343" text="EGR A error" />
+          <radiobutton id="3584" action="3544" model="5344" text="EGR B requested duty/position" />
+          <radiobutton id="3585" action="3545" model="5345" text="EGR B actual duty/position" />
+          <radiobutton id="3586" action="3546" model="5346" text="EGR B error" />
         </components>
       </hmiState>
       <hmiState id="512" parentId="500" text="Gauge 3">
@@ -1366,6 +1438,14 @@
           <radiobutton id="3616" action="3536" model="5336" text="EGT bank 2 sensor 2" />
           <radiobutton id="3617" action="3537" model="5337" text="EGT bank 2 sensor 3" />
           <radiobutton id="3618" action="3538" model="5338" text="EGT bank 2 sensor 4" />
+          <radiobutton id="3619" action="3539" model="5339" text="EGR requested (PID 2C)" />
+          <radiobutton id="3620" action="3540" model="5340" text="EGR error (PID 2D)" />
+          <radiobutton id="3621" action="3541" model="5341" text="EGR A requested duty/position" />
+          <radiobutton id="3622" action="3542" model="5342" text="EGR A actual duty/position" />
+          <radiobutton id="3623" action="3543" model="5343" text="EGR A error" />
+          <radiobutton id="3624" action="3544" model="5344" text="EGR B requested duty/position" />
+          <radiobutton id="3625" action="3545" model="5345" text="EGR B actual duty/position" />
+          <radiobutton id="3626" action="3546" model="5346" text="EGR B error" />
         </components>
       </hmiState>
       <hmiState id="513" parentId="500" text="Gauge 4">
@@ -1409,6 +1489,14 @@
           <radiobutton id="3656" action="3536" model="5336" text="EGT bank 2 sensor 2" />
           <radiobutton id="3657" action="3537" model="5337" text="EGT bank 2 sensor 3" />
           <radiobutton id="3658" action="3538" model="5338" text="EGT bank 2 sensor 4" />
+          <radiobutton id="3659" action="3539" model="5339" text="EGR requested (PID 2C)" />
+          <radiobutton id="3660" action="3540" model="5340" text="EGR error (PID 2D)" />
+          <radiobutton id="3661" action="3541" model="5341" text="EGR A requested duty/position" />
+          <radiobutton id="3662" action="3542" model="5342" text="EGR A actual duty/position" />
+          <radiobutton id="3663" action="3543" model="5343" text="EGR A error" />
+          <radiobutton id="3664" action="3544" model="5344" text="EGR B requested duty/position" />
+          <radiobutton id="3665" action="3545" model="5345" text="EGR B actual duty/position" />
+          <radiobutton id="3666" action="3546" model="5346" text="EGR B error" />
         </components>
       </hmiState>
       <hmiState id="514" parentId="500" text="Gauge 5">
@@ -1452,6 +1540,14 @@
           <radiobutton id="3696" action="3536" model="5336" text="EGT bank 2 sensor 2" />
           <radiobutton id="3697" action="3537" model="5337" text="EGT bank 2 sensor 3" />
           <radiobutton id="3698" action="3538" model="5338" text="EGT bank 2 sensor 4" />
+          <radiobutton id="3699" action="3539" model="5339" text="EGR requested (PID 2C)" />
+          <radiobutton id="3700" action="3540" model="5340" text="EGR error (PID 2D)" />
+          <radiobutton id="3701" action="3541" model="5341" text="EGR A requested duty/position" />
+          <radiobutton id="3702" action="3542" model="5342" text="EGR A actual duty/position" />
+          <radiobutton id="3703" action="3543" model="5343" text="EGR A error" />
+          <radiobutton id="3704" action="3544" model="5344" text="EGR B requested duty/position" />
+          <radiobutton id="3705" action="3545" model="5345" text="EGR B actual duty/position" />
+          <radiobutton id="3706" action="3546" model="5346" text="EGR B error" />
         </components>
       </hmiState>
       <hmiState id="515" parentId="500" text="Gauge 6">
@@ -1495,6 +1591,14 @@
           <radiobutton id="3736" action="3536" model="5336" text="EGT bank 2 sensor 2" />
           <radiobutton id="3737" action="3537" model="5337" text="EGT bank 2 sensor 3" />
           <radiobutton id="3738" action="3538" model="5338" text="EGT bank 2 sensor 4" />
+          <radiobutton id="3739" action="3539" model="5339" text="EGR requested (PID 2C)" />
+          <radiobutton id="3740" action="3540" model="5340" text="EGR error (PID 2D)" />
+          <radiobutton id="3741" action="3541" model="5341" text="EGR A requested duty/position" />
+          <radiobutton id="3742" action="3542" model="5342" text="EGR A actual duty/position" />
+          <radiobutton id="3743" action="3543" model="5343" text="EGR A error" />
+          <radiobutton id="3744" action="3544" model="5344" text="EGR B requested duty/position" />
+          <radiobutton id="3745" action="3545" model="5345" text="EGR B actual duty/position" />
+          <radiobutton id="3746" action="3546" model="5346" text="EGR B error" />
         </components>
       </hmiState>
       <hmiState id="516" parentId="500" text="Gauge 7">
@@ -1538,6 +1642,14 @@
           <radiobutton id="3776" action="3536" model="5336" text="EGT bank 2 sensor 2" />
           <radiobutton id="3777" action="3537" model="5337" text="EGT bank 2 sensor 3" />
           <radiobutton id="3778" action="3538" model="5338" text="EGT bank 2 sensor 4" />
+          <radiobutton id="3779" action="3539" model="5339" text="EGR requested (PID 2C)" />
+          <radiobutton id="3780" action="3540" model="5340" text="EGR error (PID 2D)" />
+          <radiobutton id="3781" action="3541" model="5341" text="EGR A requested duty/position" />
+          <radiobutton id="3782" action="3542" model="5342" text="EGR A actual duty/position" />
+          <radiobutton id="3783" action="3543" model="5343" text="EGR A error" />
+          <radiobutton id="3784" action="3544" model="5344" text="EGR B requested duty/position" />
+          <radiobutton id="3785" action="3545" model="5345" text="EGR B actual duty/position" />
+          <radiobutton id="3786" action="3546" model="5346" text="EGR B error" />
         </components>
       </hmiState>
       <hmiState id="517" parentId="500" text="Gauge 8">
@@ -1581,6 +1693,14 @@
           <radiobutton id="3816" action="3536" model="5336" text="EGT bank 2 sensor 2" />
           <radiobutton id="3817" action="3537" model="5337" text="EGT bank 2 sensor 3" />
           <radiobutton id="3818" action="3538" model="5338" text="EGT bank 2 sensor 4" />
+          <radiobutton id="3819" action="3539" model="5339" text="EGR requested (PID 2C)" />
+          <radiobutton id="3820" action="3540" model="5340" text="EGR error (PID 2D)" />
+          <radiobutton id="3821" action="3541" model="5341" text="EGR A requested duty/position" />
+          <radiobutton id="3822" action="3542" model="5342" text="EGR A actual duty/position" />
+          <radiobutton id="3823" action="3543" model="5343" text="EGR A error" />
+          <radiobutton id="3824" action="3544" model="5344" text="EGR B requested duty/position" />
+          <radiobutton id="3825" action="3545" model="5345" text="EGR B actual duty/position" />
+          <radiobutton id="3826" action="3546" model="5346" text="EGR B error" />
         </components>
       </hmiState>
       <hmiState id="518" parentId="500" text="Gauge 9">
@@ -1624,6 +1744,14 @@
           <radiobutton id="3856" action="3536" model="5336" text="EGT bank 2 sensor 2" />
           <radiobutton id="3857" action="3537" model="5337" text="EGT bank 2 sensor 3" />
           <radiobutton id="3858" action="3538" model="5338" text="EGT bank 2 sensor 4" />
+          <radiobutton id="3859" action="3539" model="5339" text="EGR requested (PID 2C)" />
+          <radiobutton id="3860" action="3540" model="5340" text="EGR error (PID 2D)" />
+          <radiobutton id="3861" action="3541" model="5341" text="EGR A requested duty/position" />
+          <radiobutton id="3862" action="3542" model="5342" text="EGR A actual duty/position" />
+          <radiobutton id="3863" action="3543" model="5343" text="EGR A error" />
+          <radiobutton id="3864" action="3544" model="5344" text="EGR B requested duty/position" />
+          <radiobutton id="3865" action="3545" model="5345" text="EGR B actual duty/position" />
+          <radiobutton id="3866" action="3546" model="5346" text="EGR B error" />
         </components>
       </hmiState>
     </hmiStates>

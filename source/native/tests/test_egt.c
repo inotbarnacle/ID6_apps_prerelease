@@ -44,11 +44,11 @@ int main(void) {
     assert(bd_parse(wire,(size_t)n-1,&decoded)); // legacy framing still accepts a missing final newline
     for (unsigned i=BD_LEGACY_COUNT;i<BD_COUNT;++i) assert(!decoded.value[i] && !decoded.age_ms[i]);
 
-    legacy.valid=BD_ALL_MASK;
-    for (unsigned i=BD_EGT_B1S1;i<BD_COUNT;++i) { legacy.value[i]=600.5+i; legacy.age_ms[i]=123; }
+    legacy.valid=BD_WIRE8_MASK;
+    for (unsigned i=BD_EGT_B1S1;i<BD_WIRE8_COUNT;++i) { legacy.value[i]=600.5+i; legacy.age_ms[i]=123; }
     n=bd_encode(&legacy,wire,sizeof wire);
     assert(n>0 && n<BD_MAX_PACKET && !memcmp(wire,"NBG8 ",5));
-    assert(bd_parse(wire,(size_t)n,&decoded) && decoded.valid==BD_ALL_MASK);
+    assert(bd_parse(wire,(size_t)n,&decoded) && decoded.valid==BD_WIRE8_MASK);
     assert(decoded.value[BD_EGT_B2S4]==legacy.value[BD_EGT_B2S4]);
     assert(bd_is_fresh(&decoded,BD_EGT_B2S4,3376) && !bd_is_fresh(&decoded,BD_EGT_B2S4,3377));
     assert(fabs(bd_display_value(BD_EGT_B2S4,100,0)-212)<.0001);
@@ -60,7 +60,7 @@ int main(void) {
     struct obd_capabilities caps={{1,1,1,0x180},{0},15}; // PID 78/79 advertisements
     struct obd_egt_evidence evidence={0,{0,0}};
     bd_mask known,supported;
-    const bd_mask egt_mask=BD_ALL_MASK & ~BD_LEGACY_MASK;
+    const bd_mask egt_mask=BD_WIRE8_MASK & ~BD_LEGACY_MASK;
     bd_diesel_masks(&caps,0,&evidence,&known,&supported);
     assert(!(known&egt_mask) && !(supported&egt_mask)); // PID alone cannot select sensors
     evidence.known=3; evidence.supported[0]=10; evidence.supported[1]=1;

@@ -58,11 +58,29 @@ This description is not diagnostic confirmation.
 | Gateway, HSFZ, MOST, standalone operation | Unverified | Parked transport observations with equipment attached and detached. |
 | Standard OBD signals | Simulation / host tests only | Supported bitmaps and independently compared readings from this vehicle. |
 | Standard EGT bank/sensor channels | Simulation / host tests only | Exact DDE support for PID 78/79, sensor bits, physical sensor locations and independently compared temperatures. No regeneration inference. |
+| Standard EGR request, actual and error channels | Simulation / host tests only | Exact DDE support for PID 2C/2D/69, per-field bits and independent comparisons. Actual is reported normalized duty/position, not inferred flow or a value reconstructed from error. |
 | Standard emissions fault codes | Simulation / host tests only | Confirm that the exact DDE/gateway supports services 03/07/0A and the counted CAN reply format. A category's zero count does not clear other categories. |
-| Fixed BMW diesel, DPF, EGR, SCR, oil pressure | Unsupported in this effort | Credible ECU-specific definitions and repeatable sanitized captures. |
+| Fixed BMW diesel, DPF, SCR, oil pressure | Unsupported in this effort | Credible ECU-specific definitions and repeatable sanitized captures. Standard EGR support does not establish a BMW-specific mapping. |
 | Physical installation / factory regression / rollback | Not performed | Separate owner-authorized milestone; staged plan in [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201). |
 
 ## Progress and next actions
+
+- Standard EGR follow-up on `diesel/egr-telemetry`: Custom layout adds PID 2C
+  request, 2D error and six independent requested/actual/error A/B fields from
+  PID 69. Every new read is PID-gated, even in Gasoline. PID 69 requires exact
+  seven-byte data and per-field support; error is never used as actual EGR.
+  A/B hardware identity, flow and exact N57 support remain unverified.
+  Two-second request-based polling, five-second failure backoff and 3.5-second
+  freshness are bounded and host-tested. Automatic defaults remain the same
+  21-candidate pool. IDs 0–38, exact NBG7/NBG8 packets and B1/B2/B3 bounds are
+  retained; EGR adds IDs 39–46, NBG9 and B4. All 906 original image pixels and
+  dashboard geometry remain intact. Decoder/UI sanitizer checks pass; paired
+  optimized host objects retain the same 48 BMW imports. Those import checks
+  do not establish QNX ABI or runtime behavior. The [EGR protocol and limits](STANDARD-EGR.md)
+  records primary references, provenance, settings rollback and pending exact-
+  target validation. The complete local suite passes 14 native C/C++ programs
+  and 113 native-suite Python cases, plus seven resource and eight read-only
+  tool cases. No vehicle session or control command was performed.
 
 - Standard EGT follow-up in [#202](https://github.com/inotbarnacle/iDriveDeck/pull/202): eight named bank/sensor
   channels use advertised PID 78/79 and a valid per-bank support layout.
@@ -263,10 +281,12 @@ This description is not diagnostic confirmation.
   phase) is fixed by using the remaining receive deadline; the full six-second
   transaction reservation remains valid. All 55 combined tool/resource cases
   also pass locally. See the [profile and report contract](https://github.com/voioo/iDriveDeck/blob/diesel/read-only-discovery/source/docs/DIESEL-VALIDATION.md).
-- Next offline evidence work: review additional documented standard diesel
-  fields against the existing decoder and request policy. Keep each signal's
-  identity, units and measured-versus-commanded meaning explicit; retain the
-  separate target-capture and licensed DDE-description requirements.
+- Next offline evidence work: extend #201's separately selected evidence policy
+  for EGR without silently changing the existing 16/19-read plans. Review
+  additional documented standard pressure fields against exact format and
+  unit evidence, including whether a source is requested, reported actual,
+  absolute or gauge pressure. Retain the separate target-capture, EGS transport
+  and licensed DDE-description requirements.
 - Pull requests opened by this effort: [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201)
   (draft; discovery/reporting and validation plan) and
   [#202](https://github.com/inotbarnacle/iDriveDeck/pull/202)
@@ -465,7 +485,8 @@ sensor's accuracy or an ECU-family-specific mapping.
 | Current gear, selected transmission mode, torque-converter status | No verified diesel mapping implemented. | ECU-scoped format and repeatable evidence; coordinate overlapping EGS work. |
 | DPF regeneration active/requested/inhibited and reasons | No verified mapping implemented. Temperature alone is insufficient. | Shared B47/N57 evidence, contributor coordination and identity-scoped states. |
 | DPF soot/ash mass, differential pressure, time/distance since regeneration | No verified mapping or universal thresholds implemented. | Licensed/documented formats, units and repeatable exact-ECU evidence before a DPFDeck decision. |
-| EGR requested/actual, SCR/AdBlue | No verified diesel mapping implemented. | Review credible standard/OEM definitions and distinguish requested, error and actual values before adding a signal. |
+| EGR requested/actual/error | Standard 2C/2D and explicit PID 69 A/B fields are host/simulation tested; actual is normalized duty/position and is not reconstructed from error. | Exact DDE support, A/B applicability and independent comparisons; any fixed BMW-specific mapping needs separate evidence. |
+| SCR/AdBlue | No verified diesel mapping implemented. | Review credible standard/OEM definitions and exact ECU applicability before adding a signal. |
 | DDE fault descriptions | Raw BMW codes/status and separate standard emissions categories are host-tested; no new DDE dictionary imported. | Licensed, ECU-applicable descriptions and exact-target fault-format validation. |
 
 ## Outstanding scope

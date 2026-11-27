@@ -47,7 +47,7 @@ def decode(packet):
 
 
 class EgtTransportTest(unittest.TestCase):
-    def run_worker(self, replies, selected=ALL_EGT, *, diesel=True, automatic=False, cycles=80, most=False):
+    def run_worker(self, replies, selected=ALL_EGT, *, diesel=True, automatic=False, cycles=80, most=False, most_mode="egt-up"):
         env = dict(os.environ)
         env.pop("ID6_FAKE_MOST", None)
         with capabilities.ecu_server(replies, idle_timeout=8) as (port, requests), socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:
@@ -56,7 +56,7 @@ class EgtTransportTest(unittest.TestCase):
             args += ["--auto-diesel", "1234"] if automatic else ["--signals", str(selected)]
             if diesel: args.append("--diesel")
             if most:
-                args += ["--transport", "most"]; env["ID6_FAKE_MOST"] = "egt-up"
+                args += ["--transport", "most"]; env["ID6_FAKE_MOST"] = most_mode
             else:
                 args += ["--host", "127.0.0.1", "--port", str(port), "--transport", "hsfz"]
             process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
@@ -181,7 +181,7 @@ class EgtTransportTest(unittest.TestCase):
     def test_wide_signal_mask_rejects_unknown_bits_and_bad_numbers_before_connecting(self):
         with socket.socket() as listener:
             listener.bind(("127.0.0.1", 0)); listener.listen(); listener.settimeout(.05)
-            for value in ("0", "-1", "+1", "0x20", str(1 << 39), str(1 << 63), str(1 << 64), "123x"):
+            for value in ("0", "-1", "+1", "0x20", str(1 << 47), str(1 << 63), str(1 << 64), "123x"):
                 with self.subTest(value=value):
                     result = subprocess.run([BUILD / "boost-deck", "--host", "127.0.0.1", "--port",
                                              str(listener.getsockname()[1]), "--signals", value],

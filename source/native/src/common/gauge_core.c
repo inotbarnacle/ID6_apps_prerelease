@@ -51,6 +51,12 @@ int bd_decode_obd(unsigned pid, const unsigned char *p, size_t n, double *out) {
     double x, lo, hi;
     if (!p || !out) return 0;
     switch (pid) {
+    case 0x2c:
+        if (n != 1) return 0;
+        x = p[0]*100.0/255; lo = 0; hi = 100; break;
+    case 0x2d:
+        if (n != 1) return 0;
+        x = ((int)p[0]-128)*(100.0/128); lo = -100; hi = 99.21875; break;
     case 0x04: case 0x11: case 0x2f: case 0x49: case 0x4c:
         if (n != 1) return 0;
         x = p[0] * (100.0 / 255); lo = 0; hi = 100; break;
@@ -96,9 +102,11 @@ int bd_encode(const bd_frame *f, char *out, size_t len) {
     size_t used;
     unsigned i;
     if (!f || !out || !len || (f->valid & ~BD_ALL_MASK)) return -1;
-    const unsigned fields=(f->valid & ~BD_LEGACY_MASK) ? BD_WIRE8_COUNT : BD_LEGACY_COUNT;
-    const char *version = fields==BD_LEGACY_COUNT ? "NBG7" : "NBG8";
+    const unsigned fields=(f->valid & ~BD_WIRE8_MASK) ? BD_WIRE9_COUNT :
+                          (f->valid & ~BD_LEGACY_MASK) ? BD_WIRE8_COUNT : BD_LEGACY_COUNT;
+    const char *version = fields==BD_LEGACY_COUNT ? "NBG7" : fields==BD_WIRE8_COUNT ? "NBG8" : "NBG9";
     if (fields==BD_LEGACY_COUNT && len>BD_LEGACY_PACKET) len=BD_LEGACY_PACKET;
+    if (fields==BD_WIRE8_COUNT && len>BD_WIRE8_PACKET) len=BD_WIRE8_PACKET;
     n = snprintf(out, len, "%s %lu %u %llu %llu", version,
                  (unsigned long)f->seq, f->demo, (unsigned long long)f->valid,
                  (unsigned long long)f->sent_ms);
@@ -145,7 +153,8 @@ int bd_parse(const char *data, size_t len, bd_frame *out) {
     memcpy(b, data, len); b[len] = 0;
     memset(&f, 0, sizeof f);
     if (len<5 || !isspace((unsigned char)b[4])) return 0;
-    if (!memcmp(b,"NBG8",4)) fields=BD_WIRE8_COUNT;
+    if (!memcmp(b,"NBG9",4)) fields=BD_WIRE9_COUNT;
+    else if (!memcmp(b,"NBG8",4)) fields=BD_WIRE8_COUNT;
     else if (!memcmp(b,"NBG7",4)) fields=BD_LEGACY_COUNT;
     else if (!memcmp(b,"NBG6",4)) fields=22;
     else if (!memcmp(b,"NBG5",4)) fields=11;
@@ -155,7 +164,8 @@ int bd_parse(const char *data, size_t len, bd_frame *out) {
     else if (!memcmp(b,"NBG2",4)) fields=5;
     else return 0;
     if (fields<=BD_LEGACY_COUNT && len>=BD_LEGACY_PACKET) return 0;
-    if (fields==BD_WIRE8_COUNT && data[len-1]!='\n') return 0;
+    if (fields==BD_WIRE8_COUNT && len>=BD_WIRE8_PACKET) return 0;
+    if (fields>=BD_WIRE8_COUNT && data[len-1]!='\n') return 0;
     cursor=b+4;
     if (!unsigned_field(&cursor,UINT32_MAX,&integer)) return 0;
     f.seq=(uint32_t)integer;
@@ -168,6 +178,10 @@ int bd_parse(const char *data, size_t len, bd_frame *out) {
         double limit=20000;
         if (i==BD_ABS_LOAD) limit=25700;
         if (!double_field(&cursor,&f.value[i],limit) || !unsigned_field(&cursor,999999,&integer)) return 0;
+        if (i>=BD_EGR_REQUEST && i<=BD_EGR_B_ERROR && (f.valid & BD_BIT(i))) {
+            const int error=i==BD_EGR_ERROR || i==BD_EGR_A_ERROR || i==BD_EGR_B_ERROR;
+            if (f.value[i]<(error ? -100 : 0) || f.value[i]>(error ? 99.21875 : 100)) return 0;
+        }
         f.age_ms[i]=(unsigned)integer;
     }
     while (isspace((unsigned char)*cursor)) ++cursor;

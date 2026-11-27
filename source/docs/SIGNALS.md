@@ -88,9 +88,19 @@ support. PID `23` is **rail gauge pressure** in 0.1 bar/count (for example synth
 N57/DDE741 oil source `4517` and temporary `F303` evidence in
 [#21](https://github.com/inotbarnacle/iDriveDeck/issues/21) and #162 does not
 establish a fixed read-only oil DID. The worker never defines or reads `F303` for
-diesel oil. DPF, requested boost/rail, EGR and SCR need independently validated
+diesel oil. DPF, requested boost/rail and SCR need independently validated
 ECU-specific definitions. See the [diesel investigation](DIESEL-DEVELOPMENT.md)
 for the evidence matrix and overlapping upstream work.
+
+### Optional standard EGR
+
+Custom layout can select requested EGR (`01 2C`), error (`01 2D`) and the
+separate requested/actual/error A/B fields of `01 69`, with per-field support.
+[Standard EGR](STANDARD-EGR.md) documents exact lengths, source provenance,
+normalization, grouped timing, unavailable values and packet/settings revisions.
+Actual duty/position is not inferred from error or treated as measured EGR flow.
+No exact N57 support or A/B physical assignment is established. These gauges do
+not expand the automatic diesel default pool or send actuator commands.
 
 
 ## MHD+ setting display

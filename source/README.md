@@ -8,3 +8,8 @@ evidence for new defaults while retaining existing custom layouts.
 [Standard exhaust-temperature gauges](docs/STANDARD-EGT.md) use advertised PID
 and sensor-support data, retain explicit bank/sensor labels, and preserve old
 channel IDs and ordinary packets. Exact N57 support still needs vehicle evidence.
+
+[Optional standard EGR gauges](docs/STANDARD-EGR.md) distinguish requested,
+reported actual duty/position and error. They use explicit advertised and
+per-field support, retain existing defaults, and do not infer actual values
+from error or issue EGR control commands.

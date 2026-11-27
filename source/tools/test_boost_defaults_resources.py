@@ -68,7 +68,7 @@ class BoostDefaultsResources(unittest.TestCase):
             match = re.match(r'SIGNAL\((\w+), "([^"]+)"', line)
             if match:
                 names.append(match.groups())
-        self.assertEqual(len(names), 39)
+        self.assertEqual(len(names), 47)
         self.assertEqual(names[30][0], "THROTTLE_TARGET")
         for index in range(31, 39):
             bank, sensor = divmod(index - 31, 4)
@@ -79,6 +79,18 @@ class BoostDefaultsResources(unittest.TestCase):
             for slot in range(9):
                 radio = self.current.find(f".//hmiState[@id='{510+slot}']/components/radiobutton[@model='{5300+index}']")
                 self.assertEqual(radio.get("text"), expected)
+                self.assertEqual(radio.get("action"), str(3500+index))
+
+    def test_egr_choices_keep_requested_actual_and_error_distinct(self):
+        expected = ["EGR requested (PID 2C)", "EGR error (PID 2D)",
+                    "EGR A requested duty/position", "EGR A actual duty/position", "EGR A error",
+                    "EGR B requested duty/position", "EGR B actual duty/position", "EGR B error"]
+        for index, name in enumerate(expected, 39):
+            action = self.current.find(f".//combinedAction[@id='{3500+index}']/actions/raAction")
+            self.assertEqual(action.get("id"), str(600+index))
+            for slot in range(9):
+                radio = self.current.find(f".//hmiState[@id='{510+slot}']/components/radiobutton[@model='{5300+index}']")
+                self.assertEqual(radio.get("text"), name)
                 self.assertEqual(radio.get("action"), str(3500+index))
 
     def test_regenerated_artwork_preserves_all_original_pixels(self):

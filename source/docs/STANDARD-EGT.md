@@ -57,14 +57,15 @@ profile or a choice of the best DPF sensor.
 Original channel IDs 0–30 are unchanged; EGT IDs 31–38 are appended. Internal
 signal masks are 64-bit. Ordinary collection still emits the exact 31-channel
 `NBG7` packet when no extended channel is valid, including normal gasoline and
-legacy demo selections. Valid extended readings use `NBG8`, with 39 channel
+legacy demo selections. Valid EGT readings use `NBG8`, with 39 channel
 fields and a mandatory final newline so truncation of the final number is
 rejected. Older `NBG2`–`NBG7` parsing and bounds remain intact.
 
 Automatic reports retain `NBC1` for legacy capability masks and use `NBC2` for
 extended evidence. The same token, PID, matching timestamp, freshness and
-immutable capability checks apply. The receive buffer is bounded at 1184 bytes;
-the UI drains at most eight datagrams per tick. The matching collector, plugin
+immutable capability checks apply. The shared receive buffer is bounded at 1440 bytes
+to accommodate optional [EGR](STANDARD-EGR.md) frames; NBG8 retains its 1024-byte bound.
+The UI drains at most eight datagrams per tick. The matching collector, plugin
 and manifests must be built and deployed together. This source contribution
 does not update the packaged QNX binaries.
 
@@ -92,7 +93,8 @@ reads. The fixture at
 `tests/fixtures/boost_legacy_frame.h` is generated from source `12b2e6c`, not a
 vehicle. UI launch interception never executes a diagnostic worker. The original
 dashboard geometry and all 906 image pixels are preserved; six resource checks
-cover native bindings and regeneration. CI includes GCC/Clang, C++98 syntax,
+cover native bindings and regeneration. The EGR follow-up adds another resource
+case and retains this EGT schema. CI includes GCC/Clang, C++98 syntax,
 static analysis and sanitizers.
 
 This is host/simulation validation. PID support, sensor identity/position,
