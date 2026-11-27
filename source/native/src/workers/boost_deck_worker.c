@@ -131,8 +131,10 @@ static int send_frame(int sock, struct sockaddr_in *dest, bd_frame *f, uint64_t 
     }
     if (auto_token) {
         bd_cap_frame report;
+        unsigned known, supported;
         report.token=auto_token; report.worker_pid=(uint32_t)getpid(); report.sent_ms=now;
-        bd_diesel_masks(caps,trans_observed,&report.known,&report.supported);
+        bd_diesel_masks(caps,trans_observed,&known,&supported);
+        report.known=known; report.supported=supported;
         len=bd_auto_encode(&report,f,packet,sizeof packet);
     } else len = bd_encode(f, packet, BD_MAX_PACKET);
     return len > 0 && sendto(sock, packet, (size_t)len, 0,
