@@ -3,12 +3,40 @@ import socket
 import struct
 import threading
 import unittest
+from unittest.mock import patch
 
 from probe_signals import exchange, read_request
 
 
 def frame(control, data):
     return struct.pack(">IH", len(data), control) + data
+
+
+class SlowHeartbeat:
+    """Synthetic socket whose heartbeat arrival consumes the receive budget."""
+    def __init__(self, arrival):
+        self.now = 0.0
+        self.arrival = arrival
+        self.timeout = None
+        self.sent = []
+
+    def settimeout(self, value):
+        self.timeout = value
+
+    def sendall(self, value):
+        self.sent.append(value)
+        if len(self.sent) > 1:
+            self.now += self.timeout  # congested acknowledgement consumes its socket timeout
+            raise TimeoutError("synthetic acknowledgement send timeout")
+
+    def recv(self, length):
+        self.assert_header_length(length)
+        self.now = self.arrival
+        return frame(0x12, b"")
+
+    @staticmethod
+    def assert_header_length(length):
+        assert length == 6
 
 
 class ProbeTest(unittest.TestCase):
@@ -37,6 +65,19 @@ class ProbeTest(unittest.TestCase):
         with client, gateway:
             gateway.sendall(frame(1, bytes.fromhex("12f47f2231")))
             self.assertEqual(exchange(client, 0x12, read_request("22586f"))["nrc"], "31")
+
+    def test_heartbeat_acknowledgement_send_cannot_exceed_receive_deadline(self):
+        connection = SlowHeartbeat(1.8)
+        with patch("probe_signals.time.monotonic", side_effect=lambda: connection.now), self.assertRaises(TimeoutError):
+            exchange(connection, 0x12, read_request("0105"))
+        self.assertEqual(len(connection.sent), 2)
+        self.assertLessEqual(connection.now, 2)
+
+    def test_expired_receive_budget_does_not_start_heartbeat_acknowledgement(self):
+        connection = SlowHeartbeat(2)
+        with patch("probe_signals.time.monotonic", side_effect=lambda: connection.now), self.assertRaises(TimeoutError):
+            exchange(connection, 0x12, read_request("0105"))
+        self.assertEqual(len(connection.sent), 1)
 
 
 if __name__ == "__main__":

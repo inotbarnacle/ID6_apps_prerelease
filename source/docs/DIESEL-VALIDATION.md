@@ -21,8 +21,11 @@ The printed policy contains exactly two ECU identification candidates
 continuation chain must advertise both the page and measurement. No identifier
 scan, retry loop, fault clear, session change, dynamic-DID definition, actuator,
 drivetrain or emissions command is included. There are at most 16 requests,
-separate connections, a 200 ms gap, two-second connection and exchange deadlines
-and a 45-second overall collection budget. This remains the default `standard`
+separate connections, a 200 ms gap, two seconds each for connect, initial send
+and the complete receive phase, and a 45-second overall collection budget.
+Heartbeat acknowledgement sends share the receive deadline and cannot extend
+it. The collector reserves all six seconds plus the gap before another read.
+This remains the default `standard`
 profile. The tool does not use SSH or MOST.
 
 Process existing `probe_signals.py` JSONL records without network access:
