@@ -42,6 +42,10 @@ The Diesel profile uses `01 05` coolant, `01 0F` intake air, `01 23` direct-inje
 
 ### Diesel capabilities and pressure limits
 
+Optional [standard reagent gauges](STANDARD-REAGENT.md) add advertised PID 85
+level and average consumption/demand to custom layouts. Detected defaults and
+earlier signal IDs/read sets are unchanged; no SCR health or range is inferred.
+
 New installations can use [Detected defaults](AUTO-DIESEL-GAUGES.md): only
 advertised standard channels, plus an existing EGS temperature channel after a
 valid positive reply, can occupy automatic slots. Unknown capabilities leave

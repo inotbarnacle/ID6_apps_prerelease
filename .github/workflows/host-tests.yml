@@ -23,6 +23,8 @@ jobs:
         with:
           python-version: '3.12'
       - name: Build and test workers against simulated HSFZ and MOST
+        env:
+          REAGENT_MODEL_CAPTURE: /tmp/reagent-models.tsv
         run: make -C source/native test CC=${{ matrix.cc }} CXX=${{ matrix.cxx }}
       - name: Production BoostDeck syntax
         run: ${{ matrix.cxx }} -std=gnu++98 -Wall -Wextra -Werror -Isource/native/sdk -Isource/native/src/common -Isource/native/src/ipc -fsyntax-only source/native/src/plugins/boost_deck.cpp
@@ -30,12 +32,21 @@ jobs:
         if: matrix.cc == 'clang'
         run: |
           clang --analyze -Xanalyzer -analyzer-output=text -std=c99 -Isource/native/src/common source/native/src/common/boost_defaults.c
+          clang --analyze -Xanalyzer -analyzer-output=text -std=c99 -Isource/native/src/common source/native/src/common/obd_capabilities_extra.c
           clang --analyze -Xanalyzer -analyzer-output=text -std=c99 -DMOST_HOST -Isource/native/src/common -Isource/native/src/ipc -Isource/native/src/workers source/native/src/workers/boost_deck_worker.c
           clang++ --analyze -Xanalyzer -analyzer-output=text -std=gnu++98 -Isource/native/sdk -Isource/native/src/common -Isource/native/src/ipc source/native/src/plugins/boost_deck.cpp
       - name: Generated default-mode menu and unchanged dashboard geometry
         run: |
           python3 -m pip install Pillow==13.0.0
           python3 -B source/tools/test_boost_defaults_resources.py
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          with ZipFile('packages/dashboard.zip') as archive:
+              Path('/tmp/reagent-base.zip').write_bytes(archive.read('BoostDeck/BoostDeck_ALL_Images.zip'))
+          PY
+          python3 -B source/tools/make_boostdeck_extended.py --images /tmp/reagent-base.zip --images-out /tmp/reagent-images.zip
+          python3 -B source/tools/preview_reagent.py --images /tmp/reagent-images.zip --models /tmp/reagent-models.tsv --out /tmp/reagent-preview.png
       - name: Read-only collection tool tests
         run: |
           python3 -B source/tools/test_probe_signals.py
@@ -52,4 +63,4 @@ jobs:
           make -C source/native build/test-core build/test-obd-capabilities CC=clang CFLAGS='-O1 -g -std=c99 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer'
           source/native/build/test-core
           source/native/build/test-obd-capabilities
-          make -C source/native test-pressure test-egr test-egt test-boost-defaults CC=clang CXX=clang++ CFLAGS='-O1 -g -std=c99 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer' CXXFLAGS='-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'
+          make -C source/native test-reagent test-pressure test-egr test-egt test-boost-defaults CC=clang CXX=clang++ CFLAGS='-O1 -g -std=c99 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer' CXXFLAGS='-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'

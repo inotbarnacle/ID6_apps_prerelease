@@ -55,3 +55,6 @@ SIGNAL(BOOST_A_REQUEST, "Boost A requested absolute pressure", 0, 500, PRESSURE_
 SIGNAL(BOOST_A_ACTUAL, "Boost A actual absolute pressure", 0, 500, PRESSURE_KPA, "Boost A act. abs", "BA A abs")
 SIGNAL(BOOST_B_REQUEST, "Boost B requested absolute pressure", 0, 500, PRESSURE_KPA, "Boost B req. abs", "BB R abs")
 SIGNAL(BOOST_B_ACTUAL, "Boost B actual absolute pressure", 0, 500, PRESSURE_KPA, "Boost B act. abs", "BB A abs")
+SIGNAL(REAGENT_LEVEL, "Reagent tank level", 0, 100, PERCENT, "Reagent level", "DEF %")
+SIGNAL(REAGENT_AVERAGE, "Average reagent consumption", 0, 10, FUEL_FLOW, "Avg reagent use", "Use L/h")
+SIGNAL(REAGENT_DEMAND, "Average demanded reagent consumption", 0, 10, FUEL_FLOW, "Avg reagent req.", "Req L/h")

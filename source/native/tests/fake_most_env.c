@@ -53,8 +53,20 @@ int most_fake_bind(void)
     if (strcmp(mode, "up") && strcmp(mode, "drop") && strcmp(mode, "mhd-refuse") &&
         strcmp(mode, "codes-512") && strcmp(mode, "codes-513") &&
         strcmp(mode, "bm3-unknown") && strcmp(mode, "gauge-mismatch") && strcmp(mode,"egt-up") &&
-        strcmp(mode,"egr-up") && strcmp(mode,"pressure-up")) return -1;
+        strcmp(mode,"egr-up") && strcmp(mode,"pressure-up") && strcmp(mode,"reagent-up")) return -1;
     fake_dme_start(FAKE_UP);
+    if (!strcmp(mode,"reagent-up")) {
+        static const uint8_t pages[][6]={{0x41,0,8,0,0,1},{0x41,0x20,0,0,0,1},
+            {0x41,0x40,0,0,0,1},{0x41,0x60,0,0,0,1},{0x41,0x80,8,0,0,0}};
+        static const uint8_t reagent[]={0x41,0x85,15,1,0,0,200,128,1,0,0,1};
+        static const uint8_t coolant[]={0x41,5,122};
+        for (i=0;i<5;++i) {
+            char key[5];snprintf(key,sizeof key,"01%02X",i*0x20);
+            fake_dme_raw(key,pages[i],sizeof pages[i]);
+        }
+        fake_dme_raw("0185",reagent,sizeof reagent);fake_dme_raw("0105",coolant,sizeof coolant);
+        return 0;
+    }
     if (delay && atoi(delay) > 0 && atoi(delay) <= 2000) fake_dme_hold_ms(atoi(delay));
     if (!strcmp(mode, "drop")) fake_dme_drop_link_after(5);
     if (!strcmp(mode, "mhd-refuse")) fake_dme_refuse("2F", 0x31, 0);

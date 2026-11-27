@@ -202,7 +202,7 @@ class EgtTransportTest(unittest.TestCase):
     def test_wide_signal_mask_rejects_unknown_bits_and_bad_numbers_before_connecting(self):
         with socket.socket() as listener:
             listener.bind(("127.0.0.1", 0)); listener.listen(); listener.settimeout(.05)
-            for value in ("0", "-1", "+1", "0x20", str(1 << 55), str(1 << 63), str(1 << 64), "123x"):
+            for value in ("0", "-1", "+1", "0x20", str(1 << 58), str(1 << 63), str(1 << 64), "123x"):
                 with self.subTest(value=value):
                     result = subprocess.run([BUILD / "boost-deck", "--host", "127.0.0.1", "--port",
                                              str(listener.getsockname()[1]), "--signals", value],

@@ -651,6 +651,24 @@
           <hmiAction id="4554" target="500" />
         </actions>
       </combinedAction>
+      <combinedAction id="3555">
+        <actions>
+          <raAction id="655" />
+          <hmiAction id="4555" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3556">
+        <actions>
+          <raAction id="656" />
+          <hmiAction id="4556" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3557">
+        <actions>
+          <raAction id="657" />
+          <hmiAction id="4557" target="500" />
+        </actions>
+      </combinedAction>
       <hmiAction id="510" target="510" />
       <hmiAction id="511" target="511" />
       <hmiAction id="512" target="512" />
@@ -820,6 +838,9 @@
       <raBoolModel id="5352" />
       <raBoolModel id="5353" />
       <raBoolModel id="5354" />
+      <raBoolModel id="5355" />
+      <raBoolModel id="5356" />
+      <raBoolModel id="5357" />
       <raDataModel id="300" modelType="Richtext" />
       <raDataModel id="340" modelType="Richtext" />
       <raDataModel id="370" modelType="Richtext" />
@@ -1408,6 +1429,9 @@
           <radiobutton id="3552" action="3552" model="5352" text="Boost A actual absolute pressure" />
           <radiobutton id="3553" action="3553" model="5353" text="Boost B requested absolute pressure" />
           <radiobutton id="3554" action="3554" model="5354" text="Boost B actual absolute pressure" />
+          <radiobutton id="3555" action="3555" model="5355" text="Reagent tank level" />
+          <radiobutton id="3556" action="3556" model="5356" text="Average reagent consumption" />
+          <radiobutton id="3557" action="3557" model="5357" text="Average demanded reagent consumption" />
         </components>
       </hmiState>
       <hmiState id="511" parentId="500" text="Gauge 2">
@@ -1467,6 +1491,9 @@
           <radiobutton id="3592" action="3552" model="5352" text="Boost A actual absolute pressure" />
           <radiobutton id="3593" action="3553" model="5353" text="Boost B requested absolute pressure" />
           <radiobutton id="3594" action="3554" model="5354" text="Boost B actual absolute pressure" />
+          <radiobutton id="3595" action="3555" model="5355" text="Reagent tank level" />
+          <radiobutton id="3596" action="3556" model="5356" text="Average reagent consumption" />
+          <radiobutton id="3597" action="3557" model="5357" text="Average demanded reagent consumption" />
         </components>
       </hmiState>
       <hmiState id="512" parentId="500" text="Gauge 3">
@@ -1526,6 +1553,9 @@
           <radiobutton id="3632" action="3552" model="5352" text="Boost A actual absolute pressure" />
           <radiobutton id="3633" action="3553" model="5353" text="Boost B requested absolute pressure" />
           <radiobutton id="3634" action="3554" model="5354" text="Boost B actual absolute pressure" />
+          <radiobutton id="3635" action="3555" model="5355" text="Reagent tank level" />
+          <radiobutton id="3636" action="3556" model="5356" text="Average reagent consumption" />
+          <radiobutton id="3637" action="3557" model="5357" text="Average demanded reagent consumption" />
         </components>
       </hmiState>
       <hmiState id="513" parentId="500" text="Gauge 4">
@@ -1585,6 +1615,9 @@
           <radiobutton id="3672" action="3552" model="5352" text="Boost A actual absolute pressure" />
           <radiobutton id="3673" action="3553" model="5353" text="Boost B requested absolute pressure" />
           <radiobutton id="3674" action="3554" model="5354" text="Boost B actual absolute pressure" />
+          <radiobutton id="3675" action="3555" model="5355" text="Reagent tank level" />
+          <radiobutton id="3676" action="3556" model="5356" text="Average reagent consumption" />
+          <radiobutton id="3677" action="3557" model="5357" text="Average demanded reagent consumption" />
         </components>
       </hmiState>
       <hmiState id="514" parentId="500" text="Gauge 5">
@@ -1644,6 +1677,9 @@
           <radiobutton id="3712" action="3552" model="5352" text="Boost A actual absolute pressure" />
           <radiobutton id="3713" action="3553" model="5353" text="Boost B requested absolute pressure" />
           <radiobutton id="3714" action="3554" model="5354" text="Boost B actual absolute pressure" />
+          <radiobutton id="3715" action="3555" model="5355" text="Reagent tank level" />
+          <radiobutton id="3716" action="3556" model="5356" text="Average reagent consumption" />
+          <radiobutton id="3717" action="3557" model="5357" text="Average demanded reagent consumption" />
         </components>
       </hmiState>
       <hmiState id="515" parentId="500" text="Gauge 6">
@@ -1703,6 +1739,9 @@
           <radiobutton id="3752" action="3552" model="5352" text="Boost A actual absolute pressure" />
           <radiobutton id="3753" action="3553" model="5353" text="Boost B requested absolute pressure" />
           <radiobutton id="3754" action="3554" model="5354" text="Boost B actual absolute pressure" />
+          <radiobutton id="3755" action="3555" model="5355" text="Reagent tank level" />
+          <radiobutton id="3756" action="3556" model="5356" text="Average reagent consumption" />
+          <radiobutton id="3757" action="3557" model="5357" text="Average demanded reagent consumption" />
         </components>
       </hmiState>
       <hmiState id="516" parentId="500" text="Gauge 7">
@@ -1762,6 +1801,9 @@
           <radiobutton id="3792" action="3552" model="5352" text="Boost A actual absolute pressure" />
           <radiobutton id="3793" action="3553" model="5353" text="Boost B requested absolute pressure" />
           <radiobutton id="3794" action="3554" model="5354" text="Boost B actual absolute pressure" />
+          <radiobutton id="3795" action="3555" model="5355" text="Reagent tank level" />
+          <radiobutton id="3796" action="3556" model="5356" text="Average reagent consumption" />
+          <radiobutton id="3797" action="3557" model="5357" text="Average demanded reagent consumption" />
         </components>
       </hmiState>
       <hmiState id="517" parentId="500" text="Gauge 8">
@@ -1821,6 +1863,9 @@
           <radiobutton id="3832" action="3552" model="5352" text="Boost A actual absolute pressure" />
           <radiobutton id="3833" action="3553" model="5353" text="Boost B requested absolute pressure" />
           <radiobutton id="3834" action="3554" model="5354" text="Boost B actual absolute pressure" />
+          <radiobutton id="3835" action="3555" model="5355" text="Reagent tank level" />
+          <radiobutton id="3836" action="3556" model="5356" text="Average reagent consumption" />
+          <radiobutton id="3837" action="3557" model="5357" text="Average demanded reagent consumption" />
         </components>
       </hmiState>
       <hmiState id="518" parentId="500" text="Gauge 9">
@@ -1880,6 +1925,9 @@
           <radiobutton id="3872" action="3552" model="5352" text="Boost A actual absolute pressure" />
           <radiobutton id="3873" action="3553" model="5353" text="Boost B requested absolute pressure" />
           <radiobutton id="3874" action="3554" model="5354" text="Boost B actual absolute pressure" />
+          <radiobutton id="3875" action="3555" model="5355" text="Reagent tank level" />
+          <radiobutton id="3876" action="3556" model="5356" text="Average reagent consumption" />
+          <radiobutton id="3877" action="3557" model="5357" text="Average demanded reagent consumption" />
         </components>
       </hmiState>
     </hmiStates>
