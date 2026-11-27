@@ -21,7 +21,10 @@ The reference dashboard build uses **NBTevo_N18032I** at **1280 × 480**. The de
 
 Check the gateway used by the payload, 169.254.21.3. For a different gateway, put its verified IPv4 address in /var/opt/hmi/data/ID5/gateway-ip.txt on the HMI node. The shared setting applies to the updated workers and overrides app-local gateway-ip.txt files. App-local files are still read when the shared file is absent. Without either file, supported workers try the reference gateway, then look for one HSFZ gateway on wired link-local ENET. Use the actual diagnostic gateway address for other subnets. Use the desktop installer to verify both live hashes and select the layout for the active display. If the framework pair has no approved match in the [compatibility matrix](source/docs/COMPATIBILITY.md), follow the [porting workflow](source/docs/PORTING.md) to verify compatibility. Native changes need the QNX SDP 6.5 Linux host tools and ARM GCC 4.4.2. Matching packaged binaries and compatible layout resource changes do not need QNX on the ENET computer.
 
-If you need the toolchain for a native build, the [QNX SDP 6.5 archive](https://archive.org/details/qnxsdp-65.7z) includes the SDK and a license key generator, according to the archive listing. See [Build and deploy](source/docs/BUILD.md) for toolchain setup.
+Native builds require a legitimately licensed QNX SDP 6.5 toolchain. See
+[Obtaining the QNX toolchain](source/docs/BUILD.md#obtaining-the-qnx-toolchain)
+for official download and licensing contacts, version requirements, and host-only
+development while a matching legacy entitlement is unavailable.
 
 ## Stage and verify
 
