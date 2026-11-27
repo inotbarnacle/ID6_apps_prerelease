@@ -21,13 +21,14 @@ BUILD = Path(__file__).resolve().parents[1]/'build'
 
 
 class SharedGateway:
-    def __init__(self,regen=False):
+    def __init__(self,regen=False,reply_barrier=None):
         self.regen=regen
         self.listener=socket.socket()
         self.listener.bind(('127.0.0.1',0));self.listener.listen(8);self.listener.settimeout(.1)
         self.port=self.listener.getsockname()[1]
         self.stopping=threading.Event();self.lock=threading.Lock()
         self.active=self.maximum=0
+        self.reply_barrier=reply_barrier
         self.requests,self.errors,self.clients=[],[],[]
         self.thread=threading.Thread(target=self.serve,daemon=True)
 
@@ -67,13 +68,14 @@ class SharedGateway:
                     with self.lock:
                         self.active+=1;self.maximum=max(self.maximum,self.active)
                         self.requests.append((time.monotonic(),pid))
-                    try:
-                        # Keep a real reply in flight, so overlapping lease users
-                        # would be observed by the independent server threads.
-                        time.sleep(.03)
-                        connection.sendall(frame(1,b'\x12\xf4'+answer))
-                    finally:
-                        with self.lock: self.active-=1
+                    if self.reply_barrier is not None: self.reply_barrier.wait(2)
+                    # Keep a reply pending so independent connections can overlap.
+                    time.sleep(.03)
+                    # Finish the reply and its observation together. A waiter
+                    # may send immediately after receiving the completed reply.
+                    with self.lock:
+                        try: connection.sendall(frame(1,b'\x12\xf4'+answer))
+                        finally: self.active-=1
                 except (BrokenPipeError,ConnectionResetError): break
                 except Exception as error:
                     self.errors.append(error);break
@@ -89,6 +91,20 @@ def busy(port):
 
 
 class DpfCoexistenceTest(unittest.TestCase):
+    def test_gateway_detects_uncoordinated_requests(self):
+        # Negative control: the observer must detect genuine overlap rather
+        # than accidentally serializing every request with its own lock.
+        with SharedGateway(reply_barrier=threading.Barrier(2)) as gateway:
+            with socket.create_connection(('127.0.0.1',gateway.port)) as left, \
+                    socket.create_connection(('127.0.0.1',gateway.port)) as right:
+                for client in (left,right):
+                    client.settimeout(3);client.sendall(frame(1,b'\xf4\x12\x01\x05'))
+                for client in (left,right):
+                    size,control=struct.unpack('>IH',exact(client,6))
+                    self.assertEqual(control,1)
+                    self.assertEqual(exact(client,size),b'\x12\xf4\x41\x05'+PAYLOADS[5])
+                self.assertEqual(gateway.maximum,2)
+
     def handoff(self,abnormal,regen=False):
         with SharedGateway(regen) as gateway,telemetry_socket() as dpf_udp,telemetry_socket() as boost_udp:
             environment=dict(os.environ);environment.pop('ID6_FAKE_MOST',None)
@@ -130,7 +146,9 @@ class DpfCoexistenceTest(unittest.TestCase):
                     running(dpf)
                     for ready in select.select([dpf_udp],[],[],.1)[0]: receive(ready)
                 self.assertTrue(packets['dpf'],'DPF worker did not establish its initial measurement')
-                boost=subprocess.Popen([str(BUILD/'boost-deck'),*common,'--diesel','--no-trans','--signals','128',
+                # Match BoostDeck::startVisibleCollector: HSFZ arbitration is
+                # explicitly enabled by the production plugin's --session flag.
+                boost=subprocess.Popen([str(BUILD/'boost-deck'),*common,'--session','--diesel','--no-trans','--signals','128',
                                         '--udp-port',str(boost_udp.getsockname()[1])],stderr=subprocess.PIPE,env=environment)
                 packets['dpf']=False
                 deadline=time.monotonic()+8

@@ -233,7 +233,7 @@ make -C source/native test
 python3 source/tools/test_dpf_resources.py
 ```
 
-The full suite runs eleven native programs and 107 Python cases. Tests use loopback
+The full suite runs eleven native programs and 108 Python cases. Tests use loopback
 HSFZ and fake DSI/MOST, with #213's private receiver allocator. They cover full
 16-bit decoder domains, flags, units, framing, negative/truncated replies,
 backoff/rate bounds, reconnects, duplicate ownership and MOST teardown.
@@ -250,8 +250,11 @@ parent and verifies worker exit and socket release.
 Three handoff cases run the actual DPF and Boost workers against one synthetic
 gateway. They check progress while overlapping, serialized in-flight requests,
 activity/lease release and continued Boost reads after normal or abnormal DPF
-exit, including the optional regeneration request set. These observations do not establish physical coexistence or exclude an
-external diagnostic tester.
+exit, including the optional regeneration request set. Boost uses the same
+`--session` argument as its production plugin. A fourth, controlled test sends
+two simultaneous requests without workers and requires the observer to detect
+the overlap. These observations do not establish physical coexistence or
+exclude an external diagnostic tester.
 
 Seven resource/package cases cover deterministic generation, layout bounds,
 ARM/resource rejection and optional staging. The Go suite includes selection,
