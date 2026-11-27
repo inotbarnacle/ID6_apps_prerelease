@@ -6,12 +6,49 @@ CI workflow was present at that baseline. Follow `source/AGENTS.md` and the host
 checks in [BUILD.md](BUILD.md). Changes below are source contributions; published
 application ZIPs are separate maintainer build artifacts.
 
-Publication update, 27 November: the configured 1Password signer is available
-again. The DPFDeck HMI and optional status commits are signed, with final source
-`7a27e22` pushed to the fork and exact-source CI running. The aftertreatment,
-SCR and private-identity source commits are signed and being combined into
-#201; the reagent gauge commit is signed for #202. Earlier references below
-to waiting for the signer describe their local checkpoint at that time.
+Publication update, 27 November: the configured SSH signer is working and the
+focused source commits are signed and published. Earlier references below to
+waiting for the signer describe historical checkpoints. Detailed entries below
+retain their original checkpoint counts/status; this opening status records
+the current publication and validation.
+
+- Discovery [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201) includes
+  optional aftertreatment/SCR plans and separate private ECU identity evidence.
+  Its [published CI](https://github.com/voioo/iDriveDeck/actions/runs/46063605407)
+  passes 114 host tests at `c780ab7`.
+- Telemetry [#202](https://github.com/inotbarnacle/iDriveDeck/pull/202) includes
+  optional reagent gauges. [CI](https://github.com/voioo/iDriveDeck/actions/runs/46063775700)
+  passes at `ae82627`: 19 native programs, 140 Python cases and nine resources.
+- DPFDeck is published as draft [#216](https://github.com/inotbarnacle/iDriveDeck/pull/216).
+  The test correction at `9ead718` uses Boost's production `--session` argument
+  and adds an observer overlap control. [Final-source CI](https://github.com/voioo/iDriveDeck/actions/runs/46065746800)
+  passes eleven native programs, 108 Python cases, seven resource/package
+  cases and installer checks, with both compilers and sanitizers.
+- The separate locale fix is draft [#217](https://github.com/inotbarnacle/iDriveDeck/pull/217),
+  with [green CI](https://github.com/voioo/iDriveDeck/actions/runs/46065331789)
+  at `4cab6a2`: eight native programs, 80 Python cases, static analysis and
+  sanitizers. Frozen NBG7 bytes and 4096 round trips per period/comma/multibyte
+  locale pass. The actual head-unit locale remains unknown.
+
+Signed combined branch `diesel/integration-published` reconstructs the tested
+source using the real feature histories. CI at its first head `e8b32b9` caught
+the coexistence test's missing `--session`; older overlap observations used
+that incomplete setup. Corrected tests pass, including a controlled observer
+check that detects two genuinely pending requests. The fresh full combined run
+passes 47 native programs and 187 Python cases at `dc7840e`, including the
+independent locale fix. The unchanged 148-case tool/resource suite brings
+coverage to 331 distinct Python cases, with four shared fault-resource cases
+counted once. Paired pre/post-fix host codecs also preserve NBG7–NBG11 bytes and
+decoded frames in period/comma/multibyte locales. Native source, tools and
+workflows are retained at source tree `ab2f7419` before documentation updates.
+All eleven source workflows pass at this checkpoint, including
+[GCC/Clang and sanitizers](https://github.com/voioo/iDriveDeck/actions/runs/46066166317),
+[numeric locales](https://github.com/voioo/iDriveDeck/actions/runs/46066166323),
+[DPF packaging/installer](https://github.com/voioo/iDriveDeck/actions/runs/46066166338)
+and [production ownership/baseline checks](https://github.com/voioo/iDriveDeck/actions/runs/46066166348).
+No production lease change was needed. Keep PR descriptions/comments concise
+and readable. Documentation commits after this checkpoint preserve all native,
+tool and workflow bytes tested here.
 
 ## Current gaps and overlapping work
 
@@ -28,7 +65,7 @@ to waiting for the signer describe their local checkpoint at that time.
 | WarmDeck | Three temperatures expire independently and trend estimates require all three. Main queries oil unconditionally and displays generic RPM guidance. Thresholds 85/75/40 C are application choices. | #202 gates oil by advertised support. [Draft #209](https://github.com/inotbarnacle/iDriveDeck/pull/209) adds independent target states, measured estimates and advisory vehicle-guidance text, with production UDP/UI and resource tests. |
 | ShiftDeck | Source artwork/preferences retain five gasoline targets while the latest installer release advertises 6000–8000 RPM. Neither establishes an N57 limit. | [Draft #203](https://github.com/inotbarnacle/iDriveDeck/pull/203) adds manually selected diesel targets/display scales, legacy settings migration and asset/plugin tests. No universal diesel redline or physical validation is claimed. |
 | Faults | Worker reads 24-bit UDS codes; the old UI discarded status availability and always used a reference gasoline table. | [Draft #204](https://github.com/inotbarnacle/iDriveDeck/pull/204) preserves status support, adds a DDE/raw view and clear confirmation, plus separate standard confirmed/pending/permanent emissions reads. The counted CAN format is host-tested; target support and licensed DDE descriptions remain open. |
-| DPF | [#196](https://github.com/inotbarnacle/iDriveDeck/issues/196) contributor plans B47 collection once ENET arrives. #201 provides standard pressure/temperature evidence collection; separate DPFDeck source now includes HMI, resources, lifecycle and optional installer integration. | Publish the focused draft after exact-source CI. A licensed QNX build and shared captures remain required for validated B47/N57 profiles. No guessed DIDs, soot/ash thresholds or regeneration controls. |
+| DPF | [#196](https://github.com/inotbarnacle/iDriveDeck/issues/196) contributor plans B47 collection once ENET arrives. #201 provides standard evidence collection; draft #216 includes HMI, resources, lifecycle and optional installer integration. | A licensed QNX build and shared captures remain required for validated B47/N57 profiles. No guessed DIDs, soot/ash thresholds or regeneration controls. |
 | Installer / rollback | Desktop installer checks framework pairs and display layouts, inventories/stages managed folders and preserves backups; uninstall is documented in `Installer.md`. | Run compatibility check only after authorized vehicle discovery. No installation or restart is authorized yet. |
 | Factory integration | Native Android Auto installation currently disables gauge MOST fallback; [PR #138](https://github.com/inotbarnacle/iDriveDeck/pull/138) proposes a startup process check. This does not establish CarPlay/HUD coexistence. | Keep current guards pending reproducible evidence and maintainer review. |
 
@@ -109,8 +146,8 @@ This description is not diagnostic confirmation.
 | Standard EGR request, actual and error channels | Simulation / host tests only | Exact DDE support for PID 2C/2D/69, per-field bits and independent comparisons. Actual is reported normalized duty/position, not inferred flow or a value reconstructed from error. |
 | Standard requested/actual rail and boost | Simulation / host tests only | Exact DDE support for PID 6D/70, per-field bits, physical A/B identity and independent comparisons. Rail is gauge pressure; boost is absolute. |
 | Standard DPF bank pressure and inlet/outlet temperature | Simulation / host tests only, discovery #201 and separate DPFDeck source app | Exact DDE support for PID 7A/7B/7C, field support, physical layout and independent comparisons. QNX, firmware and parked validation remain open; no regeneration, soot or ash mapping is established. |
-| Standard DPF regeneration progress/type | Simulation / host tests only, local optional DPFDeck follow-up | Exact DDE advertisement and independent progress/type comparisons for PID 8B. Hidden by default, with no threshold, completion estimate, command or physical N57 support claim. |
-| Standard SCR reagent/inducement evidence | Simulation / host tests only, local v6/v7 discovery and optional native PID 85 gauges | Exact DDE advertisement and independent comparisons for PID 85/88. Current state, causes, history and counters remain separate; no SCR health, remaining-range or native vehicle compatibility claim. |
+| Standard DPF regeneration progress/type | Simulation / host tests only, optional DPFDeck display in #216 | Exact DDE advertisement and independent progress/type comparisons for PID 8B. Hidden by default, with no threshold, completion estimate, command or physical N57 support claim. |
+| Standard SCR reagent/inducement evidence | Simulation / host tests only, #201 v6/v7 discovery and optional native PID 85 gauges in #202 | Exact DDE advertisement and independent comparisons for PID 85/88. Current state, causes, history and counters remain separate; no SCR health, remaining-range or native vehicle compatibility claim. |
 | Standard emissions fault codes | Simulation / host tests only | Confirm that the exact DDE/gateway supports services 03/07/0A and the counted CAN reply format. A category's zero count does not clear other categories. |
 | Fixed BMW diesel, DPF, SCR, oil pressure | Unsupported in this effort | Credible ECU-specific definitions and repeatable sanitized captures. Standard EGR support does not establish a BMW-specific mapping. |
 | Physical installation / factory regression / rollback | Not performed | Separate owner-authorized milestone; staged plan in [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201). |
@@ -121,8 +158,7 @@ This description is not diagnostic confirmation.
   production callback/UDP ownership tests, original resources and optional
   installer packaging/rollback integration on the separate
   [fork branch](https://github.com/voioo/iDriveDeck/tree/diesel/dpfdeck-standard).
-  Publication is awaiting the configured 1Password signer, then exact-source
-  CI and a focused upstream draft. No QNX build, native archive, approved
+  The HMI and optional status source is published in draft #216. No QNX build, native archive, approved
   firmware or physical X5 validation is claimed.
 
   Only advertised standard 05/7A/7B/7C are read after supported-PID bitmaps.
@@ -648,7 +684,7 @@ This description is not diagnostic confirmation.
 - Pull requests opened by this effort: [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201)
   (draft; discovery/reporting and validation plan) and
   [#202](https://github.com/inotbarnacle/iDriveDeck/pull/202)
-  (draft; capability-gated telemetry, supported defaults, pressure saturation and standard EGT/EGR/pressure), and
+  (draft; capability-gated telemetry, supported defaults, pressure saturation and standard EGT/EGR/pressure/reagent), and
   [#203](https://github.com/inotbarnacle/iDriveDeck/pull/203)
   (draft; configurable ShiftDeck diesel profile, persistence and resources), and
   [#204](https://github.com/inotbarnacle/iDriveDeck/pull/204)
@@ -662,7 +698,11 @@ This description is not diagnostic confirmation.
   [#210](https://github.com/inotbarnacle/iDriveDeck/pull/210)
   (draft; LaunchDeck record read-error handling and regression tests), and
   [#213](https://github.com/inotbarnacle/iDriveDeck/pull/213)
-  (ready for review; host UDP receiver isolation with no production-code change).
+  (ready for review; host UDP receiver isolation with no production-code change),
+  [#216](https://github.com/inotbarnacle/iDriveDeck/pull/216)
+  (draft; standard DPFDeck monitoring and optional regeneration status), and
+  [#217](https://github.com/inotbarnacle/iDriveDeck/pull/217)
+  (draft; locale-stable Boost packet conversion).
 
 ## Combined source validation
 
@@ -986,11 +1026,12 @@ sensor's accuracy or an ECU-family-specific mapping.
 | Exhaust temperature | Standard bank/sensor fields in #202; optional sanitized evidence profile in #201. | Actual PID/sensor support, physical positions and independent temperature comparison. |
 | Transmission temperature | Existing positive-read EGS/HSFZ candidate; host-tested decoding and independent WarmDeck state. | Exact EGS applicability/calibration and standalone transport validation. EGS-over-MOST is pending separate work. |
 | Current gear, selected transmission mode, torque-converter status | No verified diesel mapping implemented. | ECU-scoped format and repeatable evidence; coordinate overlapping EGS work. |
-| DPF regeneration active/requested/inhibited and reasons | No verified mapping implemented. Temperature alone is insufficient. | Shared B47/N57 evidence, contributor coordination and identity-scoped states. |
+| DPF regeneration progress/type | Advertised standard PID 8B has an independent support/type decoder, optional discovery plan and hidden-by-default native display; host/simulation evidence only. | Exact DDE advertisement and independent progress/type comparisons. |
+| DPF regeneration request, inhibition and reasons | No verified mapping implemented. Temperature and progress/type do not supply these states. | Shared B47/N57 evidence, contributor coordination and identity-scoped states. |
 | DPF differential/inlet/outlet pressure and filter temperatures | Standard 7A/7B/7C discovery and DPFDeck source are host/simulation tested; no BMW-specific mapping. | Exact DDE advertisement, field/bank/position identity and independent comparison. |
 | DPF soot/ash mass and time/distance since regeneration | No verified mapping or universal thresholds implemented. | Licensed/documented formats, units and repeatable exact-ECU evidence. |
 | EGR requested/actual/error | Standard 2C/2D and explicit PID 69 A/B fields are host/simulation tested; actual is normalized duty/position and is not reconstructed from error. | Exact DDE support, A/B applicability and independent comparisons; any fixed BMW-specific mapping needs separate evidence. |
-| SCR/AdBlue | No verified diesel mapping implemented. | Review credible standard/OEM definitions and exact ECU applicability before adding a signal. |
+| SCR/AdBlue | Standard PID 85 optional reagent gauges and PID 88 discovery evidence are host/simulation tested; current/history/counters retain separate meanings. | Exact DDE advertisement, per-field support and independent comparisons; no BMW-specific mapping, SCR-health or remaining-range claim. |
 | DDE fault descriptions | Raw BMW codes/status and separate standard emissions categories are host-tested; no new DDE dictionary imported. | Licensed, ECU-applicable descriptions and exact-target fault-format validation. |
 
 ## Candidate standard emissions and transmission references
@@ -1070,9 +1111,13 @@ not exact-ECU support, a BMW plausibility limit or a native app mapping.
 ## Outstanding scope
 
 The overall N57 objective remains active. These drafts do not complete it.
-Next: finish publishing the signed focused branches and verify exact-source CI,
-then open/update the draft PRs with concise reviewer-focused descriptions.
-Address the reproduced numeric-locale issue as a separate codec change.
+The focused drafts and human-friendly descriptions are published; corrected
+DPF tests and the signed combined checkout have green source CI.
+Next: incorporate maintainer feedback and continue evidence review for the
+remaining BMW-specific oil, DPF mass/counter and transmission states.
+Keep the locale fix in its separate #217 review; #202 alone still needs it for
+a comma-decimal numeric environment. Continue evidence review and incorporate
+maintainer feedback before expanding scope.
 Native SCR use still requires exact-ECU comparison and separately authorized
 parked validation. Remaining transmission signals still need fully
 corroborated layouts/semantics and request policies before implementation. Continue
