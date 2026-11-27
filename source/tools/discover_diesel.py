@@ -19,6 +19,7 @@ WIDTHS = {pid: 2 if pid in (0x0c, 0x10, 0x23, 0x42, 0x5e) else 1 for pid in PIDS
 MAX_REQUESTS, MAX_SECONDS = 16, 45
 EGT_PIDS = (0x78, 0x79)
 EGR_PIDS = (0x69, 0x2c, 0x2d)
+PRESSURE_PIDS = (0x6d, 0x70)
 FRAMEWORKS = ("libAppFramework.A.so", "libCoreFramework.A.so")
 ALLOWLIST = {(ecu, bytes.fromhex("22f150")) for ecu in (0x12, 0x18)} | {
     (0x12, bytes((1, pid))) for pid in (0, 0x20, 0x40, *PIDS)
@@ -31,6 +32,10 @@ POLICIES = {
     # Prioritize the explicit A/B EGR block when the bounded session is partial.
     "standard-diesel": (EGR_PIDS + EGT_PIDS + PIDS, (0, 0x20, 0x40, 0x60), 22, ALLOWLIST | {
         (0x12, bytes((1, pid))) for pid in (0x60, *EGR_PIDS, *EGT_PIDS)
+    }),
+    # A separate plan retains the three older request sets and their ordering.
+    "standard-pressure": (PRESSURE_PIDS + EGR_PIDS + EGT_PIDS + PIDS, (0, 0x20, 0x40, 0x60), 24, ALLOWLIST | {
+        (0x12, bytes((1, pid))) for pid in (0x60, *PRESSURE_PIDS, *EGR_PIDS, *EGT_PIDS)
     }),
 }
 
@@ -193,6 +198,35 @@ def egr_fields(state, reply):
     return complete, fields
 
 
+def pressure_fields(pid, state, reply):
+    """Standard request/actual pairs; rail gauge bar or absolute boost kPa.
+
+    No atmospheric default, MAP substitution or physical A/B identity inferred.
+    Unused temperature/status bytes do not invalidate the pressure fields.
+    Format/scaling provenance is documented in DIESEL-VALIDATION.md.
+    """
+    if pid not in PRESSURE_PIDS:
+        raise ValueError("unknown standard pressure PID")
+    rail = pid == 0x6d
+    complete = (state == "advertised" and reply is not None and len(reply) == (13 if rail else 12)
+                and reply[:2] == bytes((0x41, pid)) and not reply[2] & 0xc0)
+    fields = []
+    for index, bit in enumerate((0, 1, 3, 4)):
+        capability = "unsupported" if state == "unsupported" else "unknown"
+        item = {"system": "A" if index < 2 else "B", "quantity": "actual" if index % 2 else "requested",
+                "pressure_reference": "relative_to_atmosphere" if rail else "absolute",
+                "unit": "bar" if rail else "kPa", "capability": capability, "measurement": "unavailable"}
+        if complete:
+            supported = bool(reply[2] & (1 << bit))
+            item["capability"] = "supported" if supported else "unsupported"
+            if supported:
+                offset = 3 + 2*index + (1 if rail and index >= 2 else 0)
+                raw = int.from_bytes(reply[offset:offset+2], "big")
+                item.update(value=raw / (10 if rail else 32), measurement="decoded_requires_independent_validation")
+        fields.append(item)
+    return complete, fields
+
+
 def report(rows, headunit=None, evidence="replay", *, profile="standard"):
     """Export only known fixed requests and validated response shapes.
 
@@ -248,11 +282,16 @@ def report(rows, headunit=None, evidence="replay", *, profile="standard"):
         reply = reply_bytes(row)
         state = "unknown" if pid not in checked else "unsupported" if pid not in advertised else "advertised"
         entry = {"pid": f"{pid:02X}", "capability": state, "measurement": "unavailable"}
-        if profile == "standard-diesel":
+        if profile in ("standard-diesel", "standard-pressure"):
             entry["record_status"] = ("not_present" if key not in records else
                                       "ambiguous_duplicate" if row is None else
                                       "present_no_valid_reply" if not reply else "present_reply_bytes")
-        if pid == 0x69:
+        if pid in PRESSURE_PIDS:
+            complete, entry["fields"] = pressure_fields(pid, state, reply)
+            if complete:
+                entry["reply"] = reply.hex(" ")
+                entry["measurement"] = "field_layout_requires_independent_validation"
+        elif pid == 0x69:
             complete, entry["fields"] = egr_fields(state, reply)
             if complete:
                 entry["reply"] = reply.hex(" ")
@@ -283,7 +322,8 @@ def report(rows, headunit=None, evidence="replay", *, profile="standard"):
             hsfz_observed = True
     result = {
         "format": ("idrive-diesel-discovery-v1" if profile == "standard" else
-                   "idrive-diesel-discovery-v2" if profile == "standard-egt" else "idrive-diesel-discovery-v3"),
+                   "idrive-diesel-discovery-v2" if profile == "standard-egt" else
+                   "idrive-diesel-discovery-v3" if profile == "standard-diesel" else "idrive-diesel-discovery-v4"),
         "evidence": evidence,
         "vehicle_platform": "not_inferred",
         "ecu_identification": identities,
@@ -301,10 +341,13 @@ def report(rows, headunit=None, evidence="replay", *, profile="standard"):
     if profile != "standard":
         result["profile"] = profile
         result["limitations"].append("EGT bank/sensor fields do not establish physical sensor locations or regeneration")
-    if profile == "standard-diesel":
+    if profile in ("standard-diesel", "standard-pressure"):
         result["limitations"][1] = "No DPF, SCR or BMW-specific oil/EGR mapping is established"
         result["limitations"].append("EGR A/B actual is reported normalized duty/position, not inferred flow or an independent position measurement")
         result["limitations"].append("Legacy EGR request/error never establishes A/B actual values")
+    if profile == "standard-pressure":
+        result["limitations"].append("Standard pressure A/B fields do not establish physical rail/turbo identity or exact ECU support")
+        result["limitations"].append("Boost pressure is absolute, not manifold or derived gauge boost; no atmospheric value is assumed")
     return result
 
 
@@ -315,7 +358,7 @@ def main():
     mode.add_argument("--replay", type=Path, help="offline probe JSONL input; no connection")
     mode.add_argument("--collect", action="store_true", help="execute the reviewed parked read-only plan")
     parser.add_argument("--profile", choices=POLICIES, default="standard",
-                        help="standard: 16 reads/v1; standard-egt: 19 reads/v2; standard-diesel: separate 22-read EGR+EGT plan/v3")
+                        help="standard: 16 reads/v1; standard-egt: 19 reads/v2; standard-diesel: 22 reads/v3; standard-pressure: separate 24-read plan/v4")
     parser.add_argument("--owner-approved-parked", action="store_true", help="owner has explicitly approved this exact collection")
     parser.add_argument("--local", type=enet_address)
     parser.add_argument("--gateway", type=enet_address)

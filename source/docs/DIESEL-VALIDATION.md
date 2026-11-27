@@ -189,6 +189,79 @@ format, privacy filtering, exact request policy, EGR priority during a partial
 session, offline paths and exclusive 0600 output. Replay provenance remains
 unverified and output still needs local review before sharing.
 
+### Optional requested/actual pressure evidence profile
+
+The separately selected `standard-pressure` profile adds `01 6D` and `01 70`
+to the EGR/EGT evidence set. The original 16/19/22-read plans retain their exact
+requests, ordering and v1/v2/v3 report contracts. This new plan is at most
+**24 requests**: two identification candidates, up to four bitmap pages and
+eighteen measurements. After capabilities, pressure is read first (6D, 70),
+then EGR (69, 2C, 2D), EGT (78, 79) and the original eleven measurements.
+
+```sh
+python3 tools/discover_diesel.py --plan --profile standard-pressure
+python3 tools/discover_diesel.py --replay /private/probe.jsonl \
+  --profile standard-pressure --out /private/diesel-public-v4.json
+```
+
+The existing 45-second budget, 6.2-second reservation for connect/send/receive
+and gap, 200-ms minimum gaps, separate explicit wired connections and no-retry
+rule apply. Unknown or unadvertised PIDs are never probed. A slow session can
+end after one pressure reply; `record_status` distinguishes an uncollected
+record from one with reply bytes, independently of field support and decoding.
+No broader scanning, MOST, SSH, session change or write is added.
+
+Review the printed 24-read plan and obtain the owner's explicit approval for
+that exact plan before any physical use. An earlier plan's approval does not
+cover these additional requests. Planning, replaying or supplying an approval
+flag does not grant permission. No physical collection was performed here.
+
+The `idrive-diesel-discovery-v4` report identifies `profile: standard-pressure`
+and retains the EGT/EGR layouts and record statuses. Each new PID contains four
+`fields`, in order A requested, A actual, B requested, B actual:
+
+| PID | Exact reply | `pressure_reference` | `unit` / optional `value` |
+| --- | --- | --- | --- |
+| `6D` | `41 6D` plus 11 data bytes | `relative_to_atmosphere` | `bar`, unsigned big-endian raw / 10 |
+| `70` | `41 70` plus 10 data bytes | `absolute` | `kPa`, unsigned big-endian raw / 32 |
+
+Support bits 0, 1, 3 and 4 respectively authorize those four fields. Bits 2/5
+describe unused temperatures or control status; their bytes are not interpreted.
+High support bits are rejected. PID 6D uses B–C / D–E / G–H / I–J pressure
+bytes; PID 70 uses B–C / D–E / F–G / H–I (A is the support byte). A field has a
+numeric `value` only with complete, advertised, unambiguous evidence and its
+own support bit. Supported zero and FFFF retain their defined conversions.
+The report does not apply the dashboard's graphic scale as a plausibility limit.
+
+Requested is ECU-returned data, not a pressure command. Actual is never filled
+from requested, legacy rail PID 23, MAP or barometric pressure. No atmospheric
+default or subtraction is applied to absolute boost. A/B names do not establish
+physical rail/turbo identity, sensor location, manifold pressure or accuracy.
+Injection-control pressure PID 6E and inlet-pressure PID 6F are excluded.
+Values retain `decoded_requires_independent_validation`; exact N57 support,
+independent comparison and QNX/physical behavior remain unverified.
+
+Protocol facts and their limits match the independently implemented
+[native pressure documentation](https://github.com/voioo/iDriveDeck/blob/d0b7808a0fc86260eb1ebd54874de30211bde3c7/source/docs/STANDARD-PRESSURE.md).
+The vendor's
+[pinned OBDb reference](https://github.com/OBDb/SAEJ1979/blob/1abdef6ae0c1b9134c8f2a10911a9daa1354649d/signalsets/v3/default.json)
+supplies the full layouts and rail atmospheric reference. Independent
+[preOBD encoder tests](https://github.com/preobd/preOBD/blob/45b371e2fd0edf0001971c0768754c237de7b2ce/test/test_obd_encode/test_obd_encode.cpp)
+corroborate PID 70's length, actual-A support/offset and absolute conversion
+(raw 6442 is 201.3125 kPa, including quantization). Its simulated fallback
+atmosphere is not adopted. CSS v4.5 placeholders are not complete pressure
+decoder evidence. No vendor database entries, descriptions or logs are copied;
+independent arithmetic and synthetic fixtures are project source.
+
+`tools/fixtures/discovery-diesel-v3.json` freezes synthetic inputs and outputs
+from unchanged `35f6f00`, supplementing the prior v1/v2 fixtures. Tests retain
+all three older contracts and reject unsolicited pressure evidence in them.
+New cases cover units/reference, every support byte, unsigned boundaries,
+exact prefix/length, absent actual, missing/duplicate evidence, private fields,
+wrong ECU, negative replies, the exact 24-read policy, budget priority and
+offline/exclusive 0600 output. Replay provenance remains unverified; locally
+review every report before sharing it.
+
 ## Stage A — non-invasive parked discovery
 
 1. Obtain the owner's explicit approval for the printed bounded collection

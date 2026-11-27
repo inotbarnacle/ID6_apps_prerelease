@@ -1,0 +1,355 @@
+{
+  "provenance": "Synthetic inputs and outputs from unchanged source; not vehicle data",
+  "source_commit": "35f6f00de1f47e229e73a74850e606a17c2d78c7",
+  "input_records": [
+    {
+      "ecu": "12",
+      "request": "0100",
+      "reply": "410000000001"
+    },
+    {
+      "ecu": "12",
+      "request": "0120",
+      "reply": "412000180001"
+    },
+    {
+      "ecu": "12",
+      "request": "0140",
+      "reply": "414000000001"
+    },
+    {
+      "ecu": "12",
+      "request": "0160",
+      "reply": "416000800180"
+    },
+    {
+      "ecu": "12",
+      "request": "0169",
+      "reply": "41693f008080ff4000"
+    },
+    {
+      "ecu": "12",
+      "request": "012c",
+      "reply": "412cff"
+    },
+    {
+      "ecu": "12",
+      "request": "012d",
+      "reply": "412dff"
+    },
+    {
+      "ecu": "12",
+      "request": "0178",
+      "reply": "41780b0190ffff000047e0"
+    },
+    {
+      "ecu": "12",
+      "request": "0179",
+      "reply": "4179040000000019050000"
+    }
+  ],
+  "plan": {
+    "transport": "HSFZ TCP 6801, explicit wired link-local endpoint only",
+    "identity": [
+      {
+        "ecu": "12",
+        "request": "22 f1 50"
+      },
+      {
+        "ecu": "18",
+        "request": "22 f1 50"
+      }
+    ],
+    "capabilities": [
+      "01 00",
+      "01 20",
+      "01 40",
+      "01 60"
+    ],
+    "measurements_if_advertised": [
+      "01 69",
+      "01 2c",
+      "01 2d",
+      "01 78",
+      "01 79",
+      "01 04",
+      "01 05",
+      "01 0b",
+      "01 0c",
+      "01 0f",
+      "01 10",
+      "01 23",
+      "01 33",
+      "01 42",
+      "01 5c",
+      "01 5e"
+    ],
+    "max_requests": 22,
+    "max_duration_seconds": 45,
+    "minimum_gap_seconds": 0.2,
+    "retries": 0,
+    "writes_or_session_changes": false,
+    "ssh_or_most": false,
+    "profile": "standard-diesel"
+  },
+  "report": {
+    "format": "idrive-diesel-discovery-v3",
+    "evidence": "replay",
+    "vehicle_platform": "not_inferred",
+    "ecu_identification": {
+      "12": {
+        "sgbd_index_candidate": null,
+        "hardware_software_identifiers": "not_collected",
+        "engine_family": "requires_independent_confirmation"
+      },
+      "18": {
+        "sgbd_index_candidate": null,
+        "hardware_software_identifiers": "not_collected",
+        "engine_family": null
+      }
+    },
+    "obd_bitmaps": [
+      {
+        "pid": "00",
+        "reply": "41 00 00 00 00 01"
+      },
+      {
+        "pid": "20",
+        "reply": "41 20 00 18 00 01"
+      },
+      {
+        "pid": "40",
+        "reply": "41 40 00 00 00 01"
+      },
+      {
+        "pid": "60",
+        "reply": "41 60 00 80 01 80"
+      }
+    ],
+    "signals": [
+      {
+        "pid": "69",
+        "capability": "advertised",
+        "measurement": "field_layout_requires_independent_validation",
+        "record_status": "present_reply_bytes",
+        "fields": [
+          {
+            "system": "A",
+            "quantity": "requested",
+            "capability": "supported",
+            "measurement": "decoded_requires_independent_validation",
+            "percent": 0.0
+          },
+          {
+            "system": "A",
+            "quantity": "actual",
+            "capability": "supported",
+            "measurement": "decoded_requires_independent_validation",
+            "percent": 50.19607843137255
+          },
+          {
+            "system": "A",
+            "quantity": "error",
+            "capability": "supported",
+            "measurement": "decoded_requires_independent_validation",
+            "percent": 0.0
+          },
+          {
+            "system": "B",
+            "quantity": "requested",
+            "capability": "supported",
+            "measurement": "decoded_requires_independent_validation",
+            "percent": 100.0
+          },
+          {
+            "system": "B",
+            "quantity": "actual",
+            "capability": "supported",
+            "measurement": "decoded_requires_independent_validation",
+            "percent": 25.098039215686274
+          },
+          {
+            "system": "B",
+            "quantity": "error",
+            "capability": "supported",
+            "measurement": "decoded_requires_independent_validation",
+            "percent": -100.0
+          }
+        ],
+        "reply": "41 69 3f 00 80 80 ff 40 00"
+      },
+      {
+        "pid": "2C",
+        "capability": "advertised",
+        "measurement": "decoded_requires_independent_validation",
+        "record_status": "present_reply_bytes",
+        "system": "unspecified",
+        "quantity": "requested",
+        "reply": "41 2c ff",
+        "percent": 100.0
+      },
+      {
+        "pid": "2D",
+        "capability": "advertised",
+        "measurement": "decoded_requires_independent_validation",
+        "record_status": "present_reply_bytes",
+        "system": "unspecified",
+        "quantity": "error",
+        "reply": "41 2d ff",
+        "percent": 99.21875
+      },
+      {
+        "pid": "78",
+        "capability": "advertised",
+        "measurement": "sensor_layout_requires_independent_validation",
+        "record_status": "present_reply_bytes",
+        "sensors": [
+          {
+            "bank": 1,
+            "sensor": 1,
+            "capability": "supported",
+            "measurement": "decoded_requires_independent_validation",
+            "celsius": 0.0
+          },
+          {
+            "bank": 1,
+            "sensor": 2,
+            "capability": "supported",
+            "measurement": "outside_app_plausibility_range"
+          },
+          {
+            "bank": 1,
+            "sensor": 3,
+            "capability": "unsupported",
+            "measurement": "unavailable"
+          },
+          {
+            "bank": 1,
+            "sensor": 4,
+            "capability": "supported",
+            "measurement": "decoded_requires_independent_validation",
+            "celsius": 1800.0
+          }
+        ],
+        "reply": "41 78 0b 01 90 ff ff 00 00 47 e0"
+      },
+      {
+        "pid": "79",
+        "capability": "advertised",
+        "measurement": "sensor_layout_requires_independent_validation",
+        "record_status": "present_reply_bytes",
+        "sensors": [
+          {
+            "bank": 2,
+            "sensor": 1,
+            "capability": "unsupported",
+            "measurement": "unavailable"
+          },
+          {
+            "bank": 2,
+            "sensor": 2,
+            "capability": "unsupported",
+            "measurement": "unavailable"
+          },
+          {
+            "bank": 2,
+            "sensor": 3,
+            "capability": "supported",
+            "measurement": "decoded_requires_independent_validation",
+            "celsius": 600.5
+          },
+          {
+            "bank": 2,
+            "sensor": 4,
+            "capability": "unsupported",
+            "measurement": "unavailable"
+          }
+        ],
+        "reply": "41 79 04 00 00 00 00 19 05 00 00"
+      },
+      {
+        "pid": "04",
+        "capability": "unsupported",
+        "measurement": "unavailable",
+        "record_status": "not_present"
+      },
+      {
+        "pid": "05",
+        "capability": "unsupported",
+        "measurement": "unavailable",
+        "record_status": "not_present"
+      },
+      {
+        "pid": "0B",
+        "capability": "unsupported",
+        "measurement": "unavailable",
+        "record_status": "not_present"
+      },
+      {
+        "pid": "0C",
+        "capability": "unsupported",
+        "measurement": "unavailable",
+        "record_status": "not_present"
+      },
+      {
+        "pid": "0F",
+        "capability": "unsupported",
+        "measurement": "unavailable",
+        "record_status": "not_present"
+      },
+      {
+        "pid": "10",
+        "capability": "unsupported",
+        "measurement": "unavailable",
+        "record_status": "not_present"
+      },
+      {
+        "pid": "23",
+        "capability": "unsupported",
+        "measurement": "unavailable",
+        "record_status": "not_present"
+      },
+      {
+        "pid": "33",
+        "capability": "unsupported",
+        "measurement": "unavailable",
+        "record_status": "not_present"
+      },
+      {
+        "pid": "42",
+        "capability": "unsupported",
+        "measurement": "unavailable",
+        "record_status": "not_present"
+      },
+      {
+        "pid": "5C",
+        "capability": "unsupported",
+        "measurement": "unavailable",
+        "record_status": "not_present"
+      },
+      {
+        "pid": "5E",
+        "capability": "unsupported",
+        "measurement": "unavailable",
+        "record_status": "not_present"
+      }
+    ],
+    "headunit": null,
+    "transport": {
+      "hsfz": "response_observed",
+      "gateway": "explicit_endpoint_not_exported",
+      "most": "not_tested"
+    },
+    "firmware_approval": "not_established",
+    "physical_installation": "not_performed_by_this_tool",
+    "limitations": [
+      "SGBD tail is a candidate index, not a full ECU identity",
+      "No DPF, SCR or BMW-specific oil/EGR mapping is established",
+      "No standalone, QNX ABI or factory-function compatibility is established",
+      "EGT bank/sensor fields do not establish physical sensor locations or regeneration",
+      "EGR A/B actual is reported normalized duty/position, not inferred flow or an independent position measurement",
+      "Legacy EGR request/error never establishes A/B actual values"
+    ],
+    "profile": "standard-diesel"
+  }
+}

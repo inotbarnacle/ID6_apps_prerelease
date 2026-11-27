@@ -14,6 +14,7 @@ import discover_diesel as discovery
 TOOL = Path(__file__).with_name("discover_diesel.py")
 V1_FIXTURE = TOOL.parent / "fixtures" / "discovery-standard-v1.json"
 V2_FIXTURE = TOOL.parent / "fixtures" / "discovery-egt-v2.json"
+V3_FIXTURE = TOOL.parent / "fixtures" / "discovery-diesel-v3.json"
 
 
 def row(request, reply, ecu="12"):
@@ -32,6 +33,13 @@ def diesel_rows():
             row("0140", "414000000001"), row("0160", "416000800180"),
             row("0169", "41693f008080ff4000"), row("012c", "412cff"), row("012d", "412dff"),
             *egt_rows()[4:]]
+
+
+def pressure_rows():
+    records = diesel_rows()
+    records[3] = row("0160", "416000890180")  # 69, 6D, 70, 78, 79
+    return records + [row("016d", "416d3f27102328ff4e20ffffff"),
+                      row("0170", "41703f1900192a3200ffffff")]
 
 
 class DiscoveryTest(unittest.TestCase):
@@ -518,6 +526,226 @@ class DiscoveryTest(unittest.TestCase):
                  self.assertRaises(SystemExit):
                 discovery.main()
             self.assertEqual(output.read_bytes(), original)
+
+
+class PressureDiscoveryTest(unittest.TestCase):
+    def signals(self, records):
+        return {s["pid"]: s for s in discovery.report(records, profile="standard-pressure")["signals"]}
+
+    def test_all_three_old_contracts_ignore_unsolicited_pressure(self):
+        for path, profile in ((V1_FIXTURE, "standard"), (V2_FIXTURE, "standard-egt"),
+                              (V3_FIXTURE, "standard-diesel")):
+            fixture = json.loads(path.read_text())
+            self.assertEqual(discovery.plan(profile), fixture["plan"])
+            self.assertEqual(discovery.report(fixture["input_records"], profile=profile), fixture["report"])
+            self.assertEqual(discovery.report(fixture["input_records"]+pressure_rows()[-2:], profile=profile), fixture["report"])
+
+    def test_v4_schema_keeps_pressure_units_references_and_quantities_distinct(self):
+        result = discovery.report(pressure_rows(), profile="standard-pressure")
+        self.assertEqual(result["format"], "idrive-diesel-discovery-v4")
+        self.assertEqual(result["profile"], "standard-pressure")
+        self.assertEqual(len(result["signals"]), 18)
+        signals = self.signals(pressure_rows())
+        for pid, reference, unit, values in (("6D", "relative_to_atmosphere", "bar", [1000,900,2000,6553.5]),
+                                             ("70", "absolute", "kPa", [200,201.3125,400,2047.96875])):
+            fields = signals[pid]["fields"]
+            self.assertEqual([(f["system"],f["quantity"]) for f in fields],
+                             [("A","requested"),("A","actual"),("B","requested"),("B","actual")])
+            self.assertEqual([f["value"] for f in fields], values)
+            self.assertTrue(all(f["unit"]==unit and f["pressure_reference"]==reference for f in fields))
+            self.assertTrue(all(f["measurement"]=="decoded_requires_independent_validation" for f in fields))
+        self.assertEqual(signals["69"]["fields"][2]["percent"], 0)
+        self.assertEqual(signals["78"]["sensors"][0]["celsius"], 0)
+        self.assertEqual(result["vehicle_platform"], "not_inferred")
+        self.assertEqual(result["firmware_approval"], "not_established")
+
+    def test_each_pressure_support_byte_uses_only_bits_zero_one_three_four(self):
+        for record in pressure_rows()[-2:]:
+            reply = bytes.fromhex(record["reply"])
+            pid = reply[1]
+            for flags in range(256):
+                complete, fields = discovery.pressure_fields(pid, "advertised", reply[:2]+bytes((flags,))+reply[3:])
+                self.assertEqual(complete, flags < 64)
+                for field, bit in zip(fields, (0,1,3,4)):
+                    supported = flags < 64 and bool(flags & (1 << bit))
+                    self.assertEqual("value" in field, supported)
+                    self.assertEqual(field["capability"], "supported" if supported else "unsupported" if flags < 64 else "unknown")
+
+    def test_unsigned_extremes_zero_and_endian_boundaries_are_numeric_only_when_supported(self):
+        for pid in discovery.PRESSURE_PIDS:
+            for raw in (0,1,255,256,6442,10000,65534,65535):
+                pair = raw.to_bytes(2,"big")
+                payload = b"\x3f"+pair+pair+b"\xff"+pair+pair+b"\xff" if pid==0x6d else b"\x3f"+pair*4+b"\xff"
+                complete, fields = discovery.pressure_fields(pid,"advertised",bytes((0x41,pid))+payload)
+                self.assertTrue(complete)
+                expected = float(Fraction(raw,10 if pid==0x6d else 32))
+                self.assertEqual([f["value"] for f in fields], [expected]*4)
+                self.assertTrue(all(type(f["value"]) is float for f in fields))
+        # Independent preOBD encoder vector: actual A support, D-E raw 6442.
+        complete, fields = discovery.pressure_fields(0x70,"advertised",bytes.fromhex("4170020000192a0000000000"))
+        self.assertTrue(complete)
+        self.assertEqual(fields[1]["value"], 201.3125)
+        self.assertTrue(all("value" not in fields[i] for i in (0,2,3)))
+
+    def test_pressure_prefix_lengths_and_unrecognized_flags_are_strict(self):
+        for record in pressure_rows()[-2:]:
+            good = bytes.fromhex(record["reply"])
+            for length in range(len(good)+2):
+                reply = (good+b"\0")[:length]
+                self.assertEqual(discovery.pressure_fields(good[1],"advertised",reply)[0], length==len(good))
+            for bad in (good[:2]+b"\x80"+good[3:], b"\x42"+good[1:], good[:1]+b"\x6f"+good[2:]):
+                complete, fields = discovery.pressure_fields(good[1],"advertised",bad)
+                self.assertFalse(complete)
+                self.assertTrue(all("value" not in f for f in fields))
+        for pid in (0x23,0x6e,0x6f):
+            with self.assertRaises(ValueError): discovery.pressure_fields(pid,"advertised",None)
+
+    def test_missing_actual_never_uses_requested_or_legacy_map_rail_or_baro(self):
+        records = pressure_rows()
+        for record in records[-2:]:
+            record["reply"] = record["reply"][:4]+"09"+record["reply"][6:]
+        records[0]["reply"] = "4100ffffffff"
+        records[1]["reply"] = "4120ffffffff"
+        records += [row("0123","41232710"), row("010b","410bff"), row("0133","413364")]
+        signals = self.signals(records)
+        for pid in ("6D","70"):
+            fields = signals[pid]["fields"]
+            self.assertTrue(all("value" in fields[i] for i in (0,2)))
+            self.assertTrue(all(f["capability"]=="unsupported" and "value" not in f for f in (fields[1],fields[3])))
+        self.assertEqual(signals["0B"]["measurement"], "saturated_255_kpa_absolute")
+
+    def test_pressure_advertisement_requires_a_complete_unambiguous_chain(self):
+        for records, state in ((pressure_rows()[4:],"unknown"),
+                               ([row("0100","410000000000"),*pressure_rows()[4:]],"unsupported"),
+                               ([*pressure_rows(),pressure_rows()[3]],"unknown")):
+            for pid in ("6D","70"):
+                signal = self.signals(records)[pid]
+                self.assertEqual(signal["capability"], state)
+                self.assertNotIn("reply",signal)
+                self.assertTrue(all(f["capability"]==state and "value" not in f for f in signal["fields"]))
+
+    def test_v4_record_statuses_and_negative_replies_do_not_authorize_numbers(self):
+        for pid, record in zip(("6D","70"), pressure_rows()[-2:]):
+            variants = [(pressure_rows()[:4],"not_present"),
+                        ([*pressure_rows()[:4], {"ecu":"12","request":record["request"],"error":"PRIVATE"}],"present_no_valid_reply"),
+                        ([*pressure_rows()[:4],row(record["request"],"")],"present_no_valid_reply"),
+                        ([*pressure_rows()[:4],row(record["request"],"not hex")],"present_no_valid_reply"),
+                        ([*pressure_rows(),record],"ambiguous_duplicate"),
+                        ([*pressure_rows()[:4],row(record["request"],"7f0131")],"present_reply_bytes")]
+            for records, status in variants:
+                signal = self.signals(records)[pid]
+                self.assertEqual(signal["record_status"], status)
+                self.assertTrue(all("value" not in f for f in signal["fields"]))
+                self.assertNotIn("reply",signal)
+                if status=="present_reply_bytes": self.assertEqual(signal["nrc"],"31")
+
+    def test_privacy_wrong_ecus_and_unallowlisted_pressure_sources_are_filtered(self):
+        secret = "PRIVATE-VIN-SERIAL-CREDENTIAL-NAVIGATION"
+        records = pressure_rows()
+        records[-2].update(metadata=secret,error=secret,hostname=secret)
+        records[-1]["reply"] += secret.encode().hex()
+        records += [row("016d",pressure_rows()[-2]["reply"],"18"), row("016e",secret.encode().hex()),
+                    row("016f",secret.encode().hex()), row("22f190",secret.encode().hex())]
+        result = discovery.report(records,{"vin":secret,"gateway_ip":"169.254.10.3"},profile="standard-pressure")
+        encoded = json.dumps(result)
+        for private in (secret,secret.encode().hex(),"169.254.10.3","f190"):
+            self.assertNotIn(private,encoded)
+        signals = {s["pid"]:s for s in result["signals"]}
+        self.assertIn("reply",signals["6D"])
+        self.assertNotIn("reply",signals["70"])
+        self.assertTrue(all("value" not in f for f in signals["70"]["fields"]))
+        records = pressure_rows()[:4]+[row("016d",pressure_rows()[-2]["reply"],"18")]
+        self.assertEqual(self.signals(records)["6D"]["record_status"],"not_present")
+
+    @patch("discover_diesel.time.sleep")
+    @patch("discover_diesel.exchange")
+    @patch("discover_diesel.socket.create_connection")
+    def test_policy_is_exactly_24_read_only_requests_with_pressure_priority(self, connect, exchange, sleep):
+        replies = {bytes.fromhex(r["request"]):r["reply"] for r in pressure_rows()[4:]}
+        def answer(connection, ecu, request):
+            if request==bytes.fromhex("22f150"): return {"reply":"7f2231"}
+            if request[1] in (0,0x20,0x40,0x60): return {"reply":bytes((0x41,request[1])).hex()+"ffffffff"}
+            return {"reply":replies.get(request,bytes((0x41,request[1])).hex()+"00"*discovery.WIDTHS.get(request[1],1))}
+        exchange.side_effect = answer
+        records = discovery.collect("169.254.10.2","169.254.10.3",profile="standard-pressure")
+        self.assertEqual(len(records),24)
+        self.assertEqual({(int(r["ecu"],16),bytes.fromhex(r["request"])) for r in records},discovery.policy("standard-pressure")[3])
+        self.assertEqual([r["request"] for r in records[6:13]],["01 6d","01 70","01 69","01 2c","01 2d","01 78","01 79"])
+        self.assertEqual(connect.call_count,24)
+        self.assertEqual(sleep.call_count,24)
+        self.assertTrue(all(c.args==(0.2,) for c in sleep.call_args_list))
+        self.assertTrue(all(c.kwargs["source_address"]==("169.254.10.2",0) for c in connect.call_args_list))
+        self.assertTrue(all(bytes.fromhex(r["request"])[0] in (1,0x22) for r in records))
+
+    @patch("discover_diesel.time.sleep")
+    @patch("discover_diesel.exchange")
+    @patch("discover_diesel.socket.create_connection")
+    def test_collector_never_probes_unadvertised_or_unknown_pressure(self, connect, exchange, sleep):
+        for fourth, expected in (("416000080000",{"01 6d"}),("416000010000",{"01 70"}),
+                                  ("416000000000",set()),("41600009",set()),("7f0131",set())):
+            def answer(connection,ecu,request):
+                return {"reply":{"0100":"410000000001","0120":"412000000001","0140":"414000000001",
+                                 "0160":fourth}.get(request.hex(),"7f0131")}
+            exchange.side_effect = answer
+            records = discovery.collect("169.254.10.2","169.254.10.3",profile="standard-pressure")
+            self.assertEqual({r["request"] for r in records if r["request"] in ("01 6d","01 70")},expected)
+
+    def test_slow_session_prioritizes_pressure_and_stays_within_45_seconds(self):
+        clock = [0.0]
+        def advance(seconds): clock[0] += seconds
+        def answer(connection,ecu,request):
+            advance(6)
+            if request==bytes.fromhex("016d"): return {"reply":pressure_rows()[-2]["reply"]}
+            return {"reply":bytes((0x41,request[1])).hex()+"ffffffff" if request[0]==1 else "7f2231"}
+        with patch("discover_diesel.time.monotonic",side_effect=lambda:clock[0]), \
+             patch("discover_diesel.time.sleep",side_effect=advance), \
+             patch("discover_diesel.exchange",side_effect=answer), patch("discover_diesel.socket.create_connection") as connect:
+            records = discovery.collect("169.254.10.2","169.254.10.3",profile="standard-pressure")
+        self.assertEqual(connect.call_count,7)
+        self.assertLessEqual(clock[0],45)
+        self.assertEqual(records[-1]["request"],"01 6d")
+        signals = self.signals(records)
+        self.assertEqual(signals["6D"]["fields"][1]["value"],900)
+        self.assertEqual(signals["70"]["record_status"],"not_present")
+
+    def test_plan_and_replay_are_offline_and_output_remains_private_exclusive(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            source,output = path/"synthetic.jsonl",path/"public.json"
+            source.write_text("\n".join(json.dumps(r) for r in pressure_rows()))
+            for args in (("--plan",),("--replay",str(source),"--out",str(output))):
+                with patch.object(sys,"argv",[str(TOOL),"--profile","standard-pressure",*args]), \
+                     patch("discover_diesel.socket.create_connection") as connect, redirect_stdout(io.StringIO()):
+                    discovery.main()
+                connect.assert_not_called()
+            original = output.read_bytes()
+            self.assertEqual(output.stat().st_mode&0o777,0o600)
+            result = json.loads(original)
+            self.assertEqual(result["evidence"],"replay_unverified_provenance")
+            self.assertEqual(result["format"],"idrive-diesel-discovery-v4")
+            with patch.object(sys,"argv",[str(TOOL),"--profile","standard-pressure","--replay",str(source),"--out",str(output)]), \
+                 self.assertRaises(SystemExit): discovery.main()
+            self.assertEqual(output.read_bytes(),original)
+
+    @patch("discover_diesel.time.sleep")
+    @patch("discover_diesel.exchange")
+    @patch("discover_diesel.socket.create_connection")
+    def test_failed_pressure_reads_are_not_retried_and_do_not_hide_the_other_group(self, connect, exchange, sleep):
+        for failure in ("7f0131",OSError("PRIVATE ERROR")):
+            def answer(connection,ecu,request):
+                if request==bytes.fromhex("016d"):
+                    if isinstance(failure,OSError): raise failure
+                    return {"reply":failure}
+                if request==bytes.fromhex("0170"): return {"reply":pressure_rows()[-1]["reply"]}
+                return {"reply":bytes((0x41,request[1])).hex()+"ffffffff" if request[0]==1 else "7f2231"}
+            exchange.side_effect = answer
+            records = discovery.collect("169.254.10.2","169.254.10.3",profile="standard-pressure")
+            self.assertEqual(sum(r["request"]=="01 6d" for r in records),1)
+            self.assertEqual(sum(r["request"]=="01 70" for r in records),1)
+            signals = self.signals(records)
+            self.assertTrue(all("value" not in f for f in signals["6D"]["fields"]))
+            self.assertEqual(signals["70"]["fields"][1]["value"],201.3125)
+            self.assertNotIn("PRIVATE",json.dumps(signals))
 
 
 if __name__ == "__main__":
