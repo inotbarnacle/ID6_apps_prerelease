@@ -11,7 +11,7 @@ application ZIPs are separate maintainer build artifacts.
 | Area | Current evidence and gap | Action |
 | --- | --- | --- |
 | Native HMI / RHMI | C++98 plugins use private framework ABI declarations and generated XML/image archives. Full-screen layouts and workers are separate compatibility concerns. | Keep ECU changes independent of ABI/layout changes; no new firmware approval. |
-| QNX / renderer | `native/build.sh` requires licensed SDP 6.5 and private framework link inputs. Framework fingerprint comparison checks static imports, not runtime behavior. | Host validation first. Obtain SDP through [QNX](https://www.qnx.com/products/evaluation/) or an existing authorized entitlement; do not use key generators or unauthorized archives mentioned in older project instructions. |
+| QNX / renderer | `native/build.sh` requires licensed SDP 6.5 and private framework link inputs. Framework fingerprint comparison checks static imports, not runtime behavior. | Host validation first. Ask [QNX licensing/support](https://qnx.software/en/contact) about a legitimate legacy SDP 6.5 entitlement. The current SDP 8 evaluation does not supply this toolchain. Do not use key generators or unauthorized archives mentioned in older project instructions. |
 | HSFZ / gateway | Shared link filters target ECU and response prefix, bounds replies and deadlines, and discovers a unique wired link-local gateway. | Reuse the link and diagnostic lease. Do not scan arbitrary addresses or DIDs. |
 | MOST / standalone | Current MOST tunnel accepts DME only; EGS transmission temperature requires HSFZ. A worker that has connected HSFZ does not subsequently switch to MOST. | Coordinate with [PR #143](https://github.com/inotbarnacle/iDriveDeck/pull/143); do not duplicate its multi-ECU tunnel work. |
 | Ownership / lifecycle | Loopback leases coordinate project workers, not external tools. Parent monitoring, signals and MOST watchdogs bound worker lifetime. Plugin `ECHILD` handling and polling remain under review upstream. | PR #143 and [PR #50](https://github.com/inotbarnacle/iDriveDeck/pull/50) cover lifecycle changes. Close other diagnostic clients for parked validation. |
@@ -66,16 +66,31 @@ This description is not diagnostic confirmation.
   [voioo/iDriveDeck](https://github.com/voioo/iDriveDeck), remotes, issue and PR
   investigation, source architecture audit and compatibility gap analysis.
 - Development branch: `diesel/obd-capabilities`.
-- In progress: host baseline, shared OBD capability gate, BoostDeck/WarmDeck
-  integration and simulated unsupported/malformed/timeout regressions.
-- Next: sanitized bounded discovery report, staged F15 validation procedure,
-  focused draft PRs, ShiftDeck configuration and fault display audit.
+- Implemented: shared OBD capability gate, BoostDeck/WarmDeck integration,
+  saturated diesel MAP handling and unsupported/malformed/timeout regressions.
+  `make -C source/native test` passes: eight C/C++ test programs and
+  88 Python tests (31 app, 23 one-shot MOST, 26 transport, 8 capability tests).
+  Existing probe/head-unit tests (2 + 6) pass. Clang AddressSanitizer and
+  UndefinedBehaviorSanitizer checks pass for core decoders and capability
+  logic; Clang static analysis reports no finding in the new helper.
+- Discovery and staged F15 validation are in [draft PR #201](https://github.com/inotbarnacle/iDriveDeck/pull/201)
+  on independent branch `diesel/read-only-discovery`; 11 new discovery tests and
+  8 existing tool tests pass, including privacy and live-request bounds.
+  [Fork CI](https://github.com/voioo/iDriveDeck/actions/runs/45976265810) passed
+  for discovery commit `d78b709`.
+- Next: finish telemetry fork CI, open its draft PR, then ShiftDeck
+  configuration and fault display audit. Keep lifecycle/MOST work coordinated
+  with #143/#138/#141 rather than replacing their pending fixes.
 - Vehicle status: no vehicle connection, SSH, ECU requests, installation,
   head-unit restart or QNX build has been performed.
 - Constraints: no legitimate QNX SDK/private framework inputs or physical
   captures have been supplied. Offline work continues. Missing verified DPF
   definitions prevent an honest functional DPF dashboard for this vehicle.
-- Pull requests opened by this effort: none yet.
+- Community coordination: [comment on #196](https://github.com/inotbarnacle/iDriveDeck/issues/196#issuecomment-7215061142)
+  asks the existing DPFDeck contributor to align signal/evidence and worker
+  responsibilities before a competing implementation. No reply assumed.
+- Pull requests opened by this effort: [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201)
+  (draft; discovery/reporting and validation plan).
 
 Retain separate evidence levels: physical vehicle, recorded diagnostics,
 simulation, host only, experimental, unsupported. Never promote one to another

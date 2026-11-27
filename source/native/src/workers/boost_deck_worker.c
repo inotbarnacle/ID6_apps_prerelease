@@ -3,6 +3,7 @@
 #include "diagnostic_lease.h"
 #include "gauge_coexistence.h"
 #include "diag_link.h"
+#include "obd_capabilities.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <math.h>
@@ -107,22 +108,6 @@ static int read_pid(struct diag_link *link, unsigned char pid, double *value) {
     return decoded;
 }
 
-/* PID 40 advertises support for 41 through 60. Some DMEs stay silent on
- * an unsupported fuel-rate request, which also interrupts other HSFZ reads. */
-static int read_fuel_rate(struct diag_link *link, int *check_support, int *supported, double *value) {
-    if (*check_support) {
-        const unsigned char query[]={0x01,0x40}, prefix[]={0x41,0x40};
-        unsigned char reply[16];
-        unsigned negative;
-        int n=diag_link_request(link,0x12,query,sizeof query,prefix,sizeof prefix,
-                                reply,sizeof reply,500,&negative);
-        *check_support=0;
-        if (n==6) *supported=(reply[5] & 0x04)!=0;
-        if (n==-1) return -1;
-    }
-    return *supported ? read_pid(link,0x5e,value) : 0;
-}
-
 static int send_frame(int sock, struct sockaddr_in *dest, bd_frame *f, uint64_t *observed) {
     char packet[BD_MAX_PACKET];
     uint64_t now = bd_mono_ms();
@@ -165,7 +150,7 @@ int main(int argc, char **argv) {
     uint64_t due[sizeof dids/sizeof dids[0]] = {0};
     uint64_t failed_until[sizeof dids/sizeof dids[0]] = {0};
     int ethanol=0, diesel=0;
-    int check_fuel_support=1, fuel_supported=1;
+    struct obd_capabilities capabilities = {{0}, {0}, 0};
     uint64_t next_hud=0;
     unsigned selected=(1u << 8) - 1;
     uint64_t next_ethanol=0;
@@ -318,8 +303,16 @@ int main(int argc, char **argv) {
                     continue;
                 }
                 obd_due[i]=start+2000;
-                rc = k == BD_FUEL_RATE ? read_fuel_rate(&link,&check_fuel_support,&fuel_supported,&v) :
-                                         read_pid(&link,obd_pids[i].pid,&v);
+                /* A DDE may reset the connection on an unsupported PID, including
+                 * oil temperature. Never probe an unadvertised diesel channel.
+                 * Keep legacy gasoline fixed-DID/fallback selection unchanged. */
+                rc = diesel || k == BD_OIL_TEMP || k == BD_FUEL_RATE ?
+                     obd_pid_advertised(&capabilities,&link,obd_pids[i].pid) : 1;
+                if (rc == OBD_CAPABILITY_PENDING) {
+                    obd_due[i] = bd_mono_ms()+100;
+                    continue;
+                }
+                if (rc == 1) rc = read_pid(&link,obd_pids[i].pid,&v);
                 if (rc == -3) { obd_failed_until[i]=bd_mono_ms()+read_retry_ms; continue; }
                 if (rc < 0) {
                     diag_link_drop(&link);
@@ -332,6 +325,12 @@ int main(int argc, char **argv) {
                     break;
                 }
                 if (!rc) { f.valid &= ~(1u<<k); continue; }
+                /* The 8-bit standard MAP saturates at 255 kPa absolute. It
+                 * cannot establish the real diesel manifold pressure there. */
+                if (diesel && (k == BD_BOOST || k == BD_MAP) && v >= 255) {
+                    f.valid &= ~(1u<<k);
+                    continue;
+                }
                 did_values &= ~(1u << k);
                 if (k == BD_BOOST) {
                     if (!(f.valid & (1u<<BD_BARO)) || bd_mono_ms()-observed[BD_BARO]>=BD_TEMP_STALE_MS)

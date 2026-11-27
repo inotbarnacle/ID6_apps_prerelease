@@ -2,16 +2,21 @@
 #include "diag_link.h"
 #include "gauge_coexistence.h"
 #include "gauge_core.h"
+#include "obd_capabilities.h"
 #include "warm_frame.h"
 #include <poll.h>
 #include <stdlib.h>
 #include <string.h>
 
-static int temperature(struct diag_link *link, unsigned signal, double *out) {
+static int temperature(struct diag_link *link, struct obd_capabilities *caps, unsigned signal, double *out) {
     static const unsigned char requests[][3]={{1,0x5c,0},{1,5,0},{0x22,0xda,0x12}};
     static const unsigned char prefixes[][3]={{0x41,0x5c,0},{0x41,5,0},{0x62,0xda,0x12}};
     unsigned char reply[16];
     unsigned negative;
+    if (signal == WARM_OIL) {
+        const int supported = obd_pid_advertised(caps,link,0x5c);
+        if (supported != 1) return supported;
+    }
     const unsigned length=signal==WARM_TRANS ? 3 : 2;
     const int n=diag_link_request(link,signal==WARM_TRANS ? 0x18 : 0x12,
         requests[signal],length,prefixes[signal],length,reply,sizeof reply,450,&negative);
@@ -24,6 +29,7 @@ static int temperature(struct diag_link *link, unsigned signal, double *out) {
 int main(int argc, char **argv) {
     struct diag_link_cfg cfg={0,6801,DIAG_AUTO,DIAG_LOOP,"warmdeck",1};
     struct diag_link link;
+    struct obd_capabilities capabilities = {{0}, {0}, 0};
     unsigned cycles=0, count=0, next=0;
     for (int i=1;i<argc;++i) {
         if (!strcmp(argv[i],"--host") && i+1<argc && !cfg.host) cfg.host=argv[++i];
@@ -55,7 +61,7 @@ int main(int argc, char **argv) {
                     frame.sample[signal]=0;
                     continue;
                 }
-                const int status=temperature(&link,signal,&frame.celsius[signal]);
+                const int status=temperature(&link,&capabilities,signal,&frame.celsius[signal]);
                 frame.sample[signal]=status==1 ? bd_mono_ms() : 0;
                 if (status==-1) {
                     diag_link_drop(&link);

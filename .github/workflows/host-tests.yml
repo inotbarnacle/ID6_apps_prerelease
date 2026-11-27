@@ -1,0 +1,32 @@
+name: Host diagnostic tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        compiler: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and test workers against simulated HSFZ and MOST
+        run: make -C source/native test CC=${{ matrix.compiler }}
+      - name: Read-only collection tool tests
+        run: |
+          python3 -B source/tools/test_probe_signals.py
+          python3 -B source/tools/test_capture_headunit.py
+  memory:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decoder and capability memory checks
+        run: |
+          make -C source/native build/test-core build/test-obd-capabilities CC=clang CFLAGS='-O1 -g -std=c99 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer'
+          source/native/build/test-core
+          source/native/build/test-obd-capabilities

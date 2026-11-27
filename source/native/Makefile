@@ -2,8 +2,8 @@ CC ?= cc
 PYTHON ?= python3
 CFLAGS ?= -O2 -std=c99 -Wall -Wextra -Werror
 CORE = src/common/gauge_core.c
-CORE_LINK = $(CORE) src/common/diag_link.c
-HEADERS = src/common/gauge_core.h src/common/boost_signals.def src/ipc/drive_frame.h src/common/diagnostic_lease.h src/common/diag_link.h src/common/gauge_coexistence.h
+CORE_LINK = $(CORE) src/common/diag_link.c src/common/obd_capabilities.c
+HEADERS = src/common/gauge_core.h src/common/boost_signals.def src/ipc/drive_frame.h src/common/diagnostic_lease.h src/common/diag_link.h src/common/gauge_coexistence.h src/common/obd_capabilities.h
 # Every host worker carries the HSFZ-then-MOST link, with a fake DSI selected by ID6_FAKE_MOST.
 MOST = src/common/most/most_link.c src/common/most/dsi_client.c src/common/most/most_proto.c src/common/most/dsi_bind.c
 MOST_HEADERS = src/common/most/most_link.h src/common/most/dsi_client.h src/common/most/most_proto.h src/common/most/dsi_abi.h
@@ -57,6 +57,9 @@ build/exhaust-flap: src/workers/exhaust_flap_worker.c $(WORKER_COMMON) | build
 build/test-core: tests/test_core.c $(CORE) $(HEADERS) | build
 	$(CC) $(CFLAGS) -Isrc/common $(filter %.c,$^) -lm -o $@
 
+build/test-obd-capabilities: tests/test_obd_capabilities.c src/common/obd_capabilities.c $(HEADERS) | build
+	$(CC) $(CFLAGS) -Isrc/common $(filter %.c,$^) -o $@
+
 build/test-most: tests/test_most.c $(MOST) $(FAKE_DSI) $(MOST_HEADERS) | build
 	$(CC) $(CFLAGS) -pthread -DMOST_HOST -Isrc/common -Itests $(filter %.c,$^) -o $@
 
@@ -87,7 +90,8 @@ build/test-boost-preferences: tests/test_boost_preferences.cpp build/boost-test-
 launch-assets:
 	$(PYTHON) ../tools/launch_art.py
 
-test: build/xdrive-control build/boost-deck build/shift-deck build/mhd-maps build/engine-codes build/test-core build/test-most build/test-diag-link build/bootmod3 build/exhaust-flap build/test-launch-timer build/test-launch-records build/test-boost-preferences build/test-warm-progress build/warmdeck-collector build/mgflasher build/hybriddeck-collector
+test: build/xdrive-control build/boost-deck build/shift-deck build/mhd-maps build/engine-codes build/test-core build/test-obd-capabilities build/test-most build/test-diag-link build/bootmod3 build/exhaust-flap build/test-launch-timer build/test-launch-records build/test-boost-preferences build/test-warm-progress build/warmdeck-collector build/mgflasher build/hybriddeck-collector
+	./build/test-obd-capabilities
 	./build/test-warm-progress
 	./build/test-boost-preferences
 	./build/test-launch-timer
@@ -98,3 +102,4 @@ test: build/xdrive-control build/boost-deck build/shift-deck build/mhd-maps buil
 	$(PYTHON) -B tests/test_drive_apps.py
 	$(PYTHON) -B tests/test_oneshot_most.py
 	$(PYTHON) -B tests/test_transport.py
+	$(PYTHON) -B tests/test_diesel_capabilities.py

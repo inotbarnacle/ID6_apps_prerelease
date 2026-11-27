@@ -40,6 +40,46 @@ The original nine dashboard positions can also select spark advance (`0E`), abso
 
 The Diesel profile uses `01 05` coolant, `01 0F` intake air, `01 23` direct-injection rail gauge pressure, and `01 0B` manifold pressure minus `01 33` ambient pressure for boost. It retains the existing EGS transmission-temperature query over HSFZ. AFR, timing, oil pressure, and active ethanol require separate DDE-specific evidence. The standard PIDs can also be selected individually where available. A B47 or N57 parked capture is still needed to verify what each DDE supports.
 
+### Diesel capabilities and pressure limits
+
+BoostDeck's Diesel profile now checks Mode 01 supported-PID bitmaps before
+polling a selected standard channel. Oil temperature and fuel rate use the same
+gate in the gasoline profile; other gasoline DIDs and fallbacks retain their
+existing selection. WarmDeck checks oil support before requesting `01 5C`.
+This avoids the unsupported oil request reported to reset the DDE741 connection
+in [issue #162](https://github.com/inotbarnacle/iDriveDeck/issues/162).
+
+The shared gate follows continuation bits through `01 00`, `01 20` and `01 40`,
+one bitmap read per call. Only an exact positive reply with four bitmap bytes
+enables a channel. A missing bit leaves it unavailable. Unknown, refused,
+truncated or lost bitmap replies do not enable speculative reads; failed
+discovery backs off for five seconds. Successful bitmaps are cached for this
+worker's single DME/endpoint, including across short diagnostic leases. Reopening
+the app starts a fresh cache. This is PID capability detection, not engine-family
+identification. Advertisement does not validate a reading's meaning or accuracy;
+the existing decoders and freshness rules still apply.
+
+Discovery can delay the first oil reading by a few polling cycles. Unsupported
+oil remains blank in both apps, and WarmDeck can still report the other fluids
+independently. It cannot give a complete three-fluid warm-up estimate without oil.
+No dynamic DID or diagnostic-session change is sent by this gate. The project's
+local lease cannot exclude an external OBD tester: close other diagnostic tools
+before collecting parked evidence.
+
+Standard MAP PID `0B` has only an 8-bit, 0–255 kPa **absolute** range. The Diesel
+profile leaves both the MAP and derived boost gauges unavailable at 255 kPa;
+subtracting measured barometric pressure cannot recover pressure above that
+ceiling. Readings below the ceiling still do not establish full-range N57 boost
+support. PID `23` is **rail gauge pressure** in 0.1 bar/count (for example synthetic
+`41 23 27 10` is 1000 bar), independent of the gasoline `56D7` conversion.
+
+N57/DDE741 oil source `4517` and temporary `F303` evidence in
+[#21](https://github.com/inotbarnacle/iDriveDeck/issues/21) and #162 does not
+establish a fixed read-only oil DID. The worker never defines or reads `F303` for
+diesel oil. DPF, requested boost/rail, EGR and SCR need independently validated
+ECU-specific definitions. See the [diesel investigation](DIESEL-DEVELOPMENT.md)
+for the evidence matrix and overlapping upstream work.
+
 
 ## MHD+ setting display
 

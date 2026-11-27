@@ -5,7 +5,12 @@ Run commands from `source/`. Host tests use a C compiler, Make, and Python 3. No
 ```sh
 make -C native test
 python3 tools/test_probe_signals.py
+python3 tools/test_capture_headunit.py
 ```
+
+The host CI runs these tests with GCC and Clang and checks the decoder and OBD
+capability cache with AddressSanitizer and UndefinedBehaviorSanitizer. Synthetic
+HSFZ/MOST responses do not establish QNX ABI or physical vehicle compatibility.
 
 ## Native payload
 
