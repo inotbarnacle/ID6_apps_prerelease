@@ -509,7 +509,10 @@ been queried with this profile.
    result as proof of the identifier's meaning. `F150` alone does not establish
    exact N57 variant, DDE family, HWEL/SWFL or EGS software. Obtain those from an
    authorized inventory report, redact VINs and serials, and correlate the ECU
-   address and evidence source. Do not invent additional identity DIDs.
+   address and evidence source. The separate [standard identity evidence tool](ECU-IDENTITY.md)
+   can collect three documented hardware/software DIDs for private review after
+   approval of its own six-read plan. It does not decode BMW records or replace
+   an authorized HWEL/SWFL inventory. Do not invent additional identity DIDs.
 5. Enabling head-unit SSH requires a **separate explicit approval**. If it is
    already authorized and enabled, use `capture_headunit.py` to collect hashes,
    exact firmware, architecture and LayerManager screen 0. It supports split

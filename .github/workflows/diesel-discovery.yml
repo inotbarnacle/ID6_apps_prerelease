@@ -21,6 +21,8 @@ jobs:
           python3 -B source/tools/discover_diesel.py --plan --profile standard-dpf
           python3 -B source/tools/discover_diesel.py --plan --profile standard-aftertreatment
           python3 -B source/tools/discover_diesel.py --plan --profile standard-scr
+          python3 -B source/tools/collect_ecu_identity.py --plan
+          python3 -B source/tools/test_collect_ecu_identity.py
           python3 -B source/tools/test_discover_diesel.py
           python3 -B source/tools/test_discover_scr.py
           python3 -B source/tools/test_probe_signals.py
