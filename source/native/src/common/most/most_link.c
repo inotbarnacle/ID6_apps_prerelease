@@ -47,6 +47,7 @@ struct most_ctx {
     int disconnected, thread_exited, closing;
     int waiting, reply_ready, pending_seen;
     uint8_t req[REQ_MAX];
+    uint8_t ecu;
     size_t req_len;
     uint8_t *resp;           /* the waiter's buffer; NULL once it must not be written */
     size_t resp_cap;         /* min(caller's cap, MOST_INNER_MAX) */
@@ -189,12 +190,18 @@ static void h_report(void *u, uint16_t fkt, uint8_t op, const uint8_t *p, size_t
     static uint8_t inner[MOST_INNER_MAX];   /* static: small DSI thread stack; reports are serialized */
     size_t ilen = 0;
     enum uds_result r;
-    (void)op;
     pthread_mutex_lock(&g_mu);
-    if (!m->waiting || m->reply_ready || fkt != MOST_FKTID || n < 2) goto out;
-    if (n >= 5 && p[2] == 0x7F && p[3] == 0x31 && p[4] == 0x78) { m->pending_seen = 1; wake(); goto out; }
-    if (n >= 4 && p[2] == 0x7F && p[3] == 0x31) { m->route_refused = 1; wake(); goto out; }
-    if (most_tunnel_parse(p + 2, n - 2, MOST_ROUTINE, inner, m->resp_cap, &ilen) != 0) goto out;
+    if (m->closing || !m->waiting || m->reply_ready || fkt != MOST_FKTID || op != 0x0C ||
+        n < 5 || p[0] != MOST_INSTANCE || p[1] != MOST_DIAG_SRC) goto out;
+    if (p[2] == 0x7F && p[3] == 0x31) {
+        if (n != 5) goto out;
+        if (p[4] == 0x78) m->pending_seen = 1;
+        else m->route_refused = 1;
+        wake(); goto out;
+    }
+    if (n < 9 || p[6] != m->ecu ||
+        most_tunnel_parse(p + 2, n - 2, MOST_ROUTINE, inner, m->resp_cap, &ilen) != 0 ||
+        ilen != n - 9) goto out;
     r = uds_check(m->req, m->req_len, inner, ilen);
     if (r == UDS_MISMATCH) goto out;   /* a reply to some other request */
     if (r == UDS_PENDING) { m->pending_seen = 1; wake(); goto out; }
@@ -288,7 +295,7 @@ enum most_open_rc most_open(int timeout_ms)
     pthread_mutex_unlock(&g_mu);
     if (!have_client) return MOST_NO_SERVER;
 
-    dsi_register_target();
+    if (dsi_register_target() != 0) return MOST_NO_SERVER;
     deadline_in(&dl, timeout_ms);
     pthread_mutex_lock(&g_mu);
     while (!m->have_target && !m->disconnected && !m->thread_exited)
@@ -318,6 +325,7 @@ enum most_rc most_request_wait(uint8_t ecu, const uint8_t *uds, size_t uds_len,
     }
     memcpy(m->req, uds, uds_len);
     m->req_len = uds_len;
+    m->ecu = ecu;
     m->resp = resp;
     m->resp_cap = resp_cap < MOST_INNER_MAX ? resp_cap : MOST_INNER_MAX;
     m->resp_len = resp_len;
@@ -370,6 +378,13 @@ int most_close(void)
 {
     struct most_ctx *m = &g_most;
     if (!m->thr_running) return g_stuck ? -1 : 0;
+    /* Invalidate the waiter before a library unregister can block. */
+    pthread_mutex_lock(&g_mu);
+    m->closing = 1;
+    m->resp = NULL;
+    m->resp_len = NULL;
+    wake();
+    pthread_mutex_unlock(&g_mu);
     /* Target, then client, then stop. Each sends nothing without a MOST client. */
     dsi_unregister_target();
     dsi_unregister_client();

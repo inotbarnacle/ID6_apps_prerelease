@@ -1,0 +1,6 @@
+N57 measured-value definitions adapted from nbtevo-diag (Apache-2.0).
+Source: https://github.com/FreZZZeR/nbtevo-diag
+Catalog: nbtevo_diag/signals.py, commit 4e85c42
+Derived from factory ISTA d73n57*.prg measured-value tables.
+Changes: generated C table and native dynamic-DID reader for ID6 Apps.
+No proprietary factory files or personal vehicle captures are included.

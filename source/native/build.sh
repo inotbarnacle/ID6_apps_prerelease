@@ -21,10 +21,11 @@ ntoarm-gcc -dumpmachine
 c() { qcc -V4.4.2,gcc_ntoarmv7le -Wc,-std=c99 -Wall -Wextra -Werror "$@"; }
 cxx() { qcc -V4.4.2,gcc_ntoarmv7le_gpp -lang-c++ -Wc,-std=gnu++98 -Wall -Wextra -Werror "$@"; }
 c -Isrc/common -O2 -fPIC -c src/common/gauge_core.c -o out/core.o
+c -Isrc/common -O2 -fPIC -c src/common/n57.c -o out/n57.o
 
 # Every worker carries the HSFZ-then-MOST link. dlopen and pthreads are in QNX libc; the DSI library is
 # opened only at run time, so nothing private is linked.
-worker() { c -Isrc/common -Isrc/ipc -Isrc/workers -O2 "$@" src/common/diag_link.c src/common/most/*.c -Lout -lm -lsocket; }
+worker() { c -Isrc/common -Isrc/ipc -Isrc/workers -O2 "$@" src/common/n57.c src/common/diag_link.c src/common/most/*.c -Lout -lm -lsocket; }
 
 # Workers
 worker src/workers/boost_deck_worker.c src/workers/boost_tone.c out/core.o -o out/boostdeck-collector-qnx
@@ -45,13 +46,13 @@ worker src/workers/warm_deck_worker.c out/core.o -o out/warmdeck-collector-qnx
 c -O2 -static fileops.c -o out/gaugedeck-fileops
 
 # Plugins
-cxx -Isrc/common -Isrc/ipc -Isdk -O2 -fno-strict-aliasing -fno-exceptions -fPIC -shared src/plugins/boost_deck.cpp out/core.o \
+cxx -Isrc/common -Isrc/ipc -Isdk -O2 -fno-strict-aliasing -fno-exceptions -fPIC -shared src/plugins/boost_deck.cpp out/core.o out/n57.o \
     "$frameworks/libAppFramework.A.so" "$frameworks/libCoreFramework.A.so" -Lout -lm -lsocket \
     -Wl,--allow-shlib-undefined -Wl,-soname,libBoostDeck.so -o out/libBoostDeck.so
 cxx -Isrc/common -Isrc/ipc -Isdk -O2 -fno-exceptions -fPIC -shared src/plugins/mhd_maps.cpp \
     "$frameworks/libAppFramework.A.so" "$frameworks/libCoreFramework.A.so" -Lout \
     -Wl,--allow-shlib-undefined -Wl,-soname,libMhdMaps.so -o out/libMhdMaps.so
-cxx -Isrc/common -Isrc/ipc -Isdk -O2 -fno-exceptions -fPIC -shared src/plugins/shift_deck.cpp out/core.o \
+cxx -Isrc/common -Isrc/ipc -Isdk -DNATIVE_SHIFT_SMOOTH -O2 -fno-exceptions -fPIC -shared src/plugins/shift_deck.cpp out/core.o out/n57.o \
     "$frameworks/libAppFramework.A.so" "$frameworks/libCoreFramework.A.so" -Lout -lm -lsocket \
     -Wl,--allow-shlib-undefined -Wl,-soname,libShiftDeck.so -o out/libShiftDeck.so
 cxx -Isrc/common -Isrc/ipc -Isdk -O2 -fno-strict-aliasing -fno-exceptions -fPIC -shared src/plugins/engine_codes.cpp out/core.o \
@@ -86,6 +87,11 @@ cxx -Isrc/common -Isrc/ipc -Isdk -O2 -fno-exceptions -fPIC -shared src/plugins/h
     "$frameworks/libAppFramework.A.so" "$frameworks/libCoreFramework.A.so" -Lout -lsocket \
     -Wl,--allow-shlib-undefined -Wl,-soname,libHybridDeck.so -o out/libHybridDeck.so
 
+# PowerDeck uses the identity-pinned collector on a separate IPC port.
+cxx -Isrc/common -Isrc/ipc -Isrc/plugins -Isrc/workers -Isdk -O2 -fno-exceptions -fPIC -shared src/plugins/power_deck.cpp out/core.o out/n57.o \
+    "$frameworks/libAppFramework.A.so" "$frameworks/libCoreFramework.A.so" -Lout -lm -lsocket \
+    -Wl,--allow-shlib-undefined -Wl,-soname,libPowerDeck.so -o out/libPowerDeck.so
+
 # Optional HUD build against the licensed NBT-AAD milestone-7 source.
 if test -n "${NBTAAD_SOURCE:-}"; then
     aad="$NBTAAD_SOURCE"
@@ -95,7 +101,7 @@ if test -n "${NBTAAD_SOURCE:-}"; then
     done
     qcc -V4.4.2,gcc_ntoarmv7le_gpp -lang-c++ -Wc,-std=gnu++0x -O2 -D_QNX_SOURCE \
         -Isrc/common -Isrc/ipc -Isrc/workers -I"$aad" src/workers/hud_shape.cpp "$aad/cluster/hud_terminal.cpp" "$aad/most/client.cpp" "$aad/dsi_client.cpp" \
-        out/hud-*.o out/core.o -Lout -lsocket -lm -o out/hud-shape-qnx
+        out/hud-*.o out/core.o out/n57.o -Lout -lsocket -lm -o out/hud-shape-qnx
     cxx -Isrc/common -Isdk -O2 -fno-exceptions -fPIC -shared src/plugins/hud_menu.cpp \
         "$frameworks/libAppFramework.A.so" "$frameworks/libCoreFramework.A.so" -Lout -lsocket \
         -Wl,--allow-shlib-undefined -Wl,-soname,libHudTest.so -o out/libHudTest.so

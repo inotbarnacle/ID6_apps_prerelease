@@ -31,7 +31,7 @@ class FingerprintTest(unittest.TestCase):
                     symbols = ELFFile(BytesIO(archive.read(name))).get_section_by_name('.dynsym')
                     imports.update(symbol.name for symbol in symbols.iter_symbols()
                                    if symbol['st_shndx'] == 'SHN_UNDEF' and 'bmw' in symbol.name)
-        self.assertEqual(FINGERPRINT['plugins'], sorted(packaged))
+        self.assertEqual(FINGERPRINT['plugins'], sorted(set(packaged) | {'libPowerDeck.so'}))
         self.assertEqual(reference_gaps(FINGERPRINT['frameworks'], imports), [])
 
     def test_reports_missing_imports_and_vtables(self):

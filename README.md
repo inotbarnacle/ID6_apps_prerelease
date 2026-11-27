@@ -28,6 +28,11 @@ Full-screen ID6 adds **My Vehicle → ID6 App Updates**. That menu will be used 
 
 ## Features
 
+This development branch adds an identity-pinned N57 DDE profile and optional
+PowerDeck for torque/power recording and saved RPM curves. See
+[N57 and PowerDeck](source/docs/N57.md) for scope, signal limits, build and
+installation instructions. The upstream BoostDeck interface stays single-page.
+
 
 - **BoostDeck** has nine configurable gauges. Open **OPTIONS → BoostDeck settings** to set pressure (psi, bar, or kPa), speed (mph or km/h), and temperature (°F or °C) independently, or switch between bars and circular dials. Picking a value returns to settings and shows the saved choice. **Configure gauges** and **Engine profile** are in the same menu. Gasoline and diesel keep separate gauge assignments.
 - **BoostDeck alerts** use fresh vehicle readings while the dashboard is open. Set separate coolant and oil-temperature limits from 220–260 °F in 5 °F steps, or a low oil-pressure limit from 5–25 psi in 5 psi steps. The choices show in your selected units. Each starts off. Choose **Screen only** or **Screen + soft chime** under **Alert mode**. Units, dial style, thresholds, and alert mode survive an iDrive restart.

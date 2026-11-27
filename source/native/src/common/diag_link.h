@@ -9,13 +9,14 @@
 enum { DIAG_AUTO, DIAG_HSFZ, DIAG_MOST };   /* transport */
 enum { DIAG_LOOP, DIAG_ONESHOT };           /* kind */
 struct diag_link_cfg { const char *host; unsigned port; int transport; int kind;
-                       const char *dsi_name; int session; };
+                       const char *dsi_name; int session; int most_after_hsfz; };
 struct diag_link {
     struct diag_link_cfg cfg;
-    int fd, lock;                     /* HSFZ connection and lease lock, -1 when closed */
+    int fd, lock;                     /* HSFZ connection and shared lease, -1 when closed */
     int on_most, most_usable, lost, gauge_most_lock;
-    int hsfz_seen;                    /* HSFZ has connected: never switch to MOST */
-    unsigned hsfz_fails;              /* failed HSFZ connects in a row */
+    int hsfz_seen;                    /* HSFZ has connected: only an opted-in link may later use MOST */
+    int transaction, transaction_io_failed;
+    unsigned hsfz_fails;              /* failed connects; opt-in links also count failed I/O batches */
     uint64_t retry_at, lease_until, most_retry_at;
     uint64_t most_yield_until;        /* a loop worker on MOST waits until then before its next request */
 };
@@ -27,8 +28,18 @@ void diag_link_init(struct diag_link *, const struct diag_link_cfg *);
 void diag_link_signals(void);
 /* 1 when usable (HSFZ connected or MOST up), 0 not yet. Connects, retries and switches to MOST. */
 int  diag_link_up(struct diag_link *);
+/* A multi-request sequence on an already-up link. HSFZ reuses its session lease; MOST loop workers
+   hold one lease across all requests until end. 0 if busy, stopped, lost, or already in a sequence.
+   Every successful begin needs end, including refused/failed requests. complete is true only after
+   the whole validated batch: an opt-in HSFZ link then clears its failure count. Transport failures
+   count once per batch; refusals/invalid data do not. A lost MOST client retains its lease until
+   successful close (or process exit), so no cooperating worker enters during DSI teardown.
+   These calls do not open or switch transports. */
+int  diag_link_begin(struct diag_link *);
+void diag_link_end(struct diag_link *,int complete);
 /* The UDS reply length; -1 link lost; -2 negative reply, *negative holding its code; -3 this request failed
-   but the link is kept (MOST only). */
+   but the link is kept (MOST only). An F303 timeout, or a timeout inside an opted-in N57 batch,
+   loses the MOST client: a late reply cannot safely be assigned to the next dynamic read. */
 int  diag_link_request(struct diag_link *, unsigned ecu, const unsigned char *uds, unsigned n,
                        const unsigned char *prefix, unsigned pn, unsigned char *reply, unsigned cap,
                        unsigned timeout_ms, unsigned *negative);

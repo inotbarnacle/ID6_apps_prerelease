@@ -1,8 +1,9 @@
 #define _POSIX_C_SOURCE 200809L
 #include "gauge_core.h"
-#include "diagnostic_lease.h"
 #include "gauge_coexistence.h"
+#include "diagnostic_lease.h"
 #include "diag_link.h"
+#include "n57.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <math.h>
@@ -23,6 +24,7 @@ static unsigned number(const char *s, unsigned lo, unsigned hi) {
 }
 
 
+
 /* The shared MOST tunnel cannot address DSC, EGS or the transfer case. */
 static void stop(int sig) { (void)sig; diag_running = 0; }
 static int connect_gw(const char *host, unsigned port) { return diag_hsfz_connect(host, port); }
@@ -34,6 +36,51 @@ static int exchange(int fd, unsigned ecu, const unsigned char *uds, unsigned uds
                               timeout_ms, negative);
 }
 #include <ctype.h>
+/* Included by collector.c for Bootmod3 and xDrive controls. */
+#include <sys/stat.h>
+#ifndef ID6_XDRIVE_OWNER
+#define ID6_XDRIVE_OWNER "/var/opt/hmi/data/ID5/xdrive-owner-vin.txt"
+#endif
+static unsigned n57_index;
+static uint64_t parked_at;
+enum { N57_PARK_SNAPSHOT_MS=750 };
+
+static int n57_fd_exchange(void *ctx, unsigned ecu, const unsigned char *req, unsigned n,
+                            const unsigned char *prefix, unsigned pn, unsigned char *reply,
+                            unsigned cap, unsigned timeout, unsigned *negative) {
+    return exchange(*(int *)ctx,ecu,req,n,prefix,pn,reply,cap,timeout,negative);
+}
+
+static int owner_consent(int fd) {
+    const char *want=getenv("NBTEVO_OWN_VIN");
+    char saved[18], extra;
+    unsigned char reply[32];
+    const unsigned char req[]={0x22,0xf1,0x90}, ack[]={0x62,0xf1,0x90};
+    unsigned negative, i;
+    int n, start=3;
+    if (!want) {
+        struct stat st;
+        FILE *file;
+        if (lstat(ID6_XDRIVE_OWNER,&st) || !S_ISREG(st.st_mode) || st.st_uid!=geteuid() || (st.st_mode & 0777)!=0600)
+            return 0;
+        file=fopen(ID6_XDRIVE_OWNER,"r");
+        if (!file) return 0;
+        n=fscanf(file,"%17s %c",saved,&extra);
+        fclose(file);
+        if (n!=1) return 0;
+        want=saved;
+    }
+    if (strlen(want)!=17) return 0;
+    for (i=0;i<17;i++)
+        if (!((want[i]>='A' && want[i]<='Z') || (want[i]>='0' && want[i]<='9')) ||
+            want[i]=='I' || want[i]=='O' || want[i]=='Q') return 0;
+    n=exchange(fd,0x12,req,3,ack,3,reply,sizeof reply,800,&negative);
+    if (n<20) return 0;
+    while (n>start && (reply[n-1]==0 || reply[n-1]==' ')) n--;
+    while (start<n && (reply[start]==0 || reply[start]==' ')) start++;
+    return n-start==17 && !memcmp(reply+start,want,17);
+}
+
 static int read_mode(int fd) {
     const unsigned char req[]={0x22,0xdb,0x32}, ack[]={0x62,0xdb,0x32};
     unsigned char reply[64];
@@ -74,10 +121,17 @@ static int parked(int fd, int running) {
     const unsigned char rpm[]={1,0x0c}, rpm_ack[]={0x41,0x0c};
     unsigned char reply[8];
     unsigned negative;
-    // EGS DA2E byte 2 is the Park state: 06 in Park with the engine off, 01 in Park with it running
-    // (DSC_25 car, 0a in R/N/D). Missing or different replies block the write.
-    return exchange(fd,0x18,gear,3,gear_ack,3,reply,sizeof reply,350,&negative)==5 && reply[3]==0 &&
-           reply[4]==(running ? 1 : 6) &&
+    if (running && n57_index) {
+        double speed, rpm_value;
+        parked_at=bd_mono_ms();
+        return n57_park(n57_fd_exchange,&fd)==1 &&
+               n57_match(n57_fd_exchange,&fd,n57_index)==1 &&
+               n57_read_drive(n57_fd_exchange,&fd,&rpm_value,&speed)==1 &&
+               rpm_value>0 && speed==0 && bd_mono_ms()-parked_at<=N57_PARK_SNAPSHOT_MS;
+    }
+    // Preserve the separate upstream reference profile; never use its gear read for pinned N57.
+    if (!(exchange(fd,0x18,gear,3,gear_ack,3,reply,sizeof reply,350,&negative)==5 && reply[3]==0 && reply[4]==(running ? 1 : 6))) return 0;
+    return
            exchange(fd,0x12,rpm,2,rpm_ack,2,reply,sizeof reply,350,&negative)==4 && ((reply[2]|reply[3])!=0)==running &&
            exchange(fd,0x12,speed,2,speed_ack,2,reply,sizeof reply,350,&negative)==3 && !reply[2];
 }
@@ -120,9 +174,14 @@ static void control(int fd, const char *mode, unsigned value) {
              current?"Transfer case reports AWD.":"Transfer case reports RWD.");
         return;
     }
+    if (n57_index && !fseries) {
+        puts("N57 mode changes require DSC_25 0F1860 with LMV 0F1480. No mode change sent.");
+        return;
+    }
     // dsc_25.prg documents DBE1 as writable with 1 = active; restore verified on a 0F1860 car.
     if (value && index!=0x0f2850 && !fseries) { puts("Cycle the ignition to restore AWD on this DSC."); return; }
     if (current<0) { puts(fseries?"Start the engine to read the transfer case.":"Transfer case mode unavailable."); return; }
+    if (!owner_consent(fd)) { puts("Owner VIN missing, unreadable or mismatched. No mode change sent."); return; }
     if (!parked(fd,fseries)) {
         puts(fseries?"Needs engine running, stationary, and confirmed Park.":"Needs ignition on, engine off, stationary, and confirmed Park.");
         return;
@@ -130,6 +189,9 @@ static void control(int fd, const char *mode, unsigned value) {
     {
         const unsigned char request[]={0x2e,0xdb,0xe1,(unsigned char)value}, ack[]={0x6e,0xdb,0xe1};
         const struct timespec pause={0,250000000};
+        if (n57_index && bd_mono_ms()-parked_at>N57_PARK_SNAPSHOT_MS) {
+            puts("Park/drive snapshot expired. No mode change sent."); return;
+        }
         n=exchange(fd,0x29,request,4,ack,3,reply,sizeof reply,2400,&negative);
         if (n==-2) { printf("DSC refused this request (NRC %02X).\n",negative); return; }
         // DSC_25 acknowledged after more than 2 s on the car, so read back even without an ack.
@@ -147,10 +209,18 @@ static void control(int fd, const char *mode, unsigned value) {
 int main(int argc,char **argv) {
     unsigned value, port=6801;
     int fd,lock;
-    if ((argc!=5 && argc!=7) || strcmp(argv[1],"--host")) return 2;
-    if (argc==7) {
-        if (strcmp(argv[5],"--port")) return 2;
-        port=number(argv[6],1,65535);
+    if (argc<5 || argc%2!=1 || strcmp(argv[1],"--host")) return 2;
+    n57_index=n57_index_file(ID6_N57_SETTINGS);
+    if (!n57_index && access(ID6_N57_SETTINGS,F_OK)==0) {
+        puts("Invalid N57 DDE identity setting; no mode change sent."); return 2;
+    }
+    for (int i=5;i<argc;i+=2) {
+        if (!strcmp(argv[i],"--port")) port=number(argv[i+1],1,65535);
+        else if (!strcmp(argv[i],"--n57-sgbd")) {
+            n57_index=n57_parse_index(argv[i+1]);
+            if (!n57_index) return 2;
+        }
+        else return 2;
     }
     if (strcmp(argv[3],"--status") && strcmp(argv[3],"--drive-mode")) return 2;
     value=number(argv[4],0,!strcmp(argv[3],"--map") ? 4 : !strcmp(argv[3],"--flap") ? 2 : !strcmp(argv[3],"--burbles") ? 3 : 1);

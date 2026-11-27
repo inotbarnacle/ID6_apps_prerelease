@@ -1,10 +1,10 @@
-#ifdef __QNX__
+#if defined(__QNX__) && !defined(_QNX_SOURCE)
 #define _QNX_SOURCE
 #endif
 
+#include "gauge_core.h"
 #include "road_jet_frame.h"
 #include "diag_link.h"
-#include "gauge_core.h"
 
 #include <arpa/inet.h>
 #include <string.h>
@@ -67,7 +67,7 @@ int main(int argc, char **argv) {
     address.sin_port = htons(ROAD_JET_PORT);
     address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
-    struct diag_link_cfg config = {argv[2], 6801, DIAG_AUTO, DIAG_LOOP, "roadjet", 1};
+    struct diag_link_cfg config = {argv[2], 6801, DIAG_AUTO, DIAG_LOOP, "roadjet", 1, 0};
     struct diag_link link;
     diag_link_signals();
     diag_link_init(&link, &config);

@@ -28,7 +28,7 @@ class WarmDeck : public bmw::PluginApp {
     void reap() {
         if (child_<=0) return;
         pid_t ended=waitpid(child_,0,WNOHANG);
-        if (ended==child_ || (ended<0 && errno==ECHILD)) {
+        if (ended==child_ || (ended<0 && errno==ECHILD && kill(child_,0)!=0 && errno==ESRCH)) {
             child_=-1;
             stopping_=false;
         }

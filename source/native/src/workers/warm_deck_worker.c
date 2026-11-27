@@ -22,7 +22,7 @@ static int temperature(struct diag_link *link, unsigned signal, double *out) {
 }
 
 int main(int argc, char **argv) {
-    struct diag_link_cfg cfg={0,6801,DIAG_AUTO,DIAG_LOOP,"warmdeck",1};
+    struct diag_link_cfg cfg={0,6801,DIAG_AUTO,DIAG_LOOP,"warmdeck",1,0};
     struct diag_link link;
     unsigned cycles=0, count=0, next=0;
     for (int i=1;i<argc;++i) {

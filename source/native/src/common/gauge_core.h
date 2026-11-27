@@ -11,16 +11,19 @@ enum {
 #undef SIGNAL
     BD_COUNT
 };
-typedef char bd_channels_fit_mask[BD_COUNT < 32 ? 1 : -1];
+typedef uint64_t bd_mask;
+#define BD_BIT(i) (UINT64_C(1) << (i))
+#define BD_ALL_SIGNALS (BD_BIT(BD_COUNT) - 1)
+typedef char bd_channels_fit_mask[BD_COUNT < 64 ? 1 : -1];
 const char *bd_name(unsigned i);
-enum { BD_MAX_PACKET = 768, BD_STALE_MS = 2500, BD_TEMP_STALE_MS = 3500,
+enum { BD_MAX_PACKET = 2048, BD_STALE_MS = 2500, BD_TEMP_STALE_MS = 3500,
        BD_UDP_PORT = 42860 };
 typedef struct {
     uint32_t seq;
-    unsigned demo, valid;
+    unsigned demo;
+    bd_mask valid;
     uint64_t sent_ms; /* sender CLOCK_MONOTONIC, shared by processes on the same QNX node */
-    double value[BD_COUNT]; /* psi, gasoline-equivalent AFR, degrees, C, C, bar, bar, C
-                               extended channels: ethanol %, oil temperature C, battery V */
+    double value[BD_COUNT]; /* Canonical units from boost_signals.def; distance in metres. */
     unsigned age_ms[BD_COUNT];
 } bd_frame;
 uint64_t bd_mono_ms(void);
@@ -36,6 +39,7 @@ const char *bd_unit_selected(unsigned i, unsigned selection);
 double bd_display_value(unsigned i, double value, int metric);
 int bd_bar(unsigned i, double value); /* normalized 0..1000, independent of units */
 const char *bd_unit(unsigned i, int metric);
+void bd_format_value(unsigned i, double value, int metric, char *out, size_t len);
 #ifdef __cplusplus
 }
 #endif

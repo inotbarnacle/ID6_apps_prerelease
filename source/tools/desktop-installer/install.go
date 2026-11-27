@@ -284,10 +284,14 @@ var apps = []plugin{
 	{"HudTest", "hud-shape-qnx", "107"},
 	{"WarmDeck", "warmdeck-collector-qnx", "115"},
 	{"HybridDeck", "hybriddeck-collector-qnx", "117"},
+	{"PowerDeck", "boostdeck-collector-qnx", "121"},
 }
 
 func checkAppLayouts(screen panel, selection []plugin) error {
 	for _, app := range selection {
+		if app.name == "PowerDeck" && screen.compact() {
+			return errors.New("PowerDeck currently requires a wide 8:3 display (1280 × 480, 1440 × 540, or 1920 × 720)")
+		}
 		if (app.name == "RoadJet" || app.name == "BEAMer") && screen != (panel{1280, 480}) {
 			return fmt.Errorf("%s currently requires a 1280 × 480 iDrive display", app.name)
 		}
@@ -353,7 +357,7 @@ func (e *blockedInstall) Error() string {
 
 func install(r remoteRunner, gateway string, screen panel, recoverLock bool, selection ...plugin) (string, error) {
 	if len(selection) == 0 {
-		selection = apps
+		selection = installableMenus()
 	}
 	if _, err := usableIP(gateway); err != nil {
 		return "", err

@@ -134,21 +134,27 @@ class DriveAppsTest(unittest.TestCase):
     def test_shift_worker_shares_rpm_with_hud(self):
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as hud, \
                 socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as display:
-            hud.bind(("127.0.0.1", 42870))
+            hud.bind(("127.0.0.1", 42970))
             hud.settimeout(2)
             display.bind(("127.0.0.1", 0))
+            display.settimeout(2)
             self.run_worker("shift-deck", ["--cycles", "1", "--udp-port", str(display.getsockname()[1])],
                             [("010c", ["410c61a8"]), ("010d", ["410d64"])])
             data, peer = hud.recvfrom(64)
-            timestamp, source, flags, rpm, boost = struct.unpack("=QIIIi", data)
-            self.assertGreater(timestamp, 0)
-            self.assertEqual(peer, ("127.0.0.1", 42872))
-            self.assertEqual((source, flags, rpm, boost), (42872, 1, 6250, 0))
+            self.assertEqual(len(data),40)
+            magic, rpm_ms, boost_ms, source, flags, rpm, boost = struct.unpack("=QQQIIIi", data)
+            self.assertEqual(magic,0x31504d534455484e)
+            self.assertGreater(rpm_ms, 0)
+            self.assertEqual(boost_ms,0)
+            self.assertEqual(peer, ("127.0.0.1", 42972))
+            self.assertEqual((source, flags, rpm, boost), (42972, 1, 6250, 0))
+            sampled_ms, display_rpm, kph=struct.unpack("=Qii",display.recv(64))
+            self.assertEqual((sampled_ms,display_rpm,kph),(rpm_ms,rpm,100))
 
     def test_dashboard_requests_most_from_hud_before_fallback(self):
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as hud, \
                 socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as display:
-            hud.bind(("127.0.0.1", 42874))
+            hud.bind(("127.0.0.1", 42974))
             hud.settimeout(2)
             display.bind(("127.0.0.1", 0))
             display.settimeout(0.25)
@@ -333,18 +339,20 @@ class DriveAppsTest(unittest.TestCase):
         self.assertIn("requires a verified LMV", result)
 
         current = ident + [("22f150", ["62f1500f1480"]), ("224002", ["62400209c4200f"])]
-        targets = ["29", "29", "19", "19", "18"]
-        # Measured on a DSC_25 car: DA2E byte 2 is 01 in Park with the engine running, 0a in R/N/D,
-        # and 06 only in Park with the engine off.
+        vin = ("22f190", ["62f190" + b"TEST0000000000001".hex()])
+        env = dict(os.environ, NBTEVO_OWN_VIN="TEST0000000000001")
+        current = current + [vin]
+        targets = ["29", "29", "19", "19", "12", "18"]
+        # DA2E 01 is Park with the DSC_25 engine running; 06 is engine-off Park.
         for gear in ("0005", "000a", "0006"):
             result = self.run_worker("xdrive-control", ["--drive-mode", "0"],
-                current + [("22da2e", ["62da2e" + gear])], targets=targets)
+                current + [("22da2e", ["62da2e" + gear])], targets=targets, env=env)
             self.assertIn("confirmed Park", result)
 
         result = self.run_worker("xdrive-control", ["--drive-mode", "0"],
             current + [("22da2e", ["62da2e0001"]), ("010c", ["410c0c80"]), ("010d", ["410d00"]),
                        ("2edbe100", ["6edbe1"]), ("224002", ["62400209c4280f"])],
-            targets=targets + ["12", "12", "29", "19"])
+            targets=targets + ["12", "12", "29", "19"], env=env)
         self.assertEqual(result, "Transfer case confirms RWD.\n")
 
     def test_shift_worker_waits_for_a_busy_gateway(self):
@@ -359,7 +367,7 @@ class DriveAppsTest(unittest.TestCase):
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             ) as worker:
                 try:
-                    with self.assertRaises(TimeoutError):
+                    with self.assertRaises(socket.timeout):
                         gateway.accept()
                     self.assertIsNone(worker.poll())
                     lock.close()
@@ -506,7 +514,7 @@ class DriveAppsTest(unittest.TestCase):
                 while time.monotonic() < end:
                     for u, name in ((us, "s"), (ub, "b")):
                         try:
-                            data = u.recv(512)
+                            data = u.recv(2048)
                         except socket.timeout:
                             continue
                         if name == "s":

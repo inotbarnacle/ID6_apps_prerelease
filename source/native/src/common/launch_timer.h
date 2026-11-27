@@ -1,7 +1,7 @@
 #ifndef LAUNCH_TIMER_H
 #define LAUNCH_TIMER_H
 
-/* Acceleration timer driven by the DME's integer km/h (OBD PID 0x0D) samples.
+/* Acceleration timer driven by OBD km/h or fractional N57 DDE speed samples.
    Pure logic: no I/O, no clocks. The caller passes monotonic milliseconds. */
 
 #include <stddef.h>
@@ -26,23 +26,25 @@ typedef struct {
     enum lt_state state;
     uint64_t last_ms;       /* newest accepted sample */
     unsigned start_mkph, finish_mkph;
-    int last_kph;
+    int last_mkph;
     uint64_t last_zero_ms;  /* newest sample at 0 km/h */
     uint64_t start_ms;      /* estimated launch instant */
     uint64_t change_ms;     /* newest sample whose speed differed from the one before */
-    int change_kph;
+    int change_mkph;
     uint64_t first_ms;      /* first non-zero speed of the run */
-    int first_kph;
+    int first_mkph;
     int start_refined;
-    int peak_kph;
+    int peak_mkph;
     uint32_t split30_ms;    /* 0 until reached */
     uint32_t result_ms;     /* 0 until reached */
 } launch_timer;
 
 void lt_init(launch_timer *t);
 void lt_set_mode(launch_timer *t, enum lt_mode mode);
-/* kph < 0 means the sample is unavailable. Returns an lt_event. */
+/* Negative speed means unavailable. Returns an lt_event. */
 int lt_update(launch_timer *t, uint64_t now_ms, int kph);
+/* Speed in thousandths of km/h, preserving the N57 speed resolution. */
+int lt_update_mkph(launch_timer *t, uint64_t now_ms, int mkph);
 /* Live elapsed time while running, the result when done, else 0. */
 uint32_t lt_elapsed(const launch_timer *t, uint64_t now_ms);
 /* Whether `candidate` beats the stored `best` (0 means no record). */

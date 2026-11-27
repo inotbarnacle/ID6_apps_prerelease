@@ -7,6 +7,7 @@ from io import BytesIO
 from pathlib import Path
 import re
 import shutil
+import sys
 import xml.etree.ElementTree as ET
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
@@ -23,6 +24,7 @@ GROUPS = {
     "launchdeck": ("LaunchDeck",),
     "hud-gauges": ("HudTest",),
     "warmdeck": ("WarmDeck",),
+    "powerdeck": ("PowerDeck",),
 }
 COMPACT = {"BoostDeck", "ShiftDeck", "EngineCodes", "MhdMaps", "Bootmod3Suite", "MgFlasher",
            "LaunchDeck", "HudTest", "WarmDeck", "HybridDeck"}
@@ -71,27 +73,57 @@ def compact_images(data, factor):
     return output.getvalue()
 
 
-def stage(repo, qnx_fileops, installer):
+def candidate_apps(path, repo):
+    """Validate the complete candidate before overriding any installer payload."""
+    sys.path.insert(0, str(repo / "source/tools"))
+    import package_n57
+    package_n57.verify_zip(path)
+    with ZipFile(path) as archive:
+        result = {}
+        for name in archive.namelist():
+            parts = Path(name).parts
+            if len(parts) == 4 and parts[1] in ("core", "optional") and parts[3] != "SHA256SUMS":
+                result.setdefault(parts[2], {})[parts[3]] = archive.read(name)
+    return result
+
+
+def stage(repo, qnx_fileops, installer, candidate=None):
+    overrides = candidate_apps(candidate, repo) if candidate else {}
     payload = installer / "payload"
     layouts = payload / "layouts"
     if layouts.exists():
         shutil.rmtree(layouts)
     for group, apps in GROUPS.items():
-        with ZipFile(repo / "packages" / f"{group}.zip") as archive:
+        package = repo / "packages" / f"{group}.zip"
+        if package.is_file():
+            archive = ZipFile(package)
             sums = {name: digest for digest, name in
                     (row.split("  ", 1) for row in archive.read("SHA256SUMS").decode().splitlines())}
+        else:
+            archive, sums = None, {}
+        try:
             for app in apps:
+                if app in overrides:
+                    files = overrides[app]
+                elif archive:
+                    files = {Path(name).name: archive.read(name) for name in archive.namelist()
+                             if name.startswith(app + "/") and len(Path(name).parts) == 2 and not name.endswith("/")}
+                    for name, data in files.items():
+                        if sha256(data).hexdigest() != sums[app + "/" + name]:
+                            raise ValueError(f"Checksum mismatch for {app}/{name}")
+                else:
+                    if app == "PowerDeck" and candidate is None:
+                        stale = payload / app
+                        if stale.exists():
+                            shutil.rmtree(stale)
+                        continue
+                    raise ValueError(f"Build {group}.zip or provide an N57 candidate before staging {app}")
                 directory = payload / app
                 if directory.exists():
                     shutil.rmtree(directory)
                 directory.mkdir(parents=True)
-                for name in archive.namelist():
-                    if not name.startswith(app + "/") or len(Path(name).parts) != 2 or name.endswith("/"):
-                        continue
-                    data = archive.read(name)
-                    if sha256(data).hexdigest() != sums[name]:
-                        raise ValueError(f"Checksum mismatch for {name}")
-                    (directory / Path(name).name).write_bytes(data)
+                for name, data in files.items():
+                    (directory / name).write_bytes(data)
                 if app not in COMPACT:
                     continue
                 xml = directory / f"{app}.xml"
@@ -108,6 +140,9 @@ def stage(repo, qnx_fileops, installer):
                     (target / xml.name).write_bytes(scaled)
                     if image.is_file():
                         (target / image.name).write_bytes(compact_images(image.read_bytes(), factor))
+        finally:
+            if archive:
+                archive.close()
     (payload / "tools").mkdir(exist_ok=True)
     shutil.copyfile(qnx_fileops, payload / "tools/gaugedeck-fileops")
     (installer / "native").mkdir(exist_ok=True)
@@ -119,5 +154,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("repo", type=Path)
     parser.add_argument("qnx_fileops", type=Path)
+    parser.add_argument("--candidate", type=Path, help="verified N57 bundle to overlay on upstream apps")
     args = parser.parse_args()
-    stage(args.repo, args.qnx_fileops, Path(__file__).resolve().parent)
+    stage(args.repo, args.qnx_fileops, Path(__file__).resolve().parent, args.candidate)

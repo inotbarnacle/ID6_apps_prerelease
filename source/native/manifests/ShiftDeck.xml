@@ -16,6 +16,12 @@
       <raAction id="45" />
       <raAction id="46" />
       <raAction id="47" />
+      <raAction id="121" />
+      <raAction id="122" />
+      <raAction id="123" />
+      <raAction id="124" />
+      <raAction id="125" />
+      <hmiAction id="120" target="102" />
     </actions>
     <models>
       <raDataModel id="53" modelType="Richtext" />
@@ -34,6 +40,11 @@
       <imageIdModel id="70" imageId="55901" />
       <imageIdModel id="71" imageId="55901" />
       <imageIdModel id="72" imageId="55900" />
+      <raDataModel id="80" modelType="Richtext" />
+      <raDataModel id="83" modelType="Richtext" />
+      <imageIdModel id="81" imageId="59300" />
+      <imageIdModel id="82" imageId="59301" />
+      <imageIdModel id="84" imageId="59302" />
     </models>
     <hmiStates>
       <hmiState id="100" text="ShiftDeck">
@@ -41,6 +52,11 @@
           <button id="30" action="40" text="Shift light setting" />
           <button id="410" action="46" text="Units: Imperial" />
           <button id="411" action="47" text="Units: Metric" />
+          <button id="412" action="120" text="N57 shift window">
+            <properties>
+              <property id="3" value="false" />
+            </properties>
+          </button>
         </optionComponents>
         <components>
           <image id="200" model="54">
@@ -193,6 +209,46 @@
               <property id="3" value="true" />
             </properties>
           </image>
+          <image id="250" model="81">
+            <properties>
+              <property id="20" value="894" />
+              <property id="21" value="239" />
+              <property id="9" value="64" />
+              <property id="10" value="9" />
+              <property id="2" value="false" />
+              <property id="3" value="false" />
+            </properties>
+          </image>
+          <image id="251" model="82">
+            <properties>
+              <property id="20" value="931" />
+              <property id="21" value="239" />
+              <property id="9" value="64" />
+              <property id="10" value="9" />
+              <property id="2" value="false" />
+              <property id="3" value="false" />
+            </properties>
+          </image>
+          <label id="252" model="80">
+            <properties>
+              <property id="20" value="850" />
+              <property id="21" value="120" />
+              <property id="9" value="300" />
+              <property id="10" value="54" />
+              <property id="2" value="false" />
+              <property id="3" value="false" />
+            </properties>
+          </label>
+          <image id="253" model="84">
+            <properties>
+              <property id="20" value="850" />
+              <property id="21" value="75" />
+              <property id="9" value="300" />
+              <property id="10" value="135" />
+              <property id="2" value="false" />
+              <property id="3" value="false" />
+            </properties>
+          </image>
         </components>
       </hmiState>
       <hmiState id="101" parentId="100" text="Shift light setting">
@@ -203,6 +259,16 @@
           <button id="303" action="43" text="6,250 RPM" />
           <button id="304" action="44" text="6,500 RPM" />
           <button id="305" action="45" text="6,700 RPM" />
+        </components>
+      </hmiState>
+      <hmiState id="102" parentId="100" text="N57 shift window">
+        <components>
+          <label id="450" model="83" />
+          <button id="451" action="121" text="Lower -100 RPM" />
+          <button id="452" action="122" text="Lower +100 RPM" />
+          <button id="453" action="123" text="Upper -100 RPM" />
+          <button id="454" action="124" text="Upper +100 RPM" />
+          <button id="455" action="125" text="Reset: 4600-4800 RPM" />
         </components>
       </hmiState>
     </hmiStates>

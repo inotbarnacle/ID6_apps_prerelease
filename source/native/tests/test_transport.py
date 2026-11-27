@@ -136,9 +136,9 @@ class TransportTest(unittest.TestCase):
                                      "--udp-port", str(udp.getsockname()[1]), "--cycles", str(cycles), *extra],
                                     capture_output=True, text=True, timeout=10, env=env)
             self.assertEqual(result.returncode, 0, result.stderr)
-            packets = [udp.recv(512).decode().split() for _ in range(cycles)]
+            packets = [udp.recv(2048).decode().split() for _ in range(cycles)]
             packet = packets[-1]
-            self.assertEqual(packet[0], "NBG7")
+            self.assertEqual(packet[0], "NBGA")
             self.assertGreater(int(packet[4]), 0)
             t.join(2)
             self.assertFalse(t.is_alive())
@@ -168,7 +168,7 @@ class TransportTest(unittest.TestCase):
     def test_fast_channels_and_staggered_slow_updates(self):
         packet, requests, trace = self.run_collector("paced", ("--trace",), cycles=32)
         self.assertEqual(int(packet[3]), 255)
-        self.assertEqual(len(packet), 67)  # one value and age per signal
+        self.assertEqual(len(packet), 87)  # five header fields, value and age for all41 signals
         self.assertNotIn(bytes.fromhex("f4120152"), requests)
         # Correct for host timer coalescing in the mock gateway. Keep the same
         # collector budget at the intended delay, including the slow DID reads.
@@ -229,12 +229,26 @@ class TransportTest(unittest.TestCase):
                 self.assertEqual(len(requests), 9)
                 self.assertEqual(int(p[3]), expected_mask)
 
-    def test_boostdeck_collects_when_hud_sharing_port_is_occupied(self):
+    def test_launch_data_port_does_not_block_boostdeck(self):
+        # App IPC42871 is independent of the versioned Boost ownership marker42971.
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as holder:
             holder.bind(("127.0.0.1", 42871))
-            packet, _, trace = self.run_collector()
+            packet, _, _ = self.run_collector()
             self.assertEqual(int(packet[3]), 255)
-            self.assertIn("without HUD sharing", trace)
+
+    def test_duplicate_boostdeck_owner_sends_no_diagnostics_or_frames(self):
+        with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as owner, \
+                socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as display, \
+                socket.socket() as gateway:
+            owner.bind(("127.0.0.1",42971))
+            display.bind(("127.0.0.1",0));display.settimeout(.2)
+            gateway.bind(("127.0.0.1",0));gateway.listen();gateway.settimeout(.2)
+            result=subprocess.run([BIN,"--host","127.0.0.1","--port",str(gateway.getsockname()[1]),
+                                   "--udp-port",str(display.getsockname()[1]),"--cycles","1"],
+                                  capture_output=True,text=True,timeout=3)
+            self.assertEqual(result.returncode,1,result.stderr)
+            with self.assertRaises(socket.timeout):gateway.accept()
+            with self.assertRaises(socket.timeout):display.recv(2048)
 
     def test_timeout_is_bounded(self):
         start = time.monotonic()
@@ -277,7 +291,7 @@ class TransportTest(unittest.TestCase):
             packets = []
             try:
                 while True:
-                    packets.append(udp.recv(512).decode().split())
+                    packets.append(udp.recv(2048).decode().split())
             except socket.timeout:
                 pass
         return packets, r.returncode, r.stderr
@@ -374,7 +388,7 @@ class TransportTest(unittest.TestCase):
             try:
                 while proc.poll() is None or len(masks) < 30:
                     try:
-                        mask = int(udp.recv(512).decode().split()[3])
+                        mask = int(udp.recv(2048).decode().split()[3])
                     except socket.timeout:
                         break
                     masks.append(mask)
@@ -406,7 +420,7 @@ class TransportTest(unittest.TestCase):
             try:
                 deadline = time.monotonic() + 3
                 while time.monotonic() < deadline:
-                    if int(udp.recv(512).decode().split()[3]) == 239:
+                    if int(udp.recv(2048).decode().split()[3]) == 239:
                         break
                 else:
                     self.fail("no MOST values")
@@ -427,7 +441,7 @@ class TransportTest(unittest.TestCase):
             r = subprocess.run([BIN, "--demo", "--cycles", "1", "--udp-port", str(udp.getsockname()[1])],
                                capture_output=True, timeout=2)
             self.assertEqual(r.returncode, 0)
-            self.assertEqual(udp.recv(512).decode().split()[2:4], ["1", str((1 << 31) - 1)])  # demo marks all 31 signals valid
+            self.assertEqual(udp.recv(2048).decode().split()[2:4], ["1", str((1 << 41) - 1)])  # demo marks all41 signals valid
         r = subprocess.run([BIN, "--demo", "--host", "127.0.0.1"], capture_output=True)
         self.assertEqual(r.returncode, 2)
 

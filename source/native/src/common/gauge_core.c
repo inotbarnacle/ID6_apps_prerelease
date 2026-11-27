@@ -96,9 +96,9 @@ int bd_encode(const bd_frame *f, char *out, size_t len) {
     size_t used;
     unsigned i;
     if (!f || !out || !len) return -1;
-    const char *version = "NBG7";
-    n = snprintf(out, len, "%s %lu %u %u %llu", version,
-                 (unsigned long)f->seq, f->demo, f->valid,
+    const char *version = "NBGA";
+    n = snprintf(out, len, "%s %lu %u %llu %llu", version,
+                 (unsigned long)f->seq, f->demo, (unsigned long long)f->valid,
                  (unsigned long long)f->sent_ms);
     if (n < 0 || (size_t)n >= len) return -1;
     used = (size_t)n;
@@ -143,7 +143,10 @@ int bd_parse(const char *data, size_t len, bd_frame *out) {
     memcpy(b, data, len); b[len] = 0;
     memset(&f, 0, sizeof f);
     if (len<5 || !isspace((unsigned char)b[4])) return 0;
-    if (!memcmp(b,"NBG7",4)) fields=BD_COUNT;
+    if (!memcmp(b,"NBGA",4)) fields=BD_COUNT;
+    else if (!memcmp(b,"NBG9",4)) fields=40;
+    else if (!memcmp(b,"NBG8",4)) fields=39;
+    else if (!memcmp(b,"NBG7",4)) fields=31;
     else if (!memcmp(b,"NBG6",4)) fields=22;
     else if (!memcmp(b,"NBG5",4)) fields=11;
     else if (!memcmp(b,"NBG4",4)) fields=9;
@@ -156,12 +159,13 @@ int bd_parse(const char *data, size_t len, bd_frame *out) {
     f.seq=(uint32_t)integer;
     if (!unsigned_field(&cursor,1,&integer)) return 0;
     f.demo=(unsigned)integer;
-    if (!unsigned_field(&cursor,(1u<<fields)-1,&integer)) return 0;
-    f.valid=(unsigned)integer;
+    if (!unsigned_field(&cursor,BD_BIT(fields)-1,&integer)) return 0;
+    f.valid=integer;
     if (!unsigned_field(&cursor,UINT64_MAX,&f.sent_ms)) return 0;
     for (i = 0; i < fields; ++i) {
         double limit=20000;
         if (i==BD_ABS_LOAD) limit=25700;
+        if (i==BD_DPF_REGEN_DIST) limit=2000000;
         if (!double_field(&cursor,&f.value[i],limit) || !unsigned_field(&cursor,999999,&integer)) return 0;
         f.age_ms[i]=(unsigned)integer;
     }
@@ -176,12 +180,14 @@ int bd_is_fresh(const bd_frame *f, unsigned i, uint64_t elapsed) {
                    : BD_STALE_MS;
     if (i == BD_ETHANOL) limit = 6500;
     if (i >= BD_OIL_TEMP) limit = BD_TEMP_STALE_MS;
-    return i < BD_COUNT && (f->valid & (1u << i)) &&
+    if (i == BD_TORQUE || i == BD_POWER || i == BD_REL_TORQUE_DDE) limit = BD_STALE_MS;
+    return i < BD_COUNT && (f->valid & BD_BIT(i)) &&
         elapsed < limit && f->age_ms[i] < limit - elapsed;
 }
 
 enum signal_unit { NUMBER, PRESSURE_PSI, PRESSURE_BAR, PRESSURE_KPA, DEGREES,
-                   TEMPERATURE, PERCENT, VOLTS, RPM, SPEED, MASS_FLOW, FUEL_FLOW };
+                   TEMPERATURE, PERCENT, VOLTS, RPM, SPEED, MASS_FLOW, FUEL_FLOW,
+                   GRAMS, PRESSURE_HPA, DISTANCE_M, TORQUE_NM, POWER_KW, LITRES };
 static const struct { const char *name; double lo, hi; enum signal_unit unit; } signals[] = {
 #define SIGNAL(id, name, lo, hi, unit, wide, narrow) {name, lo, hi, unit},
 #include "boost_signals.def"
@@ -198,6 +204,11 @@ double bd_display_value(unsigned i, double x, int metric) {
     case PRESSURE_KPA: return metric ? x : x * .145037738;
     case TEMPERATURE: return metric ? x : x * 1.8 + 32;
     case SPEED: return metric ? x : x / 1.609344;
+    case PRESSURE_HPA: return metric ? x : x * .0145037738;
+    case DISTANCE_M: return metric ? x / 1000 : x / 1609.344;
+    case TORQUE_NM: return metric ? x : x / 1.3558179483;
+    case POWER_KW: return metric ? x : x / .7456998716;
+    case LITRES: return metric ? x : x / 3.785411784;
     default: return x;
     }
 }
@@ -215,6 +226,12 @@ const char *bd_unit(unsigned i, int metric) {
     case SPEED: return metric ? "km/h" : "mph";
     case MASS_FLOW: return "g/s";
     case FUEL_FLOW: return "L/h";
+    case GRAMS: return "g";
+    case PRESSURE_HPA: return metric ? "hPa" : "psi";
+    case DISTANCE_M: return metric ? "km" : "mi";
+    case TORQUE_NM: return metric ? "Nm" : "lb-ft";
+    case POWER_KW: return metric ? "kW" : "hp";
+    case LITRES: return metric ? "L" : "US gal";
     default: return "";
     }
 }
@@ -234,6 +251,17 @@ double bd_display_selected(unsigned i, double x, unsigned selection) {
 const char *bd_unit_selected(unsigned i, unsigned selection) {
     if (!bd_is_pressure(i)) return bd_unit(i, selection != 0);
     return selection==2 ? "kPa" : selection==1 ? "bar" : "psi";
+}
+
+void bd_format_value(unsigned i, double value, int metric, char *out, size_t len) {
+    const char *unit=bd_unit(i,metric);
+    double reading=bd_display_value(i,value,metric);
+    int decimals=1;
+    if (i==BD_BOOST && fabs(reading)<0.05) reading=0;
+    if (i==BD_BATTERY || i==BD_LAMBDA_TARGET) decimals=2;
+    if (i==BD_RPM || i==BD_RAIL || i==BD_ETHANOL || i==BD_TORQUE ||
+        i==BD_EGT_PRE_DPF || i==BD_EGT_PRE_CAT) decimals=0;
+    snprintf(out,len,"%.*f%s%s",decimals,reading,*unit && *unit!='%' ? " " : "",unit);
 }
 
 int bd_bar(unsigned i, double x) {

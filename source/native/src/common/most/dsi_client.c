@@ -33,6 +33,9 @@ static int g_running;                 /* g_app is initialized and not yet freed 
 static dsi_handlers_t g_h;
 static void *g_u;
 static int g_have_client, g_term_up;
+static int g_registered;
+static uint32_t g_registered_client;
+static uint16_t g_registered_key;
 static uint16_t g_key = 0x06F0;       /* FBlock 0x06, instance 0xF0 */
 static uint8_t g_fb = 0x06, g_inst = 0xF0;
 static int g_loglevel;
@@ -145,6 +148,13 @@ static int key_request(uint32_t id)
         return -1;
     pthread_mutex_lock(&g_mu);
     key = g_key;
+    if (id == 0x05) {
+        if (!g_registered || g_registered_client != client) {
+            pthread_mutex_unlock(&g_mu);
+            return 0;
+        }
+        key = g_registered_key;
+    }
     pthread_mutex_unlock(&g_mu);
     pthread_mutex_lock(&g_send_mu);
     most_dsi.Open(stream);
@@ -152,6 +162,15 @@ static int key_request(uint32_t id)
     w32(stream, 1);
     w16(stream, key);
     rc = finish(stream, id, most_dsi.CreateId());
+    if (rc == 0) {
+        pthread_mutex_lock(&g_mu);
+        if (g_have_client && g_client == client) {
+            g_registered = id == 0x01;
+            g_registered_client = client;
+            g_registered_key = key;
+        }
+        pthread_mutex_unlock(&g_mu);
+    }
     pthread_mutex_unlock(&g_send_mu);
     return rc;
 }
@@ -241,6 +260,7 @@ static void on_disconnected(void *app)
     pthread_mutex_lock(&g_mu);
     g_have_client = 0;
     g_term_up = 0;
+    g_registered = 0;
     pthread_mutex_unlock(&g_mu);
     if (g_h.disconnected) g_h.disconnected(g_u);
 }
@@ -321,6 +341,10 @@ static void read_connect(void *stream)
             return;
         if (key == want) {
             pthread_mutex_lock(&g_mu);
+            if (!g_have_client) {
+                pthread_mutex_unlock(&g_mu);
+                return;
+            }
             g_term_up = 1;
             g_term_dev = dev;
             pthread_mutex_unlock(&g_mu);
@@ -389,6 +413,13 @@ static void on_response(void *app, void *stream, const void *event)
         if (!RD(client, 4) || !RD(dev, 2))
             return;
         pthread_mutex_lock(&g_mu);
+        if (client == UINT32_MAX) {
+            g_have_client = g_term_up = g_registered = 0;
+            pthread_mutex_unlock(&g_mu);
+            most_log(MOST_LOG_W, "dsi", "MOST client registration refused");
+            if (g_h.disconnected) g_h.disconnected(g_u);
+            break;
+        }
         g_client = client;
         g_device = dev;
         g_have_client = 1;
@@ -415,7 +446,7 @@ int dsi_client_run(const char *role, const dsi_handlers_t *h, void *u)
     pthread_mutex_lock(&g_mu);
     g_h = *h;
     g_u = u;
-    g_have_client = g_term_up = 0;
+    g_have_client = g_term_up = g_registered = 0;
     pthread_mutex_unlock(&g_mu);
 
     most_dsi.Init();
@@ -438,7 +469,7 @@ int dsi_client_run(const char *role, const dsi_handlers_t *h, void *u)
 
     pthread_mutex_lock(&g_mu);
     g_running = 0;
-    g_have_client = g_term_up = 0;
+    g_have_client = g_term_up = g_registered = 0;
     pthread_mutex_unlock(&g_mu);
     pthread_mutex_lock(&g_send_mu);        /* wait out any send still using the stream */
     most_dsi.ClientFree(g_app);

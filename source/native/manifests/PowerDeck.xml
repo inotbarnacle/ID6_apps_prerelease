@@ -1,0 +1,1541 @@
+<?xml version='1.0' encoding='utf-8'?>
+<pluginApps>
+  <pluginApp applicationType="VehicleInformation" applicationWeight="220" text="PowerDeck">
+    <entryButton id="1" action="10">
+      <properties>
+        <property id="23" value="2" />
+      </properties>
+    </entryButton>
+    <actions>
+      <hmiAction id="10" target="100" />
+      <raAction id="160" />
+      <raAction id="161" />
+      <hmiAction id="162" target="110" />
+      <hmiAction id="163" target="111" />
+    </actions>
+    <models>
+      <raDataModel id="50" modelType="Richtext" />
+      <imageIdModel id="40" imageId="60000" />
+      <imageIdModel id="41" imageId="60001" />
+      <imageIdModel id="60" imageId="60020" />
+      <imageIdModel id="61" imageId="60020" />
+      <imageIdModel id="62" imageId="60020" />
+      <imageIdModel id="63" imageId="60020" />
+      <imageIdModel id="64" imageId="60020" />
+      <imageIdModel id="65" imageId="60020" />
+      <imageIdModel id="46" imageId="60005" />
+      <imageIdModel id="42" imageId="60002" />
+      <imageIdModel id="70" imageId="60020" />
+      <imageIdModel id="71" imageId="60020" />
+      <imageIdModel id="72" imageId="60020" />
+      <imageIdModel id="73" imageId="60020" />
+      <imageIdModel id="74" imageId="60020" />
+      <imageIdModel id="75" imageId="60020" />
+      <imageIdModel id="47" imageId="60006" />
+      <imageIdModel id="43" imageId="60003" />
+      <imageIdModel id="80" imageId="60020" />
+      <imageIdModel id="81" imageId="60020" />
+      <imageIdModel id="82" imageId="60020" />
+      <imageIdModel id="83" imageId="60020" />
+      <imageIdModel id="84" imageId="60020" />
+      <imageIdModel id="85" imageId="60020" />
+      <imageIdModel id="90" imageId="60020" />
+      <imageIdModel id="91" imageId="60020" />
+      <imageIdModel id="92" imageId="60020" />
+      <imageIdModel id="93" imageId="60020" />
+      <imageIdModel id="94" imageId="60020" />
+      <imageIdModel id="95" imageId="60020" />
+      <imageIdModel id="49" imageId="60008" />
+      <imageIdModel id="2299" imageId="61388" />
+      <raDataModel id="2300" modelType="Richtext" />
+      <imageIdModel id="2000" imageId="61387" />
+      <imageIdModel id="2001" imageId="61387" />
+      <imageIdModel id="2002" imageId="61387" />
+      <imageIdModel id="2003" imageId="61387" />
+      <imageIdModel id="2004" imageId="61387" />
+      <imageIdModel id="2005" imageId="61387" />
+      <imageIdModel id="2006" imageId="61387" />
+      <imageIdModel id="2007" imageId="61387" />
+      <imageIdModel id="2008" imageId="61387" />
+      <imageIdModel id="2009" imageId="61387" />
+      <imageIdModel id="2010" imageId="61387" />
+      <imageIdModel id="2011" imageId="61387" />
+      <imageIdModel id="2012" imageId="61387" />
+      <imageIdModel id="2013" imageId="61387" />
+      <imageIdModel id="2014" imageId="61387" />
+      <imageIdModel id="2015" imageId="61387" />
+      <imageIdModel id="2016" imageId="61387" />
+      <imageIdModel id="2017" imageId="61387" />
+      <imageIdModel id="2018" imageId="61387" />
+      <imageIdModel id="2019" imageId="61387" />
+      <imageIdModel id="2020" imageId="61387" />
+      <imageIdModel id="2021" imageId="61387" />
+      <imageIdModel id="2022" imageId="61387" />
+      <imageIdModel id="2023" imageId="61387" />
+      <imageIdModel id="2024" imageId="61387" />
+      <imageIdModel id="2025" imageId="61387" />
+      <imageIdModel id="2026" imageId="61387" />
+      <imageIdModel id="2027" imageId="61387" />
+      <imageIdModel id="2028" imageId="61387" />
+      <imageIdModel id="2029" imageId="61387" />
+      <imageIdModel id="2030" imageId="61387" />
+      <imageIdModel id="2031" imageId="61387" />
+      <imageIdModel id="2032" imageId="61387" />
+      <imageIdModel id="2033" imageId="61387" />
+      <imageIdModel id="2034" imageId="61387" />
+      <imageIdModel id="2035" imageId="61387" />
+      <imageIdModel id="2036" imageId="61387" />
+      <imageIdModel id="2037" imageId="61387" />
+      <imageIdModel id="2038" imageId="61387" />
+      <imageIdModel id="2039" imageId="61387" />
+      <imageIdModel id="2040" imageId="61387" />
+      <imageIdModel id="2041" imageId="61387" />
+      <imageIdModel id="2042" imageId="61387" />
+      <imageIdModel id="2043" imageId="61387" />
+      <imageIdModel id="2044" imageId="61387" />
+      <imageIdModel id="2045" imageId="61387" />
+      <imageIdModel id="2046" imageId="61387" />
+      <imageIdModel id="2047" imageId="61387" />
+      <imageIdModel id="2499" imageId="64300" />
+      <raDataModel id="2500" modelType="Richtext" />
+      <raDataModel id="2510" modelType="Richtext" />
+      <raDataModel id="2520" modelType="Richtext" />
+      <imageIdModel id="2400" imageId="64202" />
+      <imageIdModel id="2401" imageId="64202" />
+      <imageIdModel id="2402" imageId="64202" />
+      <imageIdModel id="2403" imageId="64202" />
+      <imageIdModel id="2404" imageId="64202" />
+      <imageIdModel id="2405" imageId="64202" />
+      <imageIdModel id="2406" imageId="64202" />
+      <imageIdModel id="2407" imageId="64202" />
+      <imageIdModel id="2408" imageId="64202" />
+      <imageIdModel id="2409" imageId="64202" />
+      <imageIdModel id="2410" imageId="64202" />
+      <imageIdModel id="2411" imageId="64202" />
+      <imageIdModel id="2412" imageId="64202" />
+      <imageIdModel id="2413" imageId="64202" />
+      <imageIdModel id="2414" imageId="64202" />
+      <imageIdModel id="2415" imageId="64202" />
+      <imageIdModel id="2416" imageId="64202" />
+      <imageIdModel id="2417" imageId="64202" />
+      <imageIdModel id="2418" imageId="64202" />
+      <imageIdModel id="2419" imageId="64202" />
+      <imageIdModel id="2420" imageId="64202" />
+      <imageIdModel id="2421" imageId="64202" />
+      <imageIdModel id="2422" imageId="64202" />
+      <imageIdModel id="2423" imageId="64202" />
+      <imageIdModel id="2424" imageId="64202" />
+      <imageIdModel id="2425" imageId="64202" />
+      <imageIdModel id="2426" imageId="64202" />
+      <imageIdModel id="2427" imageId="64202" />
+      <imageIdModel id="2428" imageId="64202" />
+      <imageIdModel id="2429" imageId="64202" />
+      <imageIdModel id="2430" imageId="64202" />
+      <imageIdModel id="2431" imageId="64202" />
+      <imageIdModel id="2432" imageId="64202" />
+      <imageIdModel id="2433" imageId="64202" />
+      <imageIdModel id="2434" imageId="64202" />
+      <imageIdModel id="2435" imageId="64202" />
+      <imageIdModel id="2436" imageId="64202" />
+      <imageIdModel id="2437" imageId="64202" />
+      <imageIdModel id="2438" imageId="64202" />
+      <imageIdModel id="2439" imageId="64202" />
+      <imageIdModel id="2440" imageId="64202" />
+      <imageIdModel id="2441" imageId="64202" />
+      <imageIdModel id="2442" imageId="64202" />
+      <imageIdModel id="2443" imageId="64202" />
+      <imageIdModel id="2444" imageId="64202" />
+      <imageIdModel id="2445" imageId="64202" />
+      <imageIdModel id="2446" imageId="64202" />
+      <imageIdModel id="2447" imageId="64202" />
+    </models>
+    <hmiStates>
+      <hmiState id="100" text="PowerDeck">
+        <optionComponents>
+          <button id="460" action="160" text="Start measurement">
+            <properties>
+              <property id="9" value="1236" />
+            </properties>
+          </button>
+          <button id="461" action="161" text="Stop and save">
+            <properties>
+              <property id="9" value="1236" />
+            </properties>
+          </button>
+          <button id="462" action="162" text="Live graph">
+            <properties>
+              <property id="9" value="1236" />
+            </properties>
+          </button>
+          <button id="463" action="163" text="Saved measurement">
+            <properties>
+              <property id="9" value="1236" />
+            </properties>
+          </button>
+        </optionComponents>
+        <components>
+          <image id="200" model="40">
+            <properties>
+              <property id="20" value="0" />
+              <property id="21" value="0" />
+              <property id="9" value="1236" />
+              <property id="10" value="420" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="210" model="41">
+            <properties>
+              <property id="20" value="12" />
+              <property id="21" value="44" />
+              <property id="9" value="388" />
+              <property id="10" value="40" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="300" model="60">
+            <properties>
+              <property id="20" value="62" />
+              <property id="21" value="124" />
+              <property id="9" value="48" />
+              <property id="10" value="132" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="301" model="61">
+            <properties>
+              <property id="20" value="110" />
+              <property id="21" value="124" />
+              <property id="9" value="48" />
+              <property id="10" value="132" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="302" model="62">
+            <properties>
+              <property id="20" value="158" />
+              <property id="21" value="124" />
+              <property id="9" value="48" />
+              <property id="10" value="132" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="303" model="63">
+            <properties>
+              <property id="20" value="206" />
+              <property id="21" value="124" />
+              <property id="9" value="48" />
+              <property id="10" value="132" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="304" model="64">
+            <properties>
+              <property id="20" value="254" />
+              <property id="21" value="124" />
+              <property id="9" value="48" />
+              <property id="10" value="132" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="305" model="65">
+            <properties>
+              <property id="20" value="302" />
+              <property id="21" value="124" />
+              <property id="9" value="48" />
+              <property id="10" value="132" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="220" model="46">
+            <properties>
+              <property id="20" value="171" />
+              <property id="21" value="288" />
+              <property id="9" value="70" />
+              <property id="10" value="32" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="211" model="42">
+            <properties>
+              <property id="20" value="424" />
+              <property id="21" value="44" />
+              <property id="9" value="388" />
+              <property id="10" value="40" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="310" model="70">
+            <properties>
+              <property id="20" value="474" />
+              <property id="21" value="124" />
+              <property id="9" value="48" />
+              <property id="10" value="132" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="311" model="71">
+            <properties>
+              <property id="20" value="522" />
+              <property id="21" value="124" />
+              <property id="9" value="48" />
+              <property id="10" value="132" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="312" model="72">
+            <properties>
+              <property id="20" value="570" />
+              <property id="21" value="124" />
+              <property id="9" value="48" />
+              <property id="10" value="132" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="313" model="73">
+            <properties>
+              <property id="20" value="618" />
+              <property id="21" value="124" />
+              <property id="9" value="48" />
+              <property id="10" value="132" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="314" model="74">
+            <properties>
+              <property id="20" value="666" />
+              <property id="21" value="124" />
+              <property id="9" value="48" />
+              <property id="10" value="132" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="315" model="75">
+            <properties>
+              <property id="20" value="714" />
+              <property id="21" value="124" />
+              <property id="9" value="48" />
+              <property id="10" value="132" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="221" model="47">
+            <properties>
+              <property id="20" value="583" />
+              <property id="21" value="288" />
+              <property id="9" value="70" />
+              <property id="10" value="32" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="212" model="43">
+            <properties>
+              <property id="20" value="836" />
+              <property id="21" value="44" />
+              <property id="9" value="388" />
+              <property id="10" value="40" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="320" model="80">
+            <properties>
+              <property id="20" value="886" />
+              <property id="21" value="124" />
+              <property id="9" value="48" />
+              <property id="10" value="132" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="321" model="81">
+            <properties>
+              <property id="20" value="934" />
+              <property id="21" value="124" />
+              <property id="9" value="48" />
+              <property id="10" value="132" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="322" model="82">
+            <properties>
+              <property id="20" value="982" />
+              <property id="21" value="124" />
+              <property id="9" value="48" />
+              <property id="10" value="132" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="323" model="83">
+            <properties>
+              <property id="20" value="1030" />
+              <property id="21" value="124" />
+              <property id="9" value="48" />
+              <property id="10" value="132" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="324" model="84">
+            <properties>
+              <property id="20" value="1078" />
+              <property id="21" value="124" />
+              <property id="9" value="48" />
+              <property id="10" value="132" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="325" model="85">
+            <properties>
+              <property id="20" value="1126" />
+              <property id="21" value="124" />
+              <property id="9" value="48" />
+              <property id="10" value="132" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="390" model="90">
+            <properties>
+              <property id="20" value="898" />
+              <property id="21" value="282" />
+              <property id="9" value="30" />
+              <property id="10" value="54" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="391" model="91">
+            <properties>
+              <property id="20" value="928" />
+              <property id="21" value="282" />
+              <property id="9" value="30" />
+              <property id="10" value="54" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="392" model="92">
+            <properties>
+              <property id="20" value="958" />
+              <property id="21" value="282" />
+              <property id="9" value="30" />
+              <property id="10" value="54" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="393" model="93">
+            <properties>
+              <property id="20" value="988" />
+              <property id="21" value="282" />
+              <property id="9" value="30" />
+              <property id="10" value="54" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="394" model="94">
+            <properties>
+              <property id="20" value="1018" />
+              <property id="21" value="282" />
+              <property id="9" value="30" />
+              <property id="10" value="54" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="395" model="95">
+            <properties>
+              <property id="20" value="1048" />
+              <property id="21" value="282" />
+              <property id="9" value="30" />
+              <property id="10" value="54" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="229" model="49">
+            <properties>
+              <property id="20" value="1102" />
+              <property id="21" value="292" />
+              <property id="9" value="70" />
+              <property id="10" value="32" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <label id="250" model="50">
+            <properties>
+              <property id="20" value="12" />
+              <property id="21" value="360" />
+              <property id="9" value="1212" />
+              <property id="10" value="54" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </label>
+        </components>
+      </hmiState>
+      <hmiState id="110" parentId="100" text="PowerDeck - Live graph">
+        <optionComponents>
+          <button id="3200" action="160" text="Start measurement">
+            <properties>
+              <property id="9" value="1236" />
+            </properties>
+          </button>
+          <button id="3201" action="161" text="Stop and save">
+            <properties>
+              <property id="9" value="1236" />
+            </properties>
+          </button>
+        </optionComponents>
+        <components>
+          <image id="3180" model="2299">
+            <properties>
+              <property id="20" value="0" />
+              <property id="21" value="0" />
+              <property id="9" value="1236" />
+              <property id="10" value="340" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3000" model="2000">
+            <properties>
+              <property id="20" value="140" />
+              <property id="21" value="20" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3001" model="2001">
+            <properties>
+              <property id="20" value="208" />
+              <property id="21" value="20" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3002" model="2002">
+            <properties>
+              <property id="20" value="276" />
+              <property id="21" value="20" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3003" model="2003">
+            <properties>
+              <property id="20" value="344" />
+              <property id="21" value="20" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3004" model="2004">
+            <properties>
+              <property id="20" value="412" />
+              <property id="21" value="20" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3005" model="2005">
+            <properties>
+              <property id="20" value="480" />
+              <property id="21" value="20" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3006" model="2006">
+            <properties>
+              <property id="20" value="548" />
+              <property id="21" value="20" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3007" model="2007">
+            <properties>
+              <property id="20" value="616" />
+              <property id="21" value="20" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3008" model="2008">
+            <properties>
+              <property id="20" value="684" />
+              <property id="21" value="20" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3009" model="2009">
+            <properties>
+              <property id="20" value="752" />
+              <property id="21" value="20" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3010" model="2010">
+            <properties>
+              <property id="20" value="820" />
+              <property id="21" value="20" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3011" model="2011">
+            <properties>
+              <property id="20" value="888" />
+              <property id="21" value="20" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3012" model="2012">
+            <properties>
+              <property id="20" value="956" />
+              <property id="21" value="20" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3013" model="2013">
+            <properties>
+              <property id="20" value="1024" />
+              <property id="21" value="20" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3014" model="2014">
+            <properties>
+              <property id="20" value="1092" />
+              <property id="21" value="20" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3015" model="2015">
+            <properties>
+              <property id="20" value="1160" />
+              <property id="21" value="20" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3016" model="2016">
+            <properties>
+              <property id="20" value="140" />
+              <property id="21" value="130" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3017" model="2017">
+            <properties>
+              <property id="20" value="208" />
+              <property id="21" value="130" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3018" model="2018">
+            <properties>
+              <property id="20" value="276" />
+              <property id="21" value="130" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3019" model="2019">
+            <properties>
+              <property id="20" value="344" />
+              <property id="21" value="130" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3020" model="2020">
+            <properties>
+              <property id="20" value="412" />
+              <property id="21" value="130" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3021" model="2021">
+            <properties>
+              <property id="20" value="480" />
+              <property id="21" value="130" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3022" model="2022">
+            <properties>
+              <property id="20" value="548" />
+              <property id="21" value="130" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3023" model="2023">
+            <properties>
+              <property id="20" value="616" />
+              <property id="21" value="130" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3024" model="2024">
+            <properties>
+              <property id="20" value="684" />
+              <property id="21" value="130" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3025" model="2025">
+            <properties>
+              <property id="20" value="752" />
+              <property id="21" value="130" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3026" model="2026">
+            <properties>
+              <property id="20" value="820" />
+              <property id="21" value="130" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3027" model="2027">
+            <properties>
+              <property id="20" value="888" />
+              <property id="21" value="130" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3028" model="2028">
+            <properties>
+              <property id="20" value="956" />
+              <property id="21" value="130" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3029" model="2029">
+            <properties>
+              <property id="20" value="1024" />
+              <property id="21" value="130" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3030" model="2030">
+            <properties>
+              <property id="20" value="1092" />
+              <property id="21" value="130" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3031" model="2031">
+            <properties>
+              <property id="20" value="1160" />
+              <property id="21" value="130" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3032" model="2032">
+            <properties>
+              <property id="20" value="140" />
+              <property id="21" value="240" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3033" model="2033">
+            <properties>
+              <property id="20" value="208" />
+              <property id="21" value="240" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3034" model="2034">
+            <properties>
+              <property id="20" value="276" />
+              <property id="21" value="240" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3035" model="2035">
+            <properties>
+              <property id="20" value="344" />
+              <property id="21" value="240" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3036" model="2036">
+            <properties>
+              <property id="20" value="412" />
+              <property id="21" value="240" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3037" model="2037">
+            <properties>
+              <property id="20" value="480" />
+              <property id="21" value="240" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3038" model="2038">
+            <properties>
+              <property id="20" value="548" />
+              <property id="21" value="240" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3039" model="2039">
+            <properties>
+              <property id="20" value="616" />
+              <property id="21" value="240" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3040" model="2040">
+            <properties>
+              <property id="20" value="684" />
+              <property id="21" value="240" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3041" model="2041">
+            <properties>
+              <property id="20" value="752" />
+              <property id="21" value="240" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3042" model="2042">
+            <properties>
+              <property id="20" value="820" />
+              <property id="21" value="240" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3043" model="2043">
+            <properties>
+              <property id="20" value="888" />
+              <property id="21" value="240" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3044" model="2044">
+            <properties>
+              <property id="20" value="956" />
+              <property id="21" value="240" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3045" model="2045">
+            <properties>
+              <property id="20" value="1024" />
+              <property id="21" value="240" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3046" model="2046">
+            <properties>
+              <property id="20" value="1092" />
+              <property id="21" value="240" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="3047" model="2047">
+            <properties>
+              <property id="20" value="1160" />
+              <property id="21" value="240" />
+              <property id="9" value="69" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <label id="3181" model="2300">
+            <properties>
+              <property id="20" value="0" />
+              <property id="21" value="350" />
+              <property id="9" value="1236" />
+              <property id="10" value="50" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </label>
+        </components>
+      </hmiState>
+      <hmiState id="111" parentId="100" text="PowerDeck - RPM curves">
+        <components>
+          <image id="4180" model="2499">
+            <properties>
+              <property id="20" value="0" />
+              <property id="21" value="0" />
+              <property id="9" value="1236" />
+              <property id="10" value="370" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4000" model="2400">
+            <properties>
+              <property id="20" value="70" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4001" model="2401">
+            <properties>
+              <property id="20" value="112" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4002" model="2402">
+            <properties>
+              <property id="20" value="154" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4003" model="2403">
+            <properties>
+              <property id="20" value="196" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4004" model="2404">
+            <properties>
+              <property id="20" value="238" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4005" model="2405">
+            <properties>
+              <property id="20" value="280" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4006" model="2406">
+            <properties>
+              <property id="20" value="322" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4007" model="2407">
+            <properties>
+              <property id="20" value="364" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4008" model="2408">
+            <properties>
+              <property id="20" value="406" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4009" model="2409">
+            <properties>
+              <property id="20" value="448" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4010" model="2410">
+            <properties>
+              <property id="20" value="490" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4011" model="2411">
+            <properties>
+              <property id="20" value="532" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4012" model="2412">
+            <properties>
+              <property id="20" value="574" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4013" model="2413">
+            <properties>
+              <property id="20" value="616" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4014" model="2414">
+            <properties>
+              <property id="20" value="658" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4015" model="2415">
+            <properties>
+              <property id="20" value="700" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4016" model="2416">
+            <properties>
+              <property id="20" value="742" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4017" model="2417">
+            <properties>
+              <property id="20" value="784" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4018" model="2418">
+            <properties>
+              <property id="20" value="826" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4019" model="2419">
+            <properties>
+              <property id="20" value="868" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4020" model="2420">
+            <properties>
+              <property id="20" value="910" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4021" model="2421">
+            <properties>
+              <property id="20" value="952" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4022" model="2422">
+            <properties>
+              <property id="20" value="994" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4023" model="2423">
+            <properties>
+              <property id="20" value="1036" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4024" model="2424">
+            <properties>
+              <property id="20" value="70" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4025" model="2425">
+            <properties>
+              <property id="20" value="112" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4026" model="2426">
+            <properties>
+              <property id="20" value="154" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4027" model="2427">
+            <properties>
+              <property id="20" value="196" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4028" model="2428">
+            <properties>
+              <property id="20" value="238" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4029" model="2429">
+            <properties>
+              <property id="20" value="280" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4030" model="2430">
+            <properties>
+              <property id="20" value="322" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4031" model="2431">
+            <properties>
+              <property id="20" value="364" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4032" model="2432">
+            <properties>
+              <property id="20" value="406" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4033" model="2433">
+            <properties>
+              <property id="20" value="448" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4034" model="2434">
+            <properties>
+              <property id="20" value="490" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4035" model="2435">
+            <properties>
+              <property id="20" value="532" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4036" model="2436">
+            <properties>
+              <property id="20" value="574" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4037" model="2437">
+            <properties>
+              <property id="20" value="616" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4038" model="2438">
+            <properties>
+              <property id="20" value="658" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4039" model="2439">
+            <properties>
+              <property id="20" value="700" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4040" model="2440">
+            <properties>
+              <property id="20" value="742" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4041" model="2441">
+            <properties>
+              <property id="20" value="784" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4042" model="2442">
+            <properties>
+              <property id="20" value="826" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4043" model="2443">
+            <properties>
+              <property id="20" value="868" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4044" model="2444">
+            <properties>
+              <property id="20" value="910" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4045" model="2445">
+            <properties>
+              <property id="20" value="952" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4046" model="2446">
+            <properties>
+              <property id="20" value="994" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="4047" model="2447">
+            <properties>
+              <property id="20" value="1036" />
+              <property id="21" value="30" />
+              <property id="9" value="64" />
+              <property id="10" value="3" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <label id="4181" model="2500">
+            <properties>
+              <property id="20" value="0" />
+              <property id="21" value="370" />
+              <property id="9" value="1236" />
+              <property id="10" value="50" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </label>
+          <label id="4190" model="2510">
+            <properties>
+              <property id="20" value="70" />
+              <property id="21" value="30" />
+              <property id="9" value="150" />
+              <property id="10" value="34" />
+              <property id="2" value="false" />
+              <property id="3" value="false" />
+            </properties>
+          </label>
+          <label id="4191" model="2520">
+            <properties>
+              <property id="20" value="70" />
+              <property id="21" value="30" />
+              <property id="9" value="280" />
+              <property id="10" value="26" />
+              <property id="2" value="false" />
+              <property id="3" value="false" />
+            </properties>
+          </label>
+        </components>
+      </hmiState>
+    </hmiStates>
+  </pluginApp>
+</pluginApps>

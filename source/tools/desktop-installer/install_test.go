@@ -278,6 +278,8 @@ func TestStagedOnlyLockRecoveryInstallsAllApps(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(previous, "new-"+app.name)); err != nil {
 			t.Fatal("previous staging was changed", err)
 		}
+	}
+	for _, app := range installableMenus() {
 		if worker, err := os.Stat(filepath.Join(dir, "Plugins", app.name, app.worker)); err != nil || worker.Mode().Perm()&0111 == 0 {
 			t.Fatal("new worker is missing or not executable", err)
 		}

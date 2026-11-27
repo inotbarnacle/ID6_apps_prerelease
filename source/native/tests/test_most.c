@@ -12,6 +12,7 @@
 #include <time.h>
 #include <unistd.h>
 #include "most/dsi_abi.h"
+#include "most/dsi_client.h"
 #include "most/most_link.h"
 #include "fake_dme.h"
 #include "fake_dsi.h"
@@ -88,6 +89,14 @@ static void hs_client_only(void)
 {
     fake_dsi_connect();
     fake_dme_give_client();
+}
+
+static void hs_client_refused(void)
+{
+    static const uint8_t refused[] = {0xff,0xff,0xff,0xff,0x01,0x01};
+    fake_dsi_connect();
+    fake_dsi_deliver(0x200, 0x80000000u, refused, sizeof refused);
+    fake_dme_give_target_up();  /* An unsolicited connect must not make a refused client usable. */
 }
 
 static const uint8_t UDS_READ[3] = { 0x22, 0x42, 0x05 };
@@ -181,6 +190,128 @@ static enum most_rc request_with(void *(*fn)(void *), void *arg, uint8_t *resp, 
 }
 
 static int got_ok(const uint8_t *resp, size_t n) { return n == sizeof INNER_OK && !memcmp(resp, INNER_OK, n); }
+
+static unsigned foreign_case;
+static void foreign_envelope_then_ok(void)
+{
+    uint8_t p[] = {0xf0,0x63,0x71,1,0x0f,0x0b,0x12,0,5,0x62,0x42,5,0xaa,0xbb,0};
+    uint8_t fb=6,inst=0xf0,op=0x0c;
+    size_t n=14;
+    switch (foreign_case) {
+    case 0: fb=0x82; inst=0; break;       /* HUD traffic on the same DSI server. */
+    case 1: inst=0; break;
+    case 2: p[0]=0xf1; break;            /* Another tunnel endpoint. */
+    case 3: p[1]=0x64; break;            /* Another diagnostic tester. */
+    case 4: p[6]=0x18; break;            /* Another ECU, same positive UDS echo. */
+    case 5: op=0; break;                /* Command instead of Status/Result. */
+    case 6: ++n; break;                 /* Unaccounted trailing bytes. */
+    case 7: p[2]=0x7f; p[3]=0x31; n=4; break; /* Refusal without NRC. */
+    case 8: p[1]=0x64; p[2]=0x7f; p[3]=0x31; p[4]=0x31; n=5; break;
+    }
+    fake_dme_deliver_message(fb,inst,op,0x050,p,n);
+    sleep_us(20000);
+    reply_ok();
+}
+
+static void test_refused_client_has_no_device_or_cleanup_requests(void)
+{
+    uint8_t resp[64];
+    size_t n=0;
+    alarm(10);
+    setup(hs_client_refused,NULL);
+    CHECK(most_open(150)==MOST_NO_SERVER);
+    CHECK(most_request(MOST_ECU_DME,UDS_READ,3,resp,sizeof resp,&n)==MOST_CLOSED);
+    CHECK(most_close()==0);
+    CHECK(fake_dsi_req_count(0x01)==0 && fake_dsi_req_count(0x02)==0);
+    CHECK(fake_dsi_req_count(0x05)==0 && fake_dsi_req_count(0x10)==0);
+    CHECK(fake_free_calls==1);
+    alarm(0);
+}
+
+static void test_late_refusal_retires_the_current_client(void)
+{
+    uint8_t resp[64];
+    size_t n=0;
+    alarm(10);
+    setup(fake_dme_hs_up,NULL);
+    CHECK(most_open(150)==MOST_UP);
+    hs_client_refused();
+    CHECK(most_request(MOST_ECU_DME,UDS_READ,3,resp,sizeof resp,&n)==MOST_CLOSED);
+    CHECK(most_close()==0);
+    CHECK(fake_dsi_req_count(0x01)==1 && fake_dsi_req_count(0x02)==0);
+    CHECK(fake_dsi_req_count(0x05)==0 && fake_dsi_req_count(0x10)==0);
+    alarm(0);
+}
+
+static void test_cleanup_uses_our_registered_key(void)
+{
+    int i;
+    static const uint8_t own_key[]={0xf0,0x06};
+    alarm(10);
+    setup(fake_dme_hs_up,NULL);
+    CHECK(most_open(150)==MOST_UP);
+    dsi_client_set_target(0x8200,0x82,0); /* Another target was configured, but never registered by us. */
+    CHECK(most_close()==0);
+    i=req_index(0x05);
+    CHECK(i>=0);
+    if (i>=0) CHECK(fake_req[i].n==3 && fake_req[i].w[2].size==2 &&
+                    !memcmp(fake_req[i].w[2].bytes,own_key,sizeof own_key));
+    alarm(0);
+}
+
+static void fail_target_registration(const fake_req_t *request)
+{
+    if (request->id==0x0f) fake_send_rc=-1;
+}
+
+static void test_failed_target_registration_has_no_target_cleanup(void)
+{
+    alarm(10);
+    setup(hs_client_only,NULL);
+    fake_dsi_set_send_hook(fail_target_registration);
+    CHECK(most_open(150)==MOST_NO_SERVER);
+    fake_send_rc=0;
+    CHECK(most_close()==0);
+    CHECK(fake_dsi_req_count(0x05)==0);
+    CHECK(fake_dsi_req_count(0x10)==1 && fake_free_calls==1);
+    alarm(0);
+}
+
+static void slow_unregister(const fake_req_t *request)
+{
+    if (request->id==0x05) sleep_us(500000);
+}
+
+static int close_result;
+static void *close_after_request(void *unused)
+{
+    (void)unused;
+    wait_req_count(0x02,1);
+    close_result=most_close();
+    return NULL;
+}
+
+static void test_close_invalidates_wait_before_unregister_can_block(void)
+{
+    uint8_t resp[64];
+    size_t n=0;
+    struct timespec started;
+    pthread_t closer;
+    enum most_rc rc;
+    long elapsed;
+    alarm(10);
+    setup(fake_dme_hs_up,NULL);
+    CHECK(most_open(1000)==MOST_UP);
+    fake_dsi_set_send_hook(slow_unregister);
+    pthread_create(&closer,NULL,close_after_request,NULL);
+    clock_gettime(CLOCK_MONOTONIC,&started);
+    rc=most_request_wait(MOST_ECU_DME,UDS_READ,3,resp,sizeof resp,&n,1000);
+    elapsed=ms_since(&started);
+    pthread_join(closer,NULL);
+    CHECK(rc==MOST_CLOSED && elapsed<300);
+    CHECK(close_result==0 && fake_free_calls==1);
+    alarm(0);
+}
 
 static void on_alarm(int s)
 {
@@ -581,6 +712,13 @@ int main(void)
     bind_rc = 0;
     test_close_without_client();
     test_wire_bytes();
+    test_refused_client_has_no_device_or_cleanup_requests();
+    test_late_refusal_retires_the_current_client();
+    test_cleanup_uses_our_registered_key();
+    test_failed_target_registration_has_no_target_cleanup();
+    test_close_invalidates_wait_before_unregister_can_block();
+    for (foreign_case=0;foreign_case<9;++foreign_case)
+        test_simple(fake_dme_hs_up,foreign_envelope_then_ok,1000,MOST_REPLY,1);
     test_simple(fake_dme_hs_up, reply_ok, 1000, MOST_REPLY, 1);
     test_simple(fake_dme_hs_up, NULL, 150, MOST_TIMEOUT, 0);
     test_simple(fake_dme_hs_up, drop, 2000, MOST_CLOSED, 0);

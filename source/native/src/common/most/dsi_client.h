@@ -24,7 +24,7 @@ void dsi_client_stop(void);
 void dsi_client_set_name(const char *name);  /* request 0x0F; at most 31 bytes; default "boostdeck" */
 void dsi_client_set_target(uint16_t key, uint8_t fblock, uint8_t inst);   /* key = fblock<<8 | inst */
 int  dsi_register_target(void);      /* request 0x01 */
-int  dsi_unregister_target(void);    /* request 0x05 */
+int  dsi_unregister_target(void);    /* request 0x05, only for this client's accepted register request */
 int  dsi_unregister_client(void);    /* request 0x10 */
 /* Request 0x02 on the control channel. Needs the target up. */
 int  dsi_send_fn(uint8_t fblock, uint8_t inst, uint16_t fkt, uint8_t op, const uint8_t *payload, size_t n);

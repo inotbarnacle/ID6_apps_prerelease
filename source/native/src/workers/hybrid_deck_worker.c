@@ -80,7 +80,7 @@ static int read_signal(struct diag_link *link, unsigned signal, unsigned *voltag
 }
 
 int main(int argc, char **argv) {
-    struct diag_link_cfg cfg={0,6801,DIAG_HSFZ,DIAG_LOOP,"hybriddeck",1};
+    struct diag_link_cfg cfg={0,6801,DIAG_HSFZ,DIAG_LOOP,"hybriddeck",1,0};
     struct diag_link link;
     unsigned cycles=0, count=0, next=0, voltage_did=0xddb4;
     for (int i=1;i<argc;++i) {

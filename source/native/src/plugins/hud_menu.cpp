@@ -2,6 +2,7 @@
 #include "plugin_factory.h"
 #include "diagnostic_worker.h"
 #include "diagnostic_gateway.h"
+#include <signal.h>
 #include <sys/wait.h>
 
 namespace {
@@ -82,7 +83,9 @@ public:
         }
         int outcome = 0;
         const pid_t result = waitpid(child_, &outcome, WNOHANG);
-        if (result == 0 || (result < 0 && errno == EINTR)) {
+        // An auto-reaped child can still be alive; only ESRCH proves it has gone.
+        if (result == 0 || (result < 0 && (errno == EINTR ||
+            (errno == ECHILD && !(kill(child_,0)!=0 && errno==ESRCH))))) {
             poll();
             return true;
         }

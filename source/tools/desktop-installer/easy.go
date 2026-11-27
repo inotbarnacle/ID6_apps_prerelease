@@ -22,8 +22,18 @@ func choose(names []string) ([]plugin, error) {
 	return selectMenus(names, false)
 }
 
+func installableMenus() []plugin {
+	var available []plugin
+	for _, app := range apps {
+		if app.name != "PowerDeck" || powerDeckAvailable() {
+			available = append(available, app)
+		}
+	}
+	return available
+}
+
 func selectMenus(names []string, removal bool) ([]plugin, error) {
-	available := apps
+	available := installableMenus()
 	if removal {
 		available = append(append([]plugin(nil), apps...),
 			plugin{name: "ExhaustFlap", connector: "120"})

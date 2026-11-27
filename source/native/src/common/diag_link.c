@@ -158,7 +158,8 @@ int diag_hsfz_exchange(int fd, unsigned ecu, const unsigned char *uds, unsigned 
 
 /* A DSI send has no timeout, so once MOST is in use SIGALRM's default action bounds every loop and the
  * shutdown. */
-enum { LOOP_FAILS_TO_MOST = 5, MOST_OPEN_MS = 2000, MOST_RETRY_MS = 30000, MOST_GAUGE_RETRY_MS = 250, MOST_WAIT_MIN_MS = 2000,
+enum { LOOP_FAILS_TO_MOST = 5, MOST_OPEN_MS = 2000, MOST_RETRY_MS = 30000, MOST_GAUGE_RETRY_MS = 250,
+       MOST_WAIT_MIN_MS = 2000,
        LOOP_WATCHDOG_S = 60, STOP_WATCHDOG_S = 15, LOOP_LEASE_WAIT_MS = 300, ONESHOT_LEASE_WAIT_MS = 3000,
        LEASE_POLL_MS = 20, MOST_YIELD_MS = 100 };
 static volatile sig_atomic_t most_armed;
@@ -211,27 +212,21 @@ int diag_link_reserve_oneshot(struct diag_link *l) {
     return l->lock >= 0;
 }
 
-/* 1 when the tunnel is up, -1 while a gauge owns arbitration. A failed open is closed here; when that close cannot stop the DSI thread, or the
+/* 1 when up, -1 while a gauge/HUD owns arbitration. A failed open is closed here; when that close cannot stop the DSI thread, or the
  * library is missing, MOST stays off for this process. */
 static int open_most(struct diag_link *l) {
     enum most_open_rc rc;
-    unsigned gauge_port = 0;
-    if (l->cfg.kind == DIAG_LOOP && l->cfg.dsi_name) {
-        if (!strcmp(l->cfg.dsi_name, "boostdeck")) gauge_port = BOOST_MOST_PORT;
-        else if (!strcmp(l->cfg.dsi_name, "shiftdeck")) gauge_port = SHIFT_MOST_PORT;
-        else if (!strcmp(l->cfg.dsi_name, "launchdeck")) gauge_port = LAUNCH_MOST_PORT;
-        else if (!strcmp(l->cfg.dsi_name, "warmdeck")) gauge_port = WARM_MOST_PORT;
-    }
+    unsigned gauge_port=l->cfg.kind==DIAG_LOOP ? gauge_most_port(l->cfg.dsi_name) : 0;
     if (gauge_port) {
-        l->gauge_most_lock = gauge_bind(gauge_port);
-        if (l->gauge_most_lock < 0) return -1;
-        // Mark this dashboard before checking HUD ownership. A new HUD worker
-        // will see the mark even after we release the arbitration port.
-        int arbitration = gauge_bind(GAUGE_MOST_PORT);
-        if (arbitration < 0) {
-            if (errno == EADDRINUSE) gauge_request_most();
+        int arbitration;
+        l->gauge_most_lock=gauge_bind(gauge_port);
+        if (l->gauge_most_lock<0) return -1;
+        /* The marker closes the race with a new HUD worker after arbitration is released. */
+        arbitration=gauge_bind(GAUGE_MOST_PORT);
+        if (arbitration<0) {
+            if (errno==EADDRINUSE) gauge_request_most();
             close(l->gauge_most_lock);
-            l->gauge_most_lock = -1;
+            l->gauge_most_lock=-1;
             return -1;
         }
         close(arbitration);
@@ -247,9 +242,9 @@ static int open_most(struct diag_link *l) {
     if (rc == MOST_NO_LIBRARY) l->most_usable = 0;
     alarm(STOP_WATCHDOG_S);
     if (most_close() != 0) l->most_usable = 0;
-    else if (l->gauge_most_lock >= 0) {
+    else if (l->gauge_most_lock>=0) {
         close(l->gauge_most_lock);
-        l->gauge_most_lock = -1;
+        l->gauge_most_lock=-1;
     }
     if (diag_running) alarm(0);
     return 0;
@@ -258,13 +253,17 @@ static int open_most(struct diag_link *l) {
 int diag_link_up(struct diag_link *l) {
     int oneshot = l->cfg.kind == DIAG_ONESHOT, session = l->cfg.session && !oneshot;
     uint64_t now = bd_mono_ms();
+    int fallback_due=l->cfg.most_after_hsfz && l->cfg.transport!=DIAG_HSFZ && l->most_usable &&
+        l->hsfz_fails>=(oneshot ? 1u : (unsigned)LOOP_FAILS_TO_MOST) && now>=l->most_retry_at;
     if (l->on_most) return !l->lost;
     if (l->fd >= 0) return 1;
-    if (l->cfg.host && now >= l->retry_at) {
+    if (l->transaction) return 0;
+    if (l->cfg.host && now >= l->retry_at && !fallback_due) {
         if (session) l->lock = reserve_gateway();
         if (!session || l->lock >= 0) {
             l->fd = diag_hsfz_connect(l->cfg.host, l->cfg.port);
-            l->hsfz_fails = l->fd < 0 ? l->hsfz_fails+1 : 0;
+            if (l->fd<0) ++l->hsfz_fails;
+            else if (!l->cfg.most_after_hsfz) l->hsfz_fails=0;
             if (l->fd >= 0) l->hsfz_seen = 1;
             if (l->fd < 0 && session) {
                 release_gateway(&l->fd, &l->lock);
@@ -273,14 +272,15 @@ int diag_link_up(struct diag_link *l) {
         }
     }
     if (l->fd >= 0) return 1;
-    /* Once HSFZ has connected, this process stays on it. */
-    if (l->most_usable && !l->hsfz_seen && l->cfg.transport != DIAG_HSFZ && diag_running &&
+    /* Only opted-in live profiles may fall back after an earlier HSFZ connection. */
+    if (l->most_usable && (!l->hsfz_seen || l->cfg.most_after_hsfz) &&
+        l->cfg.transport != DIAG_HSFZ && diag_running &&
         now >= l->most_retry_at &&
         (!l->cfg.host || l->hsfz_fails >= (oneshot ? 1u : (unsigned)LOOP_FAILS_TO_MOST))) {
-        int opened = open_most(l);
-        if (opened == 1) { l->on_most = 1; return 1; }
-        if (opened < 0) {
-            l->most_retry_at = bd_mono_ms()+MOST_GAUGE_RETRY_MS;
+        int opened=open_most(l);
+        if (opened==1) { l->on_most=1;return 1; }
+        if (opened<0) {
+            l->most_retry_at=bd_mono_ms()+MOST_GAUGE_RETRY_MS;
             return 0;
         }
         if (oneshot) l->most_usable = 0;
@@ -290,8 +290,40 @@ int diag_link_up(struct diag_link *l) {
     return 0;
 }
 
-/* Only DME 0x12 has been seen through the tunnel. Loop workers hold the lease for each request and step
- * aside when a waiter showed up; a one-shot worker already holds it for the run. */
+static void release_most_lease(struct diag_link *l,int lock) {
+    char waiting;
+    if (lock<0) return;
+    if (recv(lock,&waiting,sizeof waiting,0)>0) l->most_yield_until=bd_mono_ms()+MOST_YIELD_MS;
+    close(lock);
+}
+
+int diag_link_begin(struct diag_link *l) {
+    if (!diag_running || l->transaction || (l->on_most ? l->lost : l->fd<0)) return 0;
+    if (l->on_most && l->cfg.kind==DIAG_LOOP) {
+        pause_until(l->most_yield_until);
+        if (!diag_running || (l->lock=take_lease(LOOP_LEASE_WAIT_MS))<0) return 0;
+    } else if (l->on_most && l->lock<0) return 0;
+    l->transaction=1;
+    l->transaction_io_failed=0;
+    return 1;
+}
+
+void diag_link_end(struct diag_link *l,int complete) {
+    if (!l->transaction) return;
+    l->transaction=0;
+    if (l->on_most && l->cfg.kind==DIAG_LOOP && !l->lost) {
+        release_most_lease(l,l->lock);
+        l->lock=-1;
+    } else if (!l->on_most && l->cfg.most_after_hsfz) {
+        if (l->transaction_io_failed) {
+            if (l->hsfz_fails<LOOP_FAILS_TO_MOST) ++l->hsfz_fails;
+        } else if (complete) l->hsfz_fails=0;
+    }
+    l->transaction_io_failed=0;
+}
+
+/* Only DME 0x12 has been seen through the tunnel. A loop worker normally leases each request; a
+ * multi-request sequence or one-shot keeps its existing lease until end or shutdown. */
 static int most_request_link(struct diag_link *l, unsigned ecu, const unsigned char *uds, unsigned n,
                              const unsigned char *prefix, unsigned pn, unsigned char *reply, unsigned cap,
                              unsigned timeout_ms, unsigned *negative) {
@@ -300,19 +332,22 @@ static int most_request_link(struct diag_link *l, unsigned ecu, const unsigned c
     int lock = -1;
     if (l->lost) return -1;
     if (!diag_running || ecu != MOST_ECU_DME || n == 0 || n > 16) return -3;
-    if (l->cfg.kind == DIAG_LOOP) {
+    if (l->cfg.kind == DIAG_LOOP && !l->transaction) {
         pause_until(l->most_yield_until);   /* a yield does not count against the 300 ms */
         if ((lock = take_lease(LOOP_LEASE_WAIT_MS)) < 0) return -3;
     }
     rc = most_request_wait(MOST_ECU_DME, uds, n, reply, cap, &len,
                            timeout_ms > MOST_WAIT_MIN_MS ? timeout_ms : MOST_WAIT_MIN_MS);
-    if (lock >= 0) {
-        char waiting;
-        /* Another worker asked for the lease during this request: let it in before the next one. */
-        if (recv(lock, &waiting, sizeof waiting, 0) > 0) l->most_yield_until = bd_mono_ms() + MOST_YIELD_MS;
-        close(lock);
+    /* F303 replies do not identify their definition. A late reply must never become a new sample. */
+    if (rc == MOST_CLOSED || (rc == MOST_TIMEOUT &&
+        ((l->transaction && l->cfg.most_after_hsfz) ||
+         (n >= 3 && uds[0] == 0x22 && uds[1] == 0xf3 && uds[2] == 3) ||
+         (n >= 4 && uds[0] == 0x2c && uds[2] == 0xf3 && uds[3] == 3)))) {
+        l->lost = 1;
+        if (lock >= 0) l->lock = lock; /* Retain ownership through DSI unregister/stop. */
+        return -1;
     }
-    if (rc == MOST_CLOSED) { l->lost = 1; return -1; }
+    release_most_lease(l,lock);
     if (rc != MOST_REPLY) return -3;
     if (len >= 3 && reply[0] == 0x7f) { *negative = reply[2]; return -2; }
     if (len < pn || memcmp(reply, prefix, pn)) return -3;
@@ -322,10 +357,16 @@ static int most_request_link(struct diag_link *l, unsigned ecu, const unsigned c
 int diag_link_request(struct diag_link *l, unsigned ecu, const unsigned char *uds, unsigned n,
                       const unsigned char *prefix, unsigned pn, unsigned char *reply, unsigned cap,
                       unsigned timeout_ms, unsigned *negative) {
+    int rc;
     *negative = 0;
     if (l->on_most) return most_request_link(l, ecu, uds, n, prefix, pn, reply, cap, timeout_ms, negative);
     if (l->fd < 0) return -1;
-    return diag_hsfz_exchange(l->fd, ecu, uds, n, prefix, pn, reply, cap, timeout_ms, negative);
+    rc=diag_hsfz_exchange(l->fd, ecu, uds, n, prefix, pn, reply, cap, timeout_ms, negative);
+    if (rc==-1 && l->cfg.most_after_hsfz) {
+        if (l->transaction) l->transaction_io_failed=1;
+        else if (l->hsfz_fails<LOOP_FAILS_TO_MOST) ++l->hsfz_fails;
+    }
+    return rc;
 }
 
 /* A one-shot worker keeps its lease for the run. */
@@ -356,14 +397,19 @@ void diag_link_tick(struct diag_link *l) {
 }
 
 void diag_link_close(struct diag_link *l) {
-    release_gateway(&l->fd, &l->lock);
+    int closed = 1;
+    l->transaction=0;
+    l->transaction_io_failed=0;
     if (most_armed) {
         alarm(STOP_WATCHDOG_S);
-        if (most_close() == 0) {
-            if (l->gauge_most_lock >= 0) close(l->gauge_most_lock);
-            l->gauge_most_lock = -1;
+        closed = most_close() == 0;
+        if (closed) {
+            if (l->gauge_most_lock>=0) close(l->gauge_most_lock);
+            l->gauge_most_lock=-1;
             if (diag_running) alarm(0);
         }
     }
+    if (closed) release_gateway(&l->fd, &l->lock);
+    else if (l->fd >= 0) { close(l->fd); l->fd = -1; }
     l->on_most = 0;
 }

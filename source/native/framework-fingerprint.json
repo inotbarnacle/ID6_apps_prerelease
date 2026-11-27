@@ -11,6 +11,7 @@
   "libLaunchDeck.so",
   "libMgFlasher.so",
   "libMhdMaps.so",
+  "libPowerDeck.so",
   "libRoadJet.so",
   "libShiftDeck.so",
   "libWarmDeck.so",
@@ -65,6 +66,10 @@
      "bytes": 116,
      "prefix_sha256": "756e45de6aa02d39ae820b28900b95b2d6f7c587c35752d0728c315e096abc09"
     },
+    "_ZN3bmw9PluginApp11setPropertyEjjRKNS_6ParcelE": {
+     "bytes": 32,
+     "prefix_sha256": "126e88ad478d395b8346cd3e0487bcbe262375aee810a9c83b3ed61db854aa2d"
+    },
     "_ZN3bmw9PluginApp11updateModelEjRKNS_11BasicStringIcEE": {
      "bytes": 32,
      "prefix_sha256": "29ca53431958ffe38ab3043b3f43801a211304d9d37119643d68633b8a82ef5f"
@@ -112,6 +117,10 @@
     "_ZN3bmw9PluginApp16requestDataValueEj": {
      "bytes": 32,
      "prefix_sha256": "11a5eb80c0b0f9154849b20ac8d63c2550e7236370e62b78e346d63b70c5de69"
+    },
+    "_ZN3bmw9PluginApp17addHandlerWithMapEjjRKNS_8DelegateIbRKNS_3MapIjNS_7VariantEEEvvvEE": {
+     "bytes": 56,
+     "prefix_sha256": "60588ba77943a6885463ae25d54e058bf8d97c816fb9c47def54bd243a84cb4f"
     },
     "_ZN3bmw9PluginApp18handleEventWithMapEjjRKNS_3MapIjNS_7VariantEEE": {
      "bytes": 116,
@@ -425,6 +434,10 @@
     "_ZN3bmw6Parcel11writeUInt32Ej": {
      "bytes": 100,
      "prefix_sha256": "95408693625bfed401b722fccc098d46a95a1adcf55e9b5a8ada539bfb584ebf"
+    },
+    "_ZN3bmw6ParcelC1Eb": {
+     "bytes": 100,
+     "prefix_sha256": "3e32ede4c1c5359c9f2b9732d116f44cb9ab49871dd921a82a4654b8b253daa5"
     },
     "_ZN3bmw6ParcelC1Ev": {
      "bytes": 64,

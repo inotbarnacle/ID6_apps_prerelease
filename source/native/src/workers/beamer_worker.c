@@ -1,6 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
-#include "diag_link.h"
 #include "gauge_core.h"
+#include "diag_link.h"
 
 #include <poll.h>
 #include <string.h>
@@ -116,7 +116,7 @@ int main(int argc, char **argv) {
     if (argc != 4 || strcmp(argv[1], "--host") ||
         strlen(argv[3]) != 1 || argv[3][0] < '0' || argv[3][0] > '3') return 2;
 
-    struct diag_link_cfg config = {argv[2], 6801, DIAG_HSFZ, DIAG_ONESHOT, 0, 0};
+    struct diag_link_cfg config = {argv[2], 6801, DIAG_HSFZ, DIAG_ONESHOT, 0, 0, 0};
     struct diag_link link;
     diag_link_signals();
     struct sigaction action;

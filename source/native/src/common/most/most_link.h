@@ -15,7 +15,7 @@ enum most_rc { MOST_REPLY = 0, MOST_TIMEOUT = -1, MOST_CLOSED = -2, MOST_NOROUTE
 
 /* MOST_UP:         informationConnect seen for key 0x06F0.
    MOST_NO_TARGET:  the wait timed out after a registry without the key.
-   MOST_NO_SERVER:  no client, a dropped link, or a timeout with no registry.
+   MOST_NO_SERVER:  no accepted client, failed register, dropped link, or a timeout with no registry.
    MOST_NO_LIBRARY: the DSI library or one of its functions is missing; nothing was started. */
 enum most_open_rc { MOST_UP = 0, MOST_NO_TARGET = -1, MOST_NO_SERVER = -2, MOST_NO_LIBRARY = -3 };
 
@@ -35,7 +35,7 @@ enum most_rc most_request_wait(uint8_t ecu, const uint8_t *uds, size_t uds_len,
 /* most_request_wait with the open's timeout and a reply cap of 64. */
 enum most_rc most_request(uint8_t ecu, const uint8_t *uds, size_t uds_len,
                           uint8_t *resp, size_t resp_cap, size_t *resp_len);
-/* Unregisters the target, then the client, stops the DSI loop and joins its thread. The join is bounded
+/* Invalidates the waiter, unregisters our target/client when registered, then stops and joins the DSI thread. The join is bounded
    (3 s); the unregisters are library sends without a timeout, so callers bound this with alarm().
    Safe twice and with nothing open. 0 when no DSI thread is left; -1 when it never stopped, and then
    later opens are refused. */

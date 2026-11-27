@@ -21,6 +21,20 @@ import (
 //go:embed index.html
 var page embed.FS
 
+func powerDeckAvailable() bool {
+	_, err := bundled.ReadFile("payload/PowerDeck/PowerDeck.manifest")
+	return err == nil
+}
+
+func installerHTML() []byte {
+	html, _ := page.ReadFile("index.html")
+	power := ""
+	if powerDeckAvailable() {
+		power = `<label><input type="checkbox" name="apps" value="PowerDeck">PowerDeck (N57)</label>`
+	}
+	return []byte(strings.ReplaceAll(string(html), "<!-- PowerDeck install -->", power))
+}
+
 func main() {
 	noBrowser := flag.Bool("no-browser", false, "print the local app URL for development")
 	flag.Parse()
@@ -40,7 +54,7 @@ func main() {
 	url := origin + prefix
 	var operations sync.Mutex
 	mux := http.NewServeMux()
-	html, _ := page.ReadFile("index.html")
+	html := installerHTML()
 	mux.HandleFunc(prefix, func(w http.ResponseWriter, r *http.Request) {
 		if r.Host != host {
 			http.Error(w, "Invalid host", 403)

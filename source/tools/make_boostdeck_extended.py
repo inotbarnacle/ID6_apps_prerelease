@@ -27,6 +27,7 @@ SETTINGS = (
     ("Pressure", 3), ("Speed", 2), ("Temperature", 2), ("Gauge style", 2),
     ("Alert mode", 2), ("Coolant high", 10), ("Oil temp high", 10),
     ("Oil pressure low", 6),
+    ("Diesel rail display scale", 4),
 )
 
 
@@ -132,11 +133,16 @@ def update_xml():
         choose(actions, 2200 + i, 40 + i, 3000 + i, 520)
         radio(colors, 390 + i, 2200 + i, 5200 + i, name)
     profile = page(states, 501, 520, "Engine profile")
-    for i, caption in enumerate(("Gasoline", "Diesel (standard OBD PIDs)")):
+    for i, caption in enumerate(("Gasoline", "Diesel / pinned N57")):
         radio_model(models, 5210 + i)
         choose(actions, 2210 + i, 502 + i, 3010 + i, 520)
         radio(profile, 591 + i, 2210 + i, 5210 + i, caption)
+    for i, caption in enumerate(("Hide emissions gauges", "Show emissions gauges")):
+        radio_model(models, 5212 + i)
+        choose(actions, 2212 + i, 504 + i, 3012 + i, 520)
+        radio(profile, 593 + i, 2212 + i, 5212 + i, caption)
     config = page(states, 500, 520, "Configure gauges")
+    richtext(models, 380)
     for signal in range(len(SIGNALS)):
         radio_model(models, 5300 + signal)
         choose(actions, 3500 + signal, 600 + signal, 4500 + signal, 500)
@@ -155,13 +161,14 @@ def update_xml():
             placed(components, "label", 260+i, 370+i, x+10, y+10, 120, 46)
             placed(components, "image", 280+i, 320+i, x+50, y+58, 40, 250)
             placed(components, "image", 290+i, 330+i, x+22, y+128, DIAL_SIZE, DIAL_SIZE)
-            placed(components, "label", 310+i, 300+i, x+24, y+322, 112, 63)
+            placed(components, "label", 310+i, 300+i, x+24, y+322, 112, 36)
+            placed(components, "label", 319, 380, x+24, y+360, 112, 40)
         target = 510 + i
         goto(actions, target, target)
         button(config, 540 + i, target, model=340+i)
         options = page(states, target, 500, f"Gauge {i+1}")
         for j, caption in enumerate(SIGNALS):
-            radio(options, 3500 + i*40+j, 3500+j, 5300+j, caption)
+            radio(options, 3500 + i*64+j, 3500+j, 5300+j, caption)
     ET.indent(tree, space="  ")
     tree.write(XML, encoding="utf-8", xml_declaration=True)
 

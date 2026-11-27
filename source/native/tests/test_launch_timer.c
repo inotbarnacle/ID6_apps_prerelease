@@ -185,6 +185,19 @@ static void test_rolling_interpolates_both_thresholds(void) {
 }
 
 int main(void) {
+    { /* A positive fractional N57 speed must never arm a standing start. */
+      launch_timer t;
+      lt_init(&t);
+      CHECK(lt_update_mkph(&t,1000,5)==LT_EV_NONE && t.state==LT_IDLE);
+      CHECK(lt_update_mkph(&t,1100,0)==LT_EV_ARMED);
+      CHECK(lt_update_mkph(&t,1200,5)==LT_EV_STARTED);
+      CHECK(lt_update_mkph(&t,1300,300001)==LT_EV_ABORTED);
+      lt_set_mode(&t,LT_100_200);
+      CHECK(lt_update_mkph(&t,1000,99900)==LT_EV_ARMED);
+      CHECK(lt_update_mkph(&t,1100,100100)==LT_EV_STARTED && t.start_ms==1050);
+      CHECK(lt_update_mkph(&t,2100,199900)==LT_EV_NONE);
+      CHECK(lt_update_mkph(&t,2200,200100)==LT_EV_FINISHED && t.result_ms==1100);
+    }
     test_rolling_interpolates_both_thresholds();
     test_arms_on_first_standstill();
     test_moving_car_does_not_arm();

@@ -20,6 +20,7 @@
 #include "gauge_core.h"
 #include "gauge_coexistence.h"
 #include "drive_frame.h"
+#include "n57.h"
 #include "fake_dme.h"
 #include "fake_dsi.h"
 
@@ -125,6 +126,42 @@ static int exited_ok(pid_t pid)
 {
     int status = 0;
     return waitpid(pid, &status, 0) == pid && WIFEXITED(status) && WEXITSTATUS(status) == 0;
+}
+
+/* Every connection answers identity, then leaves the data requests unanswered until client close.
+ * Keep listening briefly after the fifth close to catch an unwanted sixth HSFZ connect. */
+static pid_t hsfz_silent_data_server(unsigned *port)
+{
+    static const unsigned char ident[]={0x22,0xf1,0x50};
+    static const unsigned char response[]={0,0,0,8,0,1,0x12,0xf4,0x62,0xf1,0x50,1,2,3};
+    int fd=listener(port);
+    pid_t pid;
+    listen(fd,8);
+    fflush(NULL);
+    pid=fork();
+    if (pid==0) {
+        int i,ok=1;
+        for (i=0;i<5 && ok;++i) {
+            unsigned char request[64];
+            size_t got=0;
+            ssize_t n;
+            int c=accept(fd,0,0);
+            if (c<0) { ok=0;break; }
+            while (got<11 && (n=recv(c,request+got,11-got,0))>0) got+=(size_t)n;
+            ok=got==11 && !memcmp(request+8,ident,sizeof ident) &&
+                send(c,response,sizeof response,0)==(ssize_t)sizeof response;
+            while ((n=recv(c,request,sizeof request,0))>0) {}
+            close(c);
+        }
+        if (ok) {
+            struct pollfd p={fd,POLLIN,0};
+            ok=poll(&p,1,500)==0;
+        }
+        close(fd);
+        _exit(ok ? 0 : 1);
+    }
+    close(fd);
+    return pid;
 }
 
 /* Another process holding the diagnostic lease until release_holder. */
@@ -542,6 +579,380 @@ static void test_hsfz_seen_never_most(void)
     finish(&l);
 }
 
+static void test_opt_in_fallback_after_hsfz_disconnect(void)
+{
+    struct diag_link l;
+    unsigned port;
+    int i;
+    pid_t server=hsfz_server(&port,0,0,0,0);
+    start(&l,"up","127.0.0.1",port,DIAG_AUTO,DIAG_LOOP,0);
+    l.cfg.most_after_hsfz=1;
+    CHECK(diag_link_up(&l)==1 && l.hsfz_seen);
+    diag_link_drop(&l);
+    CHECK(exited_ok(server));
+    for (i=0;i<4;++i) CHECK(diag_link_up(&l)==0);
+    CHECK(diag_link_up(&l)==1 && diag_link_on_most(&l));
+    CHECK(fake_most_binds==1);
+    finish(&l);
+}
+
+static void test_opt_in_fallback_after_real_io_failures(void)
+{
+    static const unsigned char ident[]={0x22,0xf1,0x50}, ack[]={0x62,0xf1,0x50};
+    struct diag_link l;
+    unsigned port,negative;
+    unsigned char reply[64];
+    int i;
+    pid_t server=hsfz_silent_data_server(&port);
+    start(&l,"up","127.0.0.1",port,DIAG_AUTO,DIAG_LOOP,0);
+    l.cfg.most_after_hsfz=1;
+    for (i=0;i<5;++i) {
+        CHECK(diag_link_up(&l)==1 && !diag_link_on_most(&l));
+        CHECK(l.hsfz_fails==(unsigned)i); // TCP connect does not reset an unfinished batch.
+        CHECK(diag_link_begin(&l)==1 && diag_link_begin(&l)==0);
+        CHECK(diag_link_request(&l,0x12,ident,3,ack,3,reply,sizeof reply,100,&negative)==6);
+        CHECK(l.hsfz_fails==(unsigned)i); // Positive identity does not reset it either.
+        CHECK(read_4201(&l,20,reply)==-1);
+        CHECK(read_4201(&l,20,reply)==-1);
+        diag_link_end(&l,0);
+        CHECK(l.hsfz_fails==(unsigned)i+1); // Multiple I/O failures count once per batch.
+        diag_link_drop(&l);
+    }
+    CHECK(fake_most_binds==0);
+    CHECK(diag_link_up(&l)==1 && diag_link_on_most(&l));
+    CHECK(exited_ok(server)); // No sixth HSFZ connect despite the still-listening endpoint.
+    finish(&l);
+}
+
+static void test_opt_in_hsfz_override_and_no_mid_batch_switch(void)
+{
+    struct diag_link l;
+    unsigned port;
+    int i;
+    pid_t server=hsfz_server(&port,0,0,0,0);
+    start(&l,"up","127.0.0.1",port,DIAG_HSFZ,DIAG_LOOP,0);
+    l.cfg.most_after_hsfz=1;
+    CHECK(diag_link_up(&l)==1 && diag_link_begin(&l)==1);
+    diag_link_drop(&l);
+    CHECK(exited_ok(server));
+    l.hsfz_fails=5;
+    CHECK(diag_link_up(&l)==0 && fake_most_binds==0);
+    diag_link_end(&l,0);
+    for (i=0;i<8;++i) CHECK(diag_link_up(&l)==0);
+    CHECK(fake_most_binds==0 && !diag_link_on_most(&l));
+    l.cfg.transport=DIAG_AUTO;
+    CHECK(diag_link_up(&l)==1 && diag_link_on_most(&l));
+    finish(&l);
+}
+
+static void test_opt_in_refusal_keeps_hsfz_and_complete_resets(void)
+{
+    static const unsigned char refusal[]={0x7f,0x22,0x31};
+    struct diag_link l;
+    unsigned port,negative;
+    unsigned char reply[64];
+    pid_t server=hsfz_server(&port,READ_4201,3,refusal,sizeof refusal);
+    start(&l,"up","127.0.0.1",port,DIAG_AUTO,DIAG_LOOP,0);
+    l.cfg.most_after_hsfz=1;
+    CHECK(diag_link_up(&l)==1);
+    l.hsfz_fails=3;
+    CHECK(diag_link_begin(&l)==1);
+    CHECK(diag_link_request(&l,0x12,READ_4201,3,PFX_4201,3,reply,sizeof reply,100,&negative)==-2);
+    CHECK(negative==0x31);
+    diag_link_end(&l,0);
+    CHECK(l.hsfz_fails==3 && diag_link_up(&l)==1 && !diag_link_on_most(&l));
+    diag_link_drop(&l);CHECK(exited_ok(server));finish(&l);
+
+    server=hsfz_server(&port,READ_4201,3,REPLY_4201,sizeof REPLY_4201);
+    start(&l,"up","127.0.0.1",port,DIAG_AUTO,DIAG_LOOP,0);
+    l.cfg.most_after_hsfz=1;
+    CHECK(diag_link_up(&l)==1);
+    l.hsfz_fails=4;
+    CHECK(diag_link_begin(&l)==1 && read_4201(&l,100,reply)==5);
+    CHECK(l.hsfz_fails==4);
+    diag_link_end(&l,1);
+    CHECK(l.hsfz_fails==0 && fake_most_binds==0);
+    diag_link_drop(&l);CHECK(exited_ok(server));finish(&l);
+}
+
+static int atomic_exchange(void *ctx,unsigned ecu,const unsigned char *uds,unsigned n,
+                           const unsigned char *prefix,unsigned pn,unsigned char *reply,unsigned cap,
+                           unsigned timeout,unsigned *negative)
+{
+    int probe,rc=diag_link_request(ctx,ecu,uds,n,prefix,pn,reply,cap,timeout,negative);
+    probe=reserve_gateway();
+    CHECK(probe<0 && errno==EADDRINUSE); // No other process can redefine F303 between these requests.
+    if (probe>=0) close(probe);
+    return rc;
+}
+
+static void test_most_atomic_pin_and_dynamic_pair(void)
+{
+    struct diag_link l;
+    double result;
+    int probe;
+    start(&l,"n57-up",0,6801,DIAG_AUTO,DIAG_LOOP,0);
+    CHECK(diag_link_up(&l)==1);
+    CHECK(diag_link_begin(&l)==1 && diag_link_begin(&l)==0);
+    CHECK(n57_match(atomic_exchange,&l,0x010203)==1);
+    CHECK(n57_read(atomic_exchange,&l,0x5955,&result)==1 && result==800);
+    CHECK(n57_read(atomic_exchange,&l,0x4c14,&result)==1);
+    CHECK(fake_dme_count("2C03F303")==2 && fake_dme_count("2C01F303")==2);
+    CHECK(fake_dme_count("22F303")==2);
+    diag_link_end(&l,1);
+    CHECK(!l.transaction && l.lock<0 && l.most_yield_until>bd_mono_ms());
+    probe=reserve_gateway();CHECK(probe>=0);if (probe>=0) close(probe);
+    finish(&l);
+}
+
+static void test_most_atomic_busy_and_lost_release(void)
+{
+    struct diag_link l;
+    unsigned char reply[64];
+    int probe,i;
+    pid_t holder=hold_lease();
+    start(&l,"drop",0,6801,DIAG_AUTO,DIAG_LOOP,0);
+    CHECK(diag_link_up(&l)==1);
+    CHECK(diag_link_begin(&l)==0 && !l.transaction && fake_dme_count("22")==0);
+    diag_link_end(&l,0);
+    release_holder(holder);
+    CHECK(diag_link_begin(&l)==1);
+    for (i=0;i<4;++i) CHECK(read_4201(&l,100,reply)==5);
+    CHECK(read_4201(&l,100,reply)==-1 && diag_link_lost(&l));
+    CHECK(reserve_gateway()<0 && errno==EADDRINUSE);
+    diag_link_end(&l,0);
+    probe=reserve_gateway();CHECK(probe<0 && errno==EADDRINUSE);if (probe>=0) close(probe);
+    CHECK(diag_link_begin(&l)==0 && diag_link_up(&l)==0);
+    finish(&l);
+    probe=reserve_gateway();CHECK(probe>=0);if (probe>=0) close(probe);
+}
+
+static int silent_f303(const uint8_t *q,size_t n,uint8_t *out,size_t *out_n)
+{
+    *out_n=0;
+    if (n==3 && !memcmp(q,"\x22\xf1\x50",3)) {
+        memcpy(out,"\x62\xf1\x50\x01\x02\x03",6);*out_n=6;
+    } else if (n==4 && !memcmp(q,"\x2c\x03\xf3\x03",4)) {
+        memcpy(out,"\x6c\x03\xf3\x03",4);*out_n=4;
+    } else if (n==8 && !memcmp(q,"\x2c\x01\xf3\x03",4)) {
+        memcpy(out,"\x6c\x01\xf3\x03",4);*out_n=4;
+    }
+    return 1;
+}
+
+static int late_retry_done;
+
+static void *late_f303_reply(void *unused)
+{
+    static const uint8_t old_boost[]={0x62,0xf3,3,0x99,0x99};
+    (void)unused;
+    /* Release the old reply only after the timed-out read has been retried or rejected. */
+    while (fake_dme_count("22F303")<2 && !__atomic_load_n(&late_retry_done,__ATOMIC_ACQUIRE)) sleep_ms(1);
+    fake_dme_deliver_tunnel_reply(0x050,old_boost,sizeof old_boost);
+    return NULL;
+}
+
+static void test_late_f303_cannot_become_a_fresh_retry(void)
+{
+    struct diag_link l;
+    pthread_t delayed;
+    double boost=-1;
+    int probe,retry,restart[2];
+    pid_t next;
+    char ready;
+    CHECK(pipe(restart)==0);
+    next=fork(); /* Fork before DSI threads so this really is a new worker/client epoch. */
+    if (next==0) {
+        close(restart[1]);
+        CHECK(read(restart[0],&ready,1)==1);
+        start(&l,"n57-up",0,6801,DIAG_AUTO,DIAG_LOOP,0);
+        l.cfg.most_after_hsfz=1;
+        CHECK(diag_link_up(&l)==1 && diag_link_begin(&l)==1);
+        CHECK(n57_match(atomic_exchange,&l,0x010203)==1);
+        CHECK(n57_read(atomic_exchange,&l,0x4841,&boost)==1 && boost>2299 && boost<2301);
+        diag_link_end(&l,1);
+        finish(&l);
+        fflush(stdout);_exit(failures!=0);
+    }
+    close(restart[0]);
+    start(&l,"n57-up",0,6801,DIAG_AUTO,DIAG_LOOP,0);
+    l.cfg.most_after_hsfz=1;
+    CHECK(diag_link_up(&l)==1 && diag_link_begin(&l)==1);
+    fake_dme_set_reply_hook(silent_f303);
+    CHECK(pthread_create(&delayed,0,late_f303_reply,0)==0);
+    CHECK(n57_match(atomic_exchange,&l,0x010203)==1);
+    CHECK(n57_read(atomic_exchange,&l,0x4841,&boost)==-1 && boost==-1);
+    diag_link_end(&l,0);
+    CHECK(diag_link_lost(&l) && diag_link_up(&l)==0);
+    probe=reserve_gateway();CHECK(probe<0 && errno==EADDRINUSE);if (probe>=0) close(probe);
+    CHECK(diag_link_begin(&l)==0);
+    retry=n57_read(atomic_exchange,&l,0x4841,&boost);
+    if (retry!=-1 || boost!=-1) printf("FAIL late F303 retry rc=%d accepted boost=%.6f\n",retry,boost);
+    CHECK(retry==-1 && boost==-1);
+    __atomic_store_n(&late_retry_done,1,__ATOMIC_RELEASE);
+    CHECK(pthread_join(delayed,0)==0);
+    CHECK(fake_dme_count("22F303")==1);
+    finish(&l);
+    probe=reserve_gateway();CHECK(probe>=0);if (probe>=0) close(probe);
+
+    CHECK(write(restart[1],"y",1)==1);close(restart[1]);
+    CHECK(exited_ok(next));
+}
+
+static void test_n57_identity_timeout_retires_batch(void)
+{
+    struct diag_link l;
+    int probe;
+    start(&l,"n57-up",0,6801,DIAG_AUTO,DIAG_LOOP,0);
+    l.cfg.most_after_hsfz=1;
+    CHECK(diag_link_up(&l)==1 && diag_link_begin(&l)==1);
+    fake_dme_silent_window(1,1);
+    CHECK(n57_match(atomic_exchange,&l,0x010203)==-1);
+    diag_link_end(&l,0);
+    CHECK(diag_link_lost(&l) && diag_link_up(&l)==0 && diag_link_begin(&l)==0);
+    probe=reserve_gateway();CHECK(probe<0 && errno==EADDRINUSE);if (probe>=0) close(probe);
+    finish(&l);
+    probe=reserve_gateway();CHECK(probe>=0);if (probe>=0) close(probe);
+}
+
+static void test_unbatched_f303_timeout_retires_client(void)
+{
+    static const struct { unsigned n; unsigned char data[8]; } requests[]={
+        {4,{0x2c,3,0xf3,3}}, {8,{0x2c,1,0xf3,3,0x48,0x41,1,2}}, {3,{0x22,0xf3,3}}
+    };
+    struct diag_link l;
+    unsigned char reply[64];
+    unsigned i,negative;
+    int probe;
+    for (i=0;i<sizeof requests/sizeof requests[0];++i) {
+        const unsigned n=requests[i].n;
+        pid_t worker=fork();
+        if (worker==0) {
+            start(&l,"n57-up",0,6801,DIAG_AUTO,DIAG_LOOP,0);
+            CHECK(diag_link_up(&l)==1);
+            fake_dme_silent_window(1,1);
+            CHECK(diag_link_request(&l,0x12,requests[i].data,n,requests[i].data,n,reply,sizeof reply,100,&negative)==-1);
+            CHECK(diag_link_lost(&l) && diag_link_up(&l)==0);
+            probe=reserve_gateway();CHECK(probe<0 && errno==EADDRINUSE);if (probe>=0) close(probe);
+            finish(&l);
+            probe=reserve_gateway();CHECK(probe>=0);if (probe>=0) close(probe);
+            fflush(stdout);_exit(failures!=0);
+        }
+        CHECK(exited_ok(worker));
+    }
+}
+
+static void test_gauge_most_waits_for_hud_arbitration(void)
+{
+    struct diag_link l;
+    uint64_t now,before;
+    char request=0;
+    int probe,hud=gauge_bind(GAUGE_MOST_PORT);
+    CHECK(hud>=0);
+    start(&l,"up",0,6801,DIAG_AUTO,DIAG_LOOP,0);
+    before=bd_mono_ms();
+    CHECK(diag_link_up(&l)==0 && !diag_link_on_most(&l));
+    CHECK(fake_most_binds==0 && fake_client_inits==0);
+    {
+        struct pollfd p={hud,POLLIN,0};
+        CHECK(poll(&p,1,500)==1 && (p.revents&POLLIN));
+    }
+    CHECK(recv(hud,&request,1,0)==1 && request==1);
+    now=bd_mono_ms();
+    CHECK(l.most_retry_at>=before+250 && l.most_retry_at<=now+250);
+    CHECK(l.gauge_most_lock<0);
+    probe=gauge_bind(BOOST_MOST_PORT);CHECK(probe>=0);if (probe>=0) close(probe);
+    CHECK(diag_link_up(&l)==0 && fake_most_binds==0);
+    close(hud);
+    sleep_ms(260);
+    CHECK(diag_link_up(&l)==1 && diag_link_on_most(&l));
+    CHECK(fake_most_binds==1 && gauge_active(BOOST_MOST_PORT));
+    probe=gauge_bind(GAUGE_MOST_PORT);CHECK(probe>=0);if (probe>=0) close(probe);
+    finish(&l);
+    CHECK(l.gauge_most_lock<0);
+    probe=gauge_bind(BOOST_MOST_PORT);CHECK(probe>=0);if (probe>=0) close(probe);
+}
+
+static pthread_mutex_t close_mu=PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t close_cv=PTHREAD_COND_INITIALIZER;
+static int close_entered,close_release;
+
+static void hold_unregister(const fake_req_t *request)
+{
+    if (request->id!=0x05) return;
+    pthread_mutex_lock(&close_mu);
+    close_entered=1;
+    pthread_cond_broadcast(&close_cv);
+    while (!close_release) pthread_cond_wait(&close_cv,&close_mu);
+    pthread_mutex_unlock(&close_mu);
+}
+
+static void *close_link(void *link) { diag_link_close(link);return NULL; }
+
+static void test_gauge_marker_lives_until_dsi_shutdown(void)
+{
+    struct diag_link l;
+    pthread_t thread;
+    int probe;
+    start(&l,"up",0,6801,DIAG_AUTO,DIAG_LOOP,0);
+    CHECK(diag_link_up(&l)==1 && l.gauge_most_lock>=0);
+    CHECK(diag_link_begin(&l)==1);
+    fake_dsi_set_send_hook(hold_unregister);
+    CHECK(pthread_create(&thread,0,close_link,&l)==0);
+    pthread_mutex_lock(&close_mu);
+    while (!close_entered) pthread_cond_wait(&close_cv,&close_mu);
+    /* DSI unregister is still in flight: releasing the marker now could admit a HUD writer. */
+    CHECK(fake_free_calls==0);
+    probe=reserve_gateway();CHECK(probe<0 && errno==EADDRINUSE);
+    if (probe>=0) close(probe);
+    probe=gauge_bind(BOOST_MOST_PORT);CHECK(probe<0 && errno==EADDRINUSE);
+    if (probe>=0) close(probe);
+    close_release=1;
+    pthread_cond_broadcast(&close_cv);
+    pthread_mutex_unlock(&close_mu);
+    CHECK(pthread_join(thread,0)==0);
+    fake_dsi_set_send_hook(NULL);
+    CHECK(fake_free_calls==1 && l.gauge_most_lock<0);
+    probe=gauge_bind(BOOST_MOST_PORT);CHECK(probe>=0);if (probe>=0) close(probe);
+    probe=reserve_gateway();CHECK(probe>=0);if (probe>=0) close(probe);
+    fake_dme_stop();
+}
+
+static void test_failed_dsi_shutdown_keeps_ownership_until_exit(void)
+{
+    struct diag_link l;
+    int probe;
+    start(&l,"up",0,6801,DIAG_AUTO,DIAG_LOOP,0);
+    CHECK(diag_link_up(&l)==1 && diag_link_begin(&l)==1);
+    fake_dme_hold_ms(10000); /* Longer than most_close's 3 s join bound. */
+    diag_link_close(&l);
+    CHECK(fake_free_calls==0 && l.lock>=0 && l.gauge_most_lock>=0);
+    probe=reserve_gateway();CHECK(probe<0 && errno==EADDRINUSE);if (probe>=0) close(probe);
+    probe=gauge_bind(BOOST_MOST_PORT);CHECK(probe<0 && errno==EADDRINUSE);if (probe>=0) close(probe);
+    fake_dme_stop(); /* The process exit, rather than an unsafe release, retires the stuck DSI thread. */
+}
+
+static void test_power_engine_most_remains_available_with_aad(void)
+{
+    struct diag_link l;
+    double rpm=0;
+    int probe;
+    setenv("ID6_FAKE_AAD_INSTALLED","1",1);
+    CHECK(native_android_auto_installed());
+    start(&l,"n57-up",0,6801,DIAG_AUTO,DIAG_LOOP,0);
+    l.cfg.dsi_name="powerdeck";
+    l.cfg.most_after_hsfz=1;
+    CHECK(diag_link_up(&l)==1 && diag_link_on_most(&l));
+    CHECK(gauge_active(POWER_MOST_PORT));
+    probe=gauge_bind(BOOST_MOST_PORT);CHECK(probe>=0);if (probe>=0) close(probe);
+    CHECK(diag_link_begin(&l)==1);
+    CHECK(n57_match(atomic_exchange,&l,0x010203)==1);
+    CHECK(n57_read(atomic_exchange,&l,0x5955,&rpm)==1 && rpm==800);
+    diag_link_end(&l,1);
+    finish(&l);
+    probe=gauge_bind(POWER_MOST_PORT);CHECK(probe>=0);if (probe>=0) close(probe);
+}
+
 /* A loop worker that saw a waiter during its request lets it take the lease before its next one. */
 static void test_loop_yields_to_waiter(void)
 {
@@ -668,6 +1079,19 @@ int main(void)
     RUN(test_reply_over_cap);
     RUN(test_link_sigterm_during_request);
     RUN(test_hsfz_seen_never_most);
+    RUN(test_opt_in_fallback_after_hsfz_disconnect);
+    RUN(test_opt_in_fallback_after_real_io_failures);
+    RUN(test_opt_in_hsfz_override_and_no_mid_batch_switch);
+    RUN(test_opt_in_refusal_keeps_hsfz_and_complete_resets);
+    RUN(test_most_atomic_pin_and_dynamic_pair);
+    RUN(test_most_atomic_busy_and_lost_release);
+    RUN(test_late_f303_cannot_become_a_fresh_retry);
+    RUN(test_n57_identity_timeout_retires_batch);
+    RUN(test_unbatched_f303_timeout_retires_client);
+    RUN(test_gauge_most_waits_for_hud_arbitration);
+    RUN(test_gauge_marker_lives_until_dsi_shutdown);
+    RUN(test_failed_dsi_shutdown_keeps_ownership_until_exit);
+    RUN(test_power_engine_most_remains_available_with_aad);
     RUN(test_loop_yields_to_waiter);
     RUN(test_sigterm_during_open);
     printf("test-diag-link: %d tests, %d failures\n", tests, bad);

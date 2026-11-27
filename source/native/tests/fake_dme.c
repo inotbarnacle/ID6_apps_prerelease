@@ -29,13 +29,14 @@ static struct {
     int n_refuse;
     struct { char prefix[HEX_MAX]; uint8_t reply[REPLY_MAX]; size_t n; } raw[MAX_RAW];
     int n_raw;
-    int silent_from, silent_n, tunnel_refused, drop_at, pending, hold_ms;
+    int silent_from, silent_n, tunnel_refused, drop_at, pending, hold_ms, read_hold_ms;
     uint8_t slot[REQ_MAX];
     size_t slot_n;
     int slot_seq, slot_full, seq, overlaps;
     char seen[FAKE_MAX_REQS][HEX_MAX];
     int n_seen;
     int stop;
+    fake_dme_reply_hook reply_hook;
 } g;
 
 static pthread_mutex_t g_mu = PTHREAD_MUTEX_INITIALIZER;
@@ -88,7 +89,8 @@ void fake_dme_give_registry_without_key(void)
 }
 
 /* informationProcessMessage, kind 2, flags 0: a report rather than a transmission status. */
-void fake_dme_deliver_payload(uint16_t fkt, const uint8_t *payload, size_t n)
+void fake_dme_deliver_message(uint8_t fb, uint8_t inst, uint8_t op, uint16_t fkt,
+                             const uint8_t *payload, size_t n)
 {
     pb_t p;
     p.n = 0;
@@ -97,15 +99,20 @@ void fake_dme_deliver_payload(uint16_t fkt, const uint8_t *payload, size_t n)
     p32(&p, 0);                      /* flags */
     p16(&p, 0x0101);                 /* target */
     p16(&p, 0x0301);                 /* source */
-    p.b[p.n++] = 0x06;               /* FBlock */
-    p.b[p.n++] = 0xF0;               /* instance */
+    p.b[p.n++] = fb;
+    p.b[p.n++] = inst;
     p16(&p, fkt);
-    p.b[p.n++] = 0x0C;               /* OpType */
+    p.b[p.n++] = op;
     p32(&p, 0x1234);                 /* client echo */
     p32(&p, (uint32_t)n);
     memcpy(p.b + p.n, payload, n);
     p.n += n;
     deliver(0x80000001u, &p);
+}
+
+void fake_dme_deliver_payload(uint16_t fkt, const uint8_t *payload, size_t n)
+{
+    fake_dme_deliver_message(0x06, 0xF0, 0x0C, fkt, payload, n);
 }
 
 void fake_dme_deliver_tunnel_reply(uint16_t fkt, const uint8_t *inner, size_t ilen)
@@ -204,7 +211,7 @@ static void answer(const uint8_t *rq, size_t n, int seq)
     silent = g.silent_from > 0 && seq >= g.silent_from && (g.silent_n < 0 || seq < g.silent_from + g.silent_n);
     refused = g.tunnel_refused;
     pend = g.pending;
-    hold = g.hold_ms;
+    hold = g.read_hold_ms && n==3 && !memcmp(rq,"\x22\xf3\x03",3) ? g.read_hold_ms : g.hold_ms;
     if (!drop && !silent && !refused) {
         for (i = 0; i < g.n_refuse && !on; i++)
             if (g.refuse[i].left != 0 && starts_with(hex, g.refuse[i].prefix)) {
@@ -213,7 +220,7 @@ static void answer(const uint8_t *rq, size_t n, int seq)
             }
         for (i = 0; i < g.n_raw && !on; i++)
             if (starts_with(hex, g.raw[i].prefix)) { memcpy(out, g.raw[i].reply, g.raw[i].n); on = g.raw[i].n; }
-        if (!on) on = dme_reply(rq, n, out);
+        if (!on && (!g.reply_hook || !g.reply_hook(rq, n, out, &on))) on = dme_reply(rq, n, out);
     }
     pthread_mutex_unlock(&g_mu);
     sleep_us(hold ? hold * 1000L : HOLD_US);   /* a send while the slot is full counts as an overlap */
@@ -323,6 +330,13 @@ void fake_dme_raw(const char *hex_request_prefix, const uint8_t *reply, size_t n
     pthread_mutex_unlock(&g_mu);
 }
 
+void fake_dme_set_reply_hook(fake_dme_reply_hook hook)
+{
+    pthread_mutex_lock(&g_mu);
+    g.reply_hook = hook;
+    pthread_mutex_unlock(&g_mu);
+}
+
 void fake_dme_refuse(const char *hex_prefix, uint8_t nrc, int times)
 {
     pthread_mutex_lock(&g_mu);
@@ -340,6 +354,7 @@ SETTER(fake_dme_pending, pending)
 SETTER(fake_dme_tunnel_refused, tunnel_refused)
 SETTER(fake_dme_drop_link_after, drop_at)
 SETTER(fake_dme_hold_ms, hold_ms)
+SETTER(fake_dme_hold_read_ms, read_hold_ms)
 #undef SETTER
 
 void fake_dme_silent_window(int from_request, int n_requests)
