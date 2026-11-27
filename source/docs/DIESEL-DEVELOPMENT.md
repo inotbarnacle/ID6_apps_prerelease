@@ -76,10 +76,12 @@ This description is not diagnostic confirmation.
 - Discovery and staged F15 validation are in [draft PR #201](https://github.com/inotbarnacle/iDriveDeck/pull/201)
   on independent branch `diesel/read-only-discovery`; 11 new discovery tests and
   8 existing tool tests pass, including privacy and live-request bounds.
-  [Fork CI](https://github.com/voioo/iDriveDeck/actions/runs/45976265810) passed
-  for discovery commit `d78b709`.
-- Next: finish telemetry fork CI, open its draft PR, then ShiftDeck
-  configuration and fault display audit. Keep lifecycle/MOST work coordinated
+  [Fork CI](https://github.com/voioo/iDriveDeck/actions/runs/45976585881) passed
+  for discovery commit `ac48c54`.
+- Telemetry/capability work is in [draft PR #202](https://github.com/inotbarnacle/iDriveDeck/pull/202).
+  Check the [fork workflow runs](https://github.com/voioo/iDriveDeck/actions/workflows/host-tests.yml)
+  for the current pushed commit's GCC/Clang and sanitizer results.
+- Next: ShiftDeck configuration and fault display audit. Keep lifecycle/MOST work coordinated
   with #143/#138/#141 rather than replacing their pending fixes.
 - Vehicle status: no vehicle connection, SSH, ECU requests, installation,
   head-unit restart or QNX build has been performed.
@@ -90,7 +92,21 @@ This description is not diagnostic confirmation.
   asks the existing DPFDeck contributor to align signal/evidence and worker
   responsibilities before a competing implementation. No reply assumed.
 - Pull requests opened by this effort: [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201)
-  (draft; discovery/reporting and validation plan).
+  (draft; discovery/reporting and validation plan) and
+  [#202](https://github.com/inotbarnacle/iDriveDeck/pull/202)
+  (draft; capability-gated telemetry and pressure saturation).
+
+## Outstanding scope
+
+The overall N57 objective remains active. These drafts do not complete it.
+Still required: engine-profile ShiftDeck ranges/configuration; ECU-scoped fault
+descriptions and status tests with licensed data; verified ECU-specific signals
+and dashboard capability choices beyond the standard PID gate; DPFDeck decision
+after contributor coordination; reproducible F15/F16 fixes coordinated with
+existing PRs; exact target vehicle identification/firmware/transport evidence;
+and any applicable QNX and separately authorized physical validation.
+Maintain this scope rather than treating host tests or these two drafts as proof
+of comprehensive N57 support.
 
 Retain separate evidence levels: physical vehicle, recorded diagnostics,
 simulation, host only, experimental, unsupported. Never promote one to another
