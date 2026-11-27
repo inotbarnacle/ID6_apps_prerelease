@@ -39,11 +39,23 @@ application ZIPs are separate maintainer build artifacts.
 
 [PR #143](https://github.com/inotbarnacle/iDriveDeck/pull/143) is open and proposes
 SGBD-specific fixed signals, EGS-over-MOST and lifecycle fixes. Its diesel rows
-are reported as not vehicle-tested. [Draft PR #157](https://github.com/inotbarnacle/iDriveDeck/pull/157)
-is open and proposes an identity-pinned N57 dynamic-DID path plus PowerDeck.
-Neither is merged in this baseline. Its temporary-state mechanism is outside the
-default read-only scope here. Do not import it without separate review,
-authorization, conflict/cleanup/restoration validation and exact ECU evidence.
+are reported as not vehicle-tested. [PR #157](https://github.com/inotbarnacle/iDriveDeck/pull/157)
+is now closed without a merge and is superseded by
+[draft #211](https://github.com/inotbarnacle/iDriveDeck/pull/211), reviewed at
+`8ae065ea74e5bfe1defe334ce546598af12895cc`. That candidate adds an explicitly
+pinned N57 dynamic-DID path and PowerDeck, attributes the worker-ownership fix
+to #143 and adapts the rail scale from #205. Its source uses temporary F303
+clear/define/read transactions; pinning an SGBD index does not establish this
+X5's complete DDE hardware/software identity or a fixed read-only oil source.
+Its reported QNX/emulator results use synthetic ECU data and are not validation
+performed by this effort or on the owner's X5.
+
+The candidate also appends BoostDeck IDs 31–40 for DPF/torque/power fields,
+overlapping #202's EGT IDs 31–38 and early EGR IDs. Combining these features
+needs an explicit ID, wire and persisted-settings migration review. No #211
+code, definitions, binaries or firmware approval is imported here. Dynamic-DID
+ownership, conflicts, cleanup/restoration, data provenance and exact ECU
+applicability remain subject to separate review and owner authorization.
 
 ## Target vehicle evidence matrix
 
@@ -65,6 +77,25 @@ This description is not diagnostic confirmation.
 | Physical installation / factory regression / rollback | Not performed | Separate owner-authorized milestone; staged plan in [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201). |
 
 ## Progress and next actions
+
+- Shared host receiver isolation is available independently in
+  [#213](https://github.com/inotbarnacle/iDriveDeck/pull/213). The older ShiftDeck
+  test was reproduced failing on unchanged upstream `8567aba` when its private
+  UDP receiver was forced onto HUD port 42870. A common allocator now excludes
+  all project IPC ports, closes rejected sockets and bounds retries. Private
+  transport/app/MOST receivers use it; intentional HUD, lease and activity
+  bindings remain explicit. Four regressions cover every reserved port,
+  retry exhaustion, bind-error cleanup and the real ShiftDeck worker's frame.
+  [Standalone GCC/Clang CI](https://github.com/voioo/iDriveDeck/actions/runs/46030718245)
+  passes seven native programs and 84 Python cases on exact source
+  `c7cb0a1e0f44d333f5b38eace215b4bc764ae18f`. The diesel capability and
+  EGT/EGR/pressure helpers also reuse this allocator; their local 24 capability/
+  EGT cases pass. The isolated telemetry branch passes 16 native programs and
+  130 native-suite Python cases, plus eight resource and eight read-only tool
+  cases. Both [diagnostic CI](https://github.com/voioo/iDriveDeck/actions/runs/46031110579)
+  and [receiver CI](https://github.com/voioo/iDriveDeck/actions/runs/46031110388)
+  pass on exact source `e344917d5ca614ffcdbb520c685d7abe9374b5cd`.
+  No production code, diagnostic requests or layout changed.
 
 - Host EGT/EGR/pressure test receivers now avoid project IPC ports. A CI failure
   was reproduced by forcing the receiver onto HUD port 42870: the worker
@@ -379,7 +410,9 @@ This description is not diagnostic confirmation.
   [#209](https://github.com/inotbarnacle/iDriveDeck/pull/209)
   (draft; independent WarmDeck app targets and data quality), and
   [#210](https://github.com/inotbarnacle/iDriveDeck/pull/210)
-  (draft; LaunchDeck record read-error handling and regression tests).
+  (draft; LaunchDeck record read-error handling and regression tests), and
+  [#213](https://github.com/inotbarnacle/iDriveDeck/pull/213)
+  (ready for review; host UDP receiver isolation with no production-code change).
 
 ## Combined source validation
 
@@ -389,7 +422,30 @@ Conflicts in `CHANGELOG.md`, `source/README.md` and `source/native/Makefile` wer
 retaining every feature, documentation link and test target. The common MIT
 framework fake is identical across the ShiftDeck, fault and BoostDeck scale branches.
 
-The latest combined revision `f12c30a` adds #201's separately selected 24-read
+The latest combined revision `00d5fe1` shares the private receiver allocator
+across the older host suites and the newer diesel capability/EGT/EGR/pressure
+helpers. Validation passes **39 native C/C++ test programs and 227 distinct
+Python tests**: 148 native-suite cases plus the same 79 separate tool/resource
+cases. The total tool/resource suite remains 83 cases, including four fault
+resource cases already counted by the native suite. The increase is four
+forced-port/resource-cleanup cases; runtime C/C++ and every diagnostic request
+policy remain unchanged. All nine workflows pass on exact source
+`00d5fe13b76cb1423eaa94f2f5d07ab21e375db7`:
+[diagnostics](https://github.com/voioo/iDriveDeck/actions/runs/46031178080),
+[faults](https://github.com/voioo/iDriveDeck/actions/runs/46031177863),
+[WarmDeck](https://github.com/voioo/iDriveDeck/actions/runs/46031177943),
+[worker ownership](https://github.com/voioo/iDriveDeck/actions/runs/46031178003),
+[record reads](https://github.com/voioo/iDriveDeck/actions/runs/46031177860),
+[ShiftDeck](https://github.com/voioo/iDriveDeck/actions/runs/46031177947),
+[discovery](https://github.com/voioo/iDriveDeck/actions/runs/46031178015),
+[rail scale](https://github.com/voioo/iDriveDeck/actions/runs/46031177927), and
+[receiver isolation](https://github.com/voioo/iDriveDeck/actions/runs/46031177894).
+The independent test-only contribution is #213; #202 reuses that commit and
+adds the diesel-helper adoption. Source from #211 is not included. These
+results do not establish QNX, firmware or physical X5 compatibility. Later
+progress-only documentation does not change this pinned source.
+
+The earlier combined revision `f12c30a` adds #201's separately selected 24-read
 pressure evidence profile and a forced-IPC-port host regression. Validation
 passes **39 native C/C++ test programs and 223 distinct Python tests**: 144
 native-suite cases plus 79 separate tool/resource cases. All 83 tool/resource
