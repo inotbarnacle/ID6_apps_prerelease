@@ -81,9 +81,10 @@ build/test-warm-progress: tests/test_warm_progress.cpp src/plugins/warm_progress
 build/test-warm-readiness-plugin: tests/test_warm_readiness_plugin.cpp tests/fake_bmw.cpp tests/fake_bmw.h src/plugins/warm_deck.cpp src/plugins/warm_progress.h src/ipc/warm_frame.h sdk/bmw_list.h | build
 	$(CXX) $(CXXFLAGS) -std=gnu++98 -fno-access-control -Isdk -Isrc/common -Isrc/ipc -Isrc/plugins -Itests $< tests/fake_bmw.cpp -o $@
 
-test-warm-readiness: build/test-warm-progress build/test-warm-readiness-plugin
+test-warm-readiness: build/test-warm-progress build/test-warm-readiness-plugin build/warmdeck-collector
 	./build/test-warm-progress
 	./build/test-warm-readiness-plugin
+	$(PYTHON) -B tests/test_warm_freshness.py
 
 build/boost-test-core.o: $(CORE) $(HEADERS) | build
 	$(CC) $(CFLAGS) -Isrc/common -c $< -o $@

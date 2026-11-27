@@ -7,18 +7,23 @@
 #include <stdlib.h>
 #include <string.h>
 
-static int temperature(struct diag_link *link, unsigned signal, double *out) {
+static int temperature(struct diag_link *link, unsigned signal, double *out, uint64_t *sample) {
     static const unsigned char requests[][3]={{1,0x5c,0},{1,5,0},{0x22,0xda,0x12}};
     static const unsigned char prefixes[][3]={{0x41,0x5c,0},{0x41,5,0},{0x62,0xda,0x12}};
     unsigned char reply[16];
     unsigned negative;
+    *sample=0;
     const unsigned length=signal==WARM_TRANS ? 3 : 2;
+    /* Queueing and reply latency consume the reading's freshness window. */
+    const uint64_t requested=bd_mono_ms();
     const int n=diag_link_request(link,signal==WARM_TRANS ? 0x18 : 0x12,
         requests[signal],length,prefixes[signal],length,reply,sizeof reply,450,&negative);
     if (n<0) return n;
     if ((unsigned)n<=length) return 0;
-    if (signal==WARM_TRANS) return bd_decode_did(0xda12,reply+length,n-length,out);
-    return bd_decode_obd(requests[signal][1],reply+length,n-length,out);
+    const int valid=signal==WARM_TRANS ? bd_decode_did(0xda12,reply+length,n-length,out) :
+                                       bd_decode_obd(requests[signal][1],reply+length,n-length,out);
+    if (valid) *sample=requested;
+    return valid;
 }
 
 int main(int argc, char **argv) {
@@ -55,8 +60,7 @@ int main(int argc, char **argv) {
                     frame.sample[signal]=0;
                     continue;
                 }
-                const int status=temperature(&link,signal,&frame.celsius[signal]);
-                frame.sample[signal]=status==1 ? bd_mono_ms() : 0;
+                const int status=temperature(&link,signal,&frame.celsius[signal],&frame.sample[signal]);
                 if (status==-1) {
                     diag_link_drop(&link);
                     if (diag_link_lost(&link)) diag_running=0;

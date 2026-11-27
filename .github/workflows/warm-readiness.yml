@@ -28,6 +28,7 @@ jobs:
         run: |
           ${{ matrix.cxx }} -std=gnu++98 -Wall -Wextra -Werror -Isource/native/sdk -Isource/native/src/common -Isource/native/src/ipc -fsyntax-only source/native/src/plugins/warm_deck.cpp
           clang++ --analyze -Xanalyzer -analyzer-output=text -std=gnu++98 -Isource/native/sdk -Isource/native/src/common -Isource/native/src/ipc source/native/src/plugins/warm_deck.cpp
+          clang --analyze -Xanalyzer -analyzer-output=text -std=c99 -DMOST_HOST -Isource/native/src/common -Isource/native/src/ipc -Isource/native/src/workers source/native/src/workers/warm_deck_worker.c
       - name: Generated model bindings and original artwork
         run: |
           python3 -m pip install Pillow==13.0.0
@@ -36,8 +37,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Independent targets and production UDP/UI under sanitizers
+      - name: Independent targets, worker and production UDP/UI under sanitizers
         env:
           ASAN_OPTIONS: detect_leaks=1
           UBSAN_OPTIONS: halt_on_error=1
-        run: make -C source/native test-warm-readiness CXX=clang++ CXXFLAGS='-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'
+        run: make -C source/native test-warm-readiness CC=clang CXX=clang++ CFLAGS='-O1 -g -std=c99 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer' CXXFLAGS='-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'

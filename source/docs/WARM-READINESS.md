@@ -25,7 +25,13 @@ invalidation has no timestamp, so a delayed invalidation can conservatively clea
 a newer reading until another new sample arrives. This change does not redesign
 that protocol or establish worker identity from the port alone.
 
-This UI change preserves the existing worker requests and decoding. Standard oil
+The worker timestamps a valid reading immediately before its diagnostic request.
+Queueing and reply latency therefore count toward the existing 4.5-second
+freshness window. This is a conservative age bound, not an ECU-supplied sample
+timestamp. A refused, malformed or timed-out read has a zero timestamp; a valid
+0 °C reading still has a timestamp. The 48-byte frame is unchanged.
+
+The existing worker requests and decoding are preserved. Standard oil
 PID support still depends on the ECU; capability gating is a separate telemetry
 change. The existing transmission DID is not newly validated for any N57 variant.
 No vehicle compatibility or QNX runtime result follows from the host tests.
@@ -45,6 +51,11 @@ and reopening. Resource checks regenerate the XML and all 22 original images,
 verify unchanged pixels and component geometry, and check the new text bindings.
 CI also runs the full native suite with GCC and Clang, static analysis, and
 AddressSanitizer/UndefinedBehaviorSanitizer for the progress and plugin tests.
+Three real-worker HSFZ cases add delayed replies, valid zero with refused/malformed fluids,
+and invalidation after a timeout. Their gateway is restricted to loopback and
+the existing temperature/capability reads. They verify sample age from recorded
+request arrival times and resource release after exit. The original worker
+fails both delayed-reply timestamp checks; its timeout control already passes.
 
 The updated manifest and generated image archive must be deployed together after
 the usual compatibility checks and owner authorization. This source contribution
