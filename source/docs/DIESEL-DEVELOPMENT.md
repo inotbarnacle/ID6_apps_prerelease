@@ -21,7 +21,7 @@ application ZIPs are separate maintainer build artifacts.
 | WarmDeck | Three temperatures expire independently and trend estimates require all three. Main queries oil unconditionally and displays generic RPM guidance. Thresholds 85/75/40 C are application choices. | #202 gates oil by advertised support. [Draft #209](https://github.com/inotbarnacle/iDriveDeck/pull/209) adds independent target states, measured estimates and advisory vehicle-guidance text, with production UDP/UI and resource tests. |
 | ShiftDeck | Source artwork/preferences retain five gasoline targets while the latest installer release advertises 6000–8000 RPM. Neither establishes an N57 limit. | [Draft #203](https://github.com/inotbarnacle/iDriveDeck/pull/203) adds manually selected diesel targets/display scales, legacy settings migration and asset/plugin tests. No universal diesel redline or physical validation is claimed. |
 | Faults | Worker reads 24-bit UDS codes; the old UI discarded status availability and always used a reference gasoline table. | [Draft #204](https://github.com/inotbarnacle/iDriveDeck/pull/204) preserves status support, adds a DDE/raw view and clear confirmation, plus separate standard confirmed/pending/permanent emissions reads. The counted CAN format is host-tested; target support and licensed DDE descriptions remain open. |
-| DPF | [#196](https://github.com/inotbarnacle/iDriveDeck/issues/196) contributor confirms no implementation branch yet and plans B47 collection once ENET hardware arrives. No verified DPF mapping in this checkout. | Share the sanitized evidence format; decide on a shared B47/N57 profile only after captures. No guessed DIDs, thresholds or regeneration controls. |
+| DPF | [#196](https://github.com/inotbarnacle/iDriveDeck/issues/196) contributor confirms no implementation branch yet and plans B47 collection once ENET hardware arrives. No verified native DPF mapping in this checkout. | #201 adds a separate standard pressure/temperature evidence profile. Share sanitized B47/N57 captures before an app/profile decision. No guessed DIDs, thresholds or regeneration controls. |
 | Installer / rollback | Desktop installer checks framework pairs and display layouts, inventories/stages managed folders and preserves backups; uninstall is documented in `Installer.md`. | Run compatibility check only after authorized vehicle discovery. No installation or restart is authorized yet. |
 | Factory integration | Native Android Auto installation currently disables gauge MOST fallback; [PR #138](https://github.com/inotbarnacle/iDriveDeck/pull/138) proposes a startup process check. This does not establish CarPlay/HUD coexistence. | Keep current guards pending reproducible evidence and maintainer review. |
 
@@ -101,11 +101,35 @@ This description is not diagnostic confirmation.
 | Standard EGT bank/sensor channels | Simulation / host tests only | Exact DDE support for PID 78/79, sensor bits, physical sensor locations and independently compared temperatures. No regeneration inference. |
 | Standard EGR request, actual and error channels | Simulation / host tests only | Exact DDE support for PID 2C/2D/69, per-field bits and independent comparisons. Actual is reported normalized duty/position, not inferred flow or a value reconstructed from error. |
 | Standard requested/actual rail and boost | Simulation / host tests only | Exact DDE support for PID 6D/70, per-field bits, physical A/B identity and independent comparisons. Rail is gauge pressure; boost is absolute. |
+| Standard DPF bank pressure and inlet/outlet temperature | Simulation / host tests only, discovery #201 | Exact DDE support for PID 7A/7B/7C, field support, physical layout and independent comparisons. No native app, regeneration, soot or ash mapping is established. |
 | Standard emissions fault codes | Simulation / host tests only | Confirm that the exact DDE/gateway supports services 03/07/0A and the counted CAN reply format. A category's zero count does not clear other categories. |
 | Fixed BMW diesel, DPF, SCR, oil pressure | Unsupported in this effort | Credible ECU-specific definitions and repeatable sanitized captures. Standard EGR support does not establish a BMW-specific mapping. |
 | Physical installation / factory regression / rollback | Not performed | Separate owner-authorized milestone; staged plan in [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201). |
 
 ## Progress and next actions
+
+- Standard DPF evidence follow-up in
+  [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201): the separately
+  selected `standard-dpf` plan allows at most 27 reads and exports a v5 report.
+  It prioritizes advertised PID 7A/7B/7C, preserving the original four plans and
+  report contracts against frozen fixtures. Ten fields retain bank/position,
+  explicit support and units. Delta pressure is signed; inlet/outlet pressure
+  has no assumed atmospheric reference. Full protocol ranges remain evidence
+  requiring independent validation, including supported zero. No temperature
+  fallback, soot/ash estimate, regeneration inference or native app is added.
+  The unchanged 45-second budget reserves full transaction deadlines, uses
+  200-ms gaps and never retries. Independent DashLogic format corroboration
+  and the exact request/response policy are in the
+  [capture guide](https://github.com/voioo/iDriveDeck/blob/15857d6f084dacb2e4cc21626e06048f7116ea62/source/docs/DIESEL-VALIDATION.md#optional-standard-dpf-pressure-and-temperature-evidence-profile).
+  All 62 discovery, four probe and six head-unit capture cases pass locally and
+  in [CI](https://github.com/voioo/iDriveDeck/actions/runs/46036060794) on exact
+  source `15857d6f084dacb2e4cc21626e06048f7116ea62`. Coverage includes the full
+  16-bit domains, every support byte and a 27-read real HSFZ exchange over local
+  stream pairs with heartbeat, pending and wrong-ECU/PID replies. Those pairs
+  cannot reach a vehicle. This supports the agreed #196 evidence path; exact
+  B47/N57 support, independent measurements and a DPFDeck decision remain open.
+  This plan needs separate review and explicit owner approval before any
+  physical use. No vehicle command, installation or firmware approval occurred.
 
 - Shared host receiver isolation is available independently in
   [#213](https://github.com/inotbarnacle/iDriveDeck/pull/213). The older ShiftDeck
@@ -746,14 +770,18 @@ sensor's accuracy or an ECU-family-specific mapping.
 
 Offline reference review found additional candidates in the vendor's
 [pinned SAE J1979 definitions](https://github.com/OBDb/SAEJ1979/blob/1abdef6ae0c1b9134c8f2a10911a9daa1354649d/signalsets/v3/default.json).
-These are research leads from one vendor, not implemented mappings, independent
-corroboration or evidence of this X5's support. No database descriptions or
-entries are copied into project code and no collector plan gains these reads.
+The 7A/7B/7C layouts now have independent corroboration in
+[DashLogic's PID reference](https://www.dashlogic.com/docs/technical/obdii_pids)
+and host-tested decoding in #201's separately selected v5 evidence profile.
+The other rows remain research leads from one vendor, without implemented
+mappings or independent corroboration. No row establishes this X5's support.
+No database entries or descriptions are copied into project code; earlier
+collector plans are unchanged, and higher-page reads are not added.
 
 | Candidate | Distinction required before implementation |
 | --- | --- |
-| 7A/7B particulate-filter pressures | Separate delta, inlet and outlet fields. The reference's delta is signed 16-bit / 100 kPa; inlet/outlet are unsigned / 100 kPa. Negative delta cannot be silently clamped or converted to a soot estimate. Field support and pressure-reference semantics need corroboration. |
-| 7C particulate-filter temperatures | Explicit bank/inlet/outlet fields differ from the generic bank/sensor labels in 78/79. Neither format alone proves regeneration or the physical N57 sensor location. |
+| 7A/7B particulate-filter pressures | #201 v5 retains separate delta, inlet and outlet fields. Delta is signed 16-bit / 100 kPa; inlet/outlet are unsigned / 100 kPa with no assumed absolute/atmospheric reference. Field support is required. No soot estimate or native app is added. |
+| 7C particulate-filter temperatures | #201 v5 retains explicitly supported bank/inlet/outlet fields, separate from generic EGT 78/79. The full unsigned / 10 - 40 C protocol domain is evidence, not a BMW plausibility limit. Neither format proves regeneration or the physical N57 sensor location. |
 | 85 reagent data | Reported average consumption, demanded average consumption, tank level and time with a NOx warning are separate quantities. None alone establishes SCR health, a DPF state or remaining driving range. |
 | 8B particulate-filter regeneration data | Status/type are distinct from the normalized trigger and average interval/distance. Those averages are not time/distance since the last regeneration; the normalized trigger is not completion percentage or measured soot mass. No universal threshold should be inferred. |
 | 8F particulate-sensor data | Sensor regeneration/measurement status must not be relabelled as DPF regeneration. |
@@ -764,9 +792,10 @@ rejects measurement PIDs above 80. A future 85/8B/8F read would first require
 verified continuation through bitmap 80; A4 requires bitmap A0 as well. Extend
 the bounded cache, capability tests and a separately reviewed request policy
 before considering those reads. Do not add them to an existing reviewed plan.
-Full response layouts, flags, units, invalid states, exact DDE applicability,
-independent readings and the agreed #196 evidence path remain required before
-using these candidates in a monitoring application.
+For the unimplemented candidates, full response layouts, flags, units and
+invalid states still need corroboration. All readings require exact DDE
+applicability, independent comparisons and the agreed #196 evidence path before
+use in a monitoring application.
 
 ## Outstanding scope
 
