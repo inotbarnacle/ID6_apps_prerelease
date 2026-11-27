@@ -332,8 +332,9 @@ mass, time/distance since regeneration, inhibition reasons, completion or a
 service threshold. No such estimate, regeneration command, counter reset,
 dynamic DID, session change or new native app is added. PID 8B and other higher
 pages remain outside this plan. Exact DDE support, independent measurements
-and the shared B47/N57 evidence requested in #196 are still needed before a
-DPFDeck implementation decision.
+and the shared B47/N57 evidence requested in #196 are still needed before
+validating or shipping a DPFDeck ECU profile. Generic, capability-gated app
+development can proceed offline against these documented standard formats.
 
 The 15 added discovery cases cover the entire signed/unsigned 16-bit domains,
 every support byte, exact prefix/length, no fallback/inference, all four frozen
