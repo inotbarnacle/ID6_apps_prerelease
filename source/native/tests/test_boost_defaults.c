@@ -11,11 +11,11 @@ static void advertise(struct obd_capabilities *caps, unsigned pid) {
 
 int main(void) {
     struct obd_capabilities caps={{0},{0},0};
-    unsigned known, supported;
+    bd_mask known, supported;
     unsigned char slots[BD_DEFAULT_SLOTS];
-    bd_diesel_masks(&caps,0,&known,&supported);
+    bd_diesel_masks(&caps,0,0,&known,&supported);
     assert(!known && !supported);
-    bd_diesel_masks(0,0,&known,&supported);
+    bd_diesel_masks(0,0,0,&known,&supported);
     assert(!known && !supported);
     bd_diesel_slots(0,slots);
     assert(!bd_slots_mask(slots));
@@ -23,33 +23,39 @@ int main(void) {
 
     advertise(&caps,0x05); advertise(&caps,0x0b); advertise(&caps,0x0c);
     advertise(&caps,0x20);
-    bd_diesel_masks(&caps,0,&known,&supported);
+    bd_diesel_masks(&caps,0,0,&known,&supported);
     assert((supported & ((1u<<BD_COOLANT)|(1u<<BD_MAP)|(1u<<BD_RPM)))==
                         ((1u<<BD_COOLANT)|(1u<<BD_MAP)|(1u<<BD_RPM)));
     assert(!(known & (1u<<BD_BOOST))); // MAP alone cannot establish boost support
     assert(!(known & (1u<<BD_OIL_TEMP)));
     assert(!(known & (1u<<BD_TRANS)));
     advertise(&caps,0x33); advertise(&caps,0x40);
-    bd_diesel_masks(&caps,1,&known,&supported);
+    bd_diesel_masks(&caps,1,0,&known,&supported);
     assert((supported & ((1u<<BD_BOOST)|(1u<<BD_TRANS)))==((1u<<BD_BOOST)|(1u<<BD_TRANS)));
     assert(!(known & (1u<<BD_OIL_TEMP)));
     caps.known|=4;
-    bd_diesel_masks(&caps,1,&known,&supported);
+    bd_diesel_masks(&caps,1,0,&known,&supported);
     assert(known==bd_diesel_candidates() && !(supported & (1u<<BD_OIL_TEMP)));
     advertise(&caps,0x5c);
-    bd_diesel_masks(&caps,1,&known,&supported);
+    bd_diesel_masks(&caps,1,0,&known,&supported);
     assert(supported & (1u<<BD_OIL_TEMP));
 
     // Every candidate subset produces unique supported gauges only, at most nine.
     unsigned indices[BD_COUNT], count=0;
-    for (unsigned i=0;i<BD_COUNT;++i) if (bd_diesel_candidates() & (1u<<i)) indices[count++]=i;
+    for (unsigned i=0;i<BD_COUNT;++i) if (bd_diesel_candidates() & BD_BIT(i)) indices[count++]=i;
     for (unsigned subset=0;subset<(1u<<count);++subset) {
-        unsigned mask=0, seen=0, displayed=0, available=0;
-        for (unsigned i=0;i<count;++i) if (subset & (1u<<i)) { mask|=1u<<indices[i]; ++available; }
+        bd_mask mask=0, seen=0;
+        unsigned displayed=0, available=0, egt_available=0;
+        for (unsigned i=0;i<count;++i) if (subset & (1u<<i)) {
+            mask|=BD_BIT(indices[i]);
+            if (indices[i]>=BD_EGT_B1S1) egt_available=1;
+            else ++available;
+        }
+        available+=egt_available;
         bd_diesel_slots(mask,slots);
         for (unsigned i=0;i<BD_DEFAULT_SLOTS;++i) {
             if (slots[i]==BD_EMPTY_SLOT) continue;
-            unsigned bit=1u<<slots[i];
+            bd_mask bit=BD_BIT(slots[i]);
             assert((mask&bit) && !(seen&bit)); seen|=bit; ++displayed;
         }
         assert(displayed==(available>9 ? 9 : available));

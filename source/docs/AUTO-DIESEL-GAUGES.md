@@ -6,7 +6,7 @@ evidence reported by its current collector. This replaces the fixed nine-gauge
 diesel default, which could reserve slots for unsupported signals.
 
 Choose **BoostDeck settings → Diesel gauges → Custom layout** to use saved gauge
-selections. Valid existing B1/B2 configuration files retain Custom mode when no
+selections. Valid B1/B2 and extended B3 configuration files retain Custom mode when no
 mode preference exists. The automatic layout never overwrites either profile's
 saved selections. **Configure custom gauges** edits those selections; its page
 explains when Detected defaults are active. Gasoline continues to use its saved
@@ -23,16 +23,17 @@ existing response lengths, scaling, plausibility and freshness rules still apply
 and a refused or stale advertised reading displays `--`.
 
 The priority is boost, oil temperature, coolant, transmission temperature, rail
-pressure, intake air, mass airflow, calculated load, control-module voltage,
+pressure, intake air, one supported EGT bank/sensor, mass airflow, calculated load, control-module voltage,
 fuel rate, barometric pressure and MAP. Advertised RPM is reserved for the narrow
 ninth tile. Without RPM, the next available candidate may use that tile. At most
 nine unique supported signals are displayed. Unfilled slots retain `--` and no
 signal caption. This order is an application choice, not an N57 ECU profile.
 
-All engine candidates reuse the project's existing standardized PID definitions.
+Engine candidates use standardized PID definitions. [EGT](STANDARD-EGT.md) needs
+both PID advertisement and a valid bank reply establishing sensor support.
 Derived boost needs both MAP `0B` and barometric pressure `33` advertisements.
 The 255-kPa absolute MAP ceiling still makes both MAP and derived boost invalid
-at saturation. There is no guessed fixed or temporary diesel oil DID, DPF, EGT,
+at saturation. There is no guessed fixed or temporary diesel oil DID, DPF,
 requested pressure, EGR, SCR or oil-pressure mapping in this default pool.
 
 Transmission is a separate EGS endpoint and has no Mode 01 capability bit here.
@@ -47,7 +48,9 @@ The worker polls chosen supported signals plus unknown candidates needed for
 bounded capability discovery. It stops polling unused, lower-priority supported
 signals once nine are chosen. Existing two-second polling/retry deadlines and
 diagnostic leases remain in use. Standard bitmap reads remain limited to `00`,
-`20` and `40`; no identifier scanning or state-changing service is introduced.
+`20`, `40` and `60`; no identifier scanning or state-changing service is introduced.
+An EGT bank is polled once for all its selected sensors, at most every two
+seconds; malformed/refused reads back off five seconds.
 The diesel HUD RPM-sharing path also respects PID advertisement.
 
 ## Process-local telemetry and persistence
@@ -55,9 +58,11 @@ The diesel HUD RPM-sharing path also respects PID advertisement.
 Automatic collection uses `--auto-diesel TOKEN`, which implies Diesel. It cannot
 be combined with `--demo` or a manual `--signals` mask. The token is supplied by
 the plugin for that worker launch. An automatic datagram consists of a bounded
-`NBC1` header (token, worker PID, monotonic timestamp, known mask, supported mask)
-and the unchanged `NBG7` measurement frame. Their timestamps must match. The
-maximum receive buffer is 928 bytes; the UI still drains at most eight datagrams
+capability header (token, worker PID, monotonic timestamp, known mask, supported
+mask) and its measurement frame. Legacy masks retain `NBC1`; extended evidence
+uses `NBC2`. `NBG7` retains its original 31 channels, while valid extended
+readings use `NBG8` with 39 channels and a mandatory final newline. Their
+timestamps must match. The maximum receive buffer is 1184 bytes; the UI still drains at most eight datagrams
 per tick. This does not change the ECU protocol or HUD's separate sharing format.
 
 The plugin accepts an automatic frame only while visible, from its current
@@ -66,17 +71,19 @@ worker PID/token, with a valid mask subset, a non-future timestamp less than
 cannot disappear or flip within a worker lifetime. Restarting collection clears
 capabilities and chooses a new launch token. Queued old-worker frames, ordinary
 unwrapped packets and demo samples cannot populate an automatic dashboard.
-Custom/Gasoline collection retains ordinary NBG7 encoding and legacy parsing.
+Custom/Gasoline collection retains ordinary NBG7 encoding when no extended
+channel is valid. Old packet parsing is retained; new EGT readings use NBG8.
 Automatic mode needs the matching new plugin and collector, deployed together.
 
 The three-byte D1 mode sidecar is `BoostDeck.signals.defaults` beside the existing
 assignments file, normally under `/var/opt/hmi/data/ID5/`. It uses the existing
 atomic 0600 temporary-file/rename helper. Saving a mode writes only that sidecar;
 the assignment writer also preserves the current mode before writing its usual
-B2 file. Failed mode saves retain the prior mode and show an error. Invalid or
-newer sidecars leave the mode derived from the existing assignments. B1/B2 and
-G1/G2 formats and signal IDs remain compatible. An older binary ignores D1 and
-reads the saved custom layout; it does not understand automatic mode. Back up
+B2 file for old IDs or B3 when an EGT is selected. Failed mode saves retain the
+prior mode and show an error. Invalid or newer sidecars leave the mode derived
+from the existing assignments. B1/B2 keep their original ID bounds, G1/G2 are
+unchanged, and EGT IDs are appended. An older binary ignores D1 and reads an
+old-format custom layout; it cannot interpret B3 or automatic mode. Back up
 the complete app and preference files before any separately authorized update.
 
 ## Offline checks and limits
@@ -88,7 +95,7 @@ python3 -m venv /tmp/idrive-defaults-env
 /tmp/idrive-defaults-env/bin/python -B source/tools/test_boost_defaults_resources.py
 ```
 
-Tests cover all 8,192 candidate subsets, unknown/unsupported/advertised states,
+Tests cover all 2,097,152 candidate subsets, unknown/unsupported/advertised states,
 composite boost, EGS evidence, strict envelopes, legacy packets, actual production
 UDP/plugin callbacks, old/future/stale/wrong-worker data, B1/B2 preservation,
 mode persistence and failed saves. A host-only waiting child stands in for the

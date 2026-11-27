@@ -93,6 +93,22 @@ int main() {
         size=bd_auto_encode(&report,&sample,packet,sizeof packet); send_packet(app,packet,size);
         assert(last(301).text=="--" && app.displaySignal(1)==BD_RAIL);
         assert(last(300).text=="59.0 \260C");
+        report.known|=BD_BIT(BD_EGT_B1S3)|BD_BIT(BD_EGT_B2S4);
+        report.supported|=BD_BIT(BD_EGT_B1S3)|BD_BIT(BD_EGT_B2S4);
+        sample.valid|=BD_BIT(BD_EGT_B1S3)|BD_BIT(BD_EGT_B2S4);
+        sample.value[BD_EGT_B1S3]=600.5; sample.value[BD_EGT_B2S4]=450;
+        report.sent_ms=sample.sent_ms=bd_mono_ms();
+        size=bd_auto_encode(&report,&sample,packet,sizeof packet); send_packet(app,packet,size);
+        assert(app.displaySignal(2)==BD_EGT_B1S3 && app.displaySignal(3)==BD_EMPTY_SLOT);
+        assert(last(302).text=="600.5 \260C" && last(372).text=="EGT B1 S3");
+        bd_cap_frame narrower=report;
+        narrower.known &= ~BD_BIT(BD_EGT_B2S4); narrower.supported &= ~BD_BIT(BD_EGT_B2S4);
+        size=bd_auto_encode(&narrower,&sample,packet,sizeof packet);
+        assert(!app.acceptPacket(packet,size)); // high-bit evidence must not be truncated in the UI cache
+        sample.valid &= ~BD_BIT(BD_EGT_B1S3);
+        size=bd_auto_encode(&report,&sample,packet,sizeof packet); send_packet(app,packet,size);
+        assert(app.displaySignal(2)==BD_EGT_B1S3 && last(302).text=="--");
+        assert(bytes(assignments)==saved);
         app.gauges_visible_=false;
         assert(!app.acceptPacket(packet,size));
         app.gauges_visible_=true; app.stopping_=true;

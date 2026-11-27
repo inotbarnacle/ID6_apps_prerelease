@@ -507,6 +507,54 @@
           <hmiAction id="4530" target="500" />
         </actions>
       </combinedAction>
+      <combinedAction id="3531">
+        <actions>
+          <raAction id="631" />
+          <hmiAction id="4531" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3532">
+        <actions>
+          <raAction id="632" />
+          <hmiAction id="4532" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3533">
+        <actions>
+          <raAction id="633" />
+          <hmiAction id="4533" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3534">
+        <actions>
+          <raAction id="634" />
+          <hmiAction id="4534" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3535">
+        <actions>
+          <raAction id="635" />
+          <hmiAction id="4535" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3536">
+        <actions>
+          <raAction id="636" />
+          <hmiAction id="4536" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3537">
+        <actions>
+          <raAction id="637" />
+          <hmiAction id="4537" target="500" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="3538">
+        <actions>
+          <raAction id="638" />
+          <hmiAction id="4538" target="500" />
+        </actions>
+      </combinedAction>
       <hmiAction id="510" target="510" />
       <hmiAction id="511" target="511" />
       <hmiAction id="512" target="512" />
@@ -652,6 +700,14 @@
       <raBoolModel id="5328" />
       <raBoolModel id="5329" />
       <raBoolModel id="5330" />
+      <raBoolModel id="5331" />
+      <raBoolModel id="5332" />
+      <raBoolModel id="5333" />
+      <raBoolModel id="5334" />
+      <raBoolModel id="5335" />
+      <raBoolModel id="5336" />
+      <raBoolModel id="5337" />
+      <raBoolModel id="5338" />
       <raDataModel id="300" modelType="Richtext" />
       <raDataModel id="340" modelType="Richtext" />
       <raDataModel id="370" modelType="Richtext" />
@@ -1216,6 +1272,14 @@
           <radiobutton id="3528" action="3528" model="5328" text="Lambda target" />
           <radiobutton id="3529" action="3529" model="5329" text="Catalyst temp" />
           <radiobutton id="3530" action="3530" model="5330" text="Throttle target" />
+          <radiobutton id="3531" action="3531" model="5331" text="EGT bank 1 sensor 1" />
+          <radiobutton id="3532" action="3532" model="5332" text="EGT bank 1 sensor 2" />
+          <radiobutton id="3533" action="3533" model="5333" text="EGT bank 1 sensor 3" />
+          <radiobutton id="3534" action="3534" model="5334" text="EGT bank 1 sensor 4" />
+          <radiobutton id="3535" action="3535" model="5335" text="EGT bank 2 sensor 1" />
+          <radiobutton id="3536" action="3536" model="5336" text="EGT bank 2 sensor 2" />
+          <radiobutton id="3537" action="3537" model="5337" text="EGT bank 2 sensor 3" />
+          <radiobutton id="3538" action="3538" model="5338" text="EGT bank 2 sensor 4" />
         </components>
       </hmiState>
       <hmiState id="511" parentId="500" text="Gauge 2">
@@ -1251,6 +1315,14 @@
           <radiobutton id="3568" action="3528" model="5328" text="Lambda target" />
           <radiobutton id="3569" action="3529" model="5329" text="Catalyst temp" />
           <radiobutton id="3570" action="3530" model="5330" text="Throttle target" />
+          <radiobutton id="3571" action="3531" model="5331" text="EGT bank 1 sensor 1" />
+          <radiobutton id="3572" action="3532" model="5332" text="EGT bank 1 sensor 2" />
+          <radiobutton id="3573" action="3533" model="5333" text="EGT bank 1 sensor 3" />
+          <radiobutton id="3574" action="3534" model="5334" text="EGT bank 1 sensor 4" />
+          <radiobutton id="3575" action="3535" model="5335" text="EGT bank 2 sensor 1" />
+          <radiobutton id="3576" action="3536" model="5336" text="EGT bank 2 sensor 2" />
+          <radiobutton id="3577" action="3537" model="5337" text="EGT bank 2 sensor 3" />
+          <radiobutton id="3578" action="3538" model="5338" text="EGT bank 2 sensor 4" />
         </components>
       </hmiState>
       <hmiState id="512" parentId="500" text="Gauge 3">
@@ -1286,6 +1358,14 @@
           <radiobutton id="3608" action="3528" model="5328" text="Lambda target" />
           <radiobutton id="3609" action="3529" model="5329" text="Catalyst temp" />
           <radiobutton id="3610" action="3530" model="5330" text="Throttle target" />
+          <radiobutton id="3611" action="3531" model="5331" text="EGT bank 1 sensor 1" />
+          <radiobutton id="3612" action="3532" model="5332" text="EGT bank 1 sensor 2" />
+          <radiobutton id="3613" action="3533" model="5333" text="EGT bank 1 sensor 3" />
+          <radiobutton id="3614" action="3534" model="5334" text="EGT bank 1 sensor 4" />
+          <radiobutton id="3615" action="3535" model="5335" text="EGT bank 2 sensor 1" />
+          <radiobutton id="3616" action="3536" model="5336" text="EGT bank 2 sensor 2" />
+          <radiobutton id="3617" action="3537" model="5337" text="EGT bank 2 sensor 3" />
+          <radiobutton id="3618" action="3538" model="5338" text="EGT bank 2 sensor 4" />
         </components>
       </hmiState>
       <hmiState id="513" parentId="500" text="Gauge 4">
@@ -1321,6 +1401,14 @@
           <radiobutton id="3648" action="3528" model="5328" text="Lambda target" />
           <radiobutton id="3649" action="3529" model="5329" text="Catalyst temp" />
           <radiobutton id="3650" action="3530" model="5330" text="Throttle target" />
+          <radiobutton id="3651" action="3531" model="5331" text="EGT bank 1 sensor 1" />
+          <radiobutton id="3652" action="3532" model="5332" text="EGT bank 1 sensor 2" />
+          <radiobutton id="3653" action="3533" model="5333" text="EGT bank 1 sensor 3" />
+          <radiobutton id="3654" action="3534" model="5334" text="EGT bank 1 sensor 4" />
+          <radiobutton id="3655" action="3535" model="5335" text="EGT bank 2 sensor 1" />
+          <radiobutton id="3656" action="3536" model="5336" text="EGT bank 2 sensor 2" />
+          <radiobutton id="3657" action="3537" model="5337" text="EGT bank 2 sensor 3" />
+          <radiobutton id="3658" action="3538" model="5338" text="EGT bank 2 sensor 4" />
         </components>
       </hmiState>
       <hmiState id="514" parentId="500" text="Gauge 5">
@@ -1356,6 +1444,14 @@
           <radiobutton id="3688" action="3528" model="5328" text="Lambda target" />
           <radiobutton id="3689" action="3529" model="5329" text="Catalyst temp" />
           <radiobutton id="3690" action="3530" model="5330" text="Throttle target" />
+          <radiobutton id="3691" action="3531" model="5331" text="EGT bank 1 sensor 1" />
+          <radiobutton id="3692" action="3532" model="5332" text="EGT bank 1 sensor 2" />
+          <radiobutton id="3693" action="3533" model="5333" text="EGT bank 1 sensor 3" />
+          <radiobutton id="3694" action="3534" model="5334" text="EGT bank 1 sensor 4" />
+          <radiobutton id="3695" action="3535" model="5335" text="EGT bank 2 sensor 1" />
+          <radiobutton id="3696" action="3536" model="5336" text="EGT bank 2 sensor 2" />
+          <radiobutton id="3697" action="3537" model="5337" text="EGT bank 2 sensor 3" />
+          <radiobutton id="3698" action="3538" model="5338" text="EGT bank 2 sensor 4" />
         </components>
       </hmiState>
       <hmiState id="515" parentId="500" text="Gauge 6">
@@ -1391,6 +1487,14 @@
           <radiobutton id="3728" action="3528" model="5328" text="Lambda target" />
           <radiobutton id="3729" action="3529" model="5329" text="Catalyst temp" />
           <radiobutton id="3730" action="3530" model="5330" text="Throttle target" />
+          <radiobutton id="3731" action="3531" model="5331" text="EGT bank 1 sensor 1" />
+          <radiobutton id="3732" action="3532" model="5332" text="EGT bank 1 sensor 2" />
+          <radiobutton id="3733" action="3533" model="5333" text="EGT bank 1 sensor 3" />
+          <radiobutton id="3734" action="3534" model="5334" text="EGT bank 1 sensor 4" />
+          <radiobutton id="3735" action="3535" model="5335" text="EGT bank 2 sensor 1" />
+          <radiobutton id="3736" action="3536" model="5336" text="EGT bank 2 sensor 2" />
+          <radiobutton id="3737" action="3537" model="5337" text="EGT bank 2 sensor 3" />
+          <radiobutton id="3738" action="3538" model="5338" text="EGT bank 2 sensor 4" />
         </components>
       </hmiState>
       <hmiState id="516" parentId="500" text="Gauge 7">
@@ -1426,6 +1530,14 @@
           <radiobutton id="3768" action="3528" model="5328" text="Lambda target" />
           <radiobutton id="3769" action="3529" model="5329" text="Catalyst temp" />
           <radiobutton id="3770" action="3530" model="5330" text="Throttle target" />
+          <radiobutton id="3771" action="3531" model="5331" text="EGT bank 1 sensor 1" />
+          <radiobutton id="3772" action="3532" model="5332" text="EGT bank 1 sensor 2" />
+          <radiobutton id="3773" action="3533" model="5333" text="EGT bank 1 sensor 3" />
+          <radiobutton id="3774" action="3534" model="5334" text="EGT bank 1 sensor 4" />
+          <radiobutton id="3775" action="3535" model="5335" text="EGT bank 2 sensor 1" />
+          <radiobutton id="3776" action="3536" model="5336" text="EGT bank 2 sensor 2" />
+          <radiobutton id="3777" action="3537" model="5337" text="EGT bank 2 sensor 3" />
+          <radiobutton id="3778" action="3538" model="5338" text="EGT bank 2 sensor 4" />
         </components>
       </hmiState>
       <hmiState id="517" parentId="500" text="Gauge 8">
@@ -1461,6 +1573,14 @@
           <radiobutton id="3808" action="3528" model="5328" text="Lambda target" />
           <radiobutton id="3809" action="3529" model="5329" text="Catalyst temp" />
           <radiobutton id="3810" action="3530" model="5330" text="Throttle target" />
+          <radiobutton id="3811" action="3531" model="5331" text="EGT bank 1 sensor 1" />
+          <radiobutton id="3812" action="3532" model="5332" text="EGT bank 1 sensor 2" />
+          <radiobutton id="3813" action="3533" model="5333" text="EGT bank 1 sensor 3" />
+          <radiobutton id="3814" action="3534" model="5334" text="EGT bank 1 sensor 4" />
+          <radiobutton id="3815" action="3535" model="5335" text="EGT bank 2 sensor 1" />
+          <radiobutton id="3816" action="3536" model="5336" text="EGT bank 2 sensor 2" />
+          <radiobutton id="3817" action="3537" model="5337" text="EGT bank 2 sensor 3" />
+          <radiobutton id="3818" action="3538" model="5338" text="EGT bank 2 sensor 4" />
         </components>
       </hmiState>
       <hmiState id="518" parentId="500" text="Gauge 9">
@@ -1496,6 +1616,14 @@
           <radiobutton id="3848" action="3528" model="5328" text="Lambda target" />
           <radiobutton id="3849" action="3529" model="5329" text="Catalyst temp" />
           <radiobutton id="3850" action="3530" model="5330" text="Throttle target" />
+          <radiobutton id="3851" action="3531" model="5331" text="EGT bank 1 sensor 1" />
+          <radiobutton id="3852" action="3532" model="5332" text="EGT bank 1 sensor 2" />
+          <radiobutton id="3853" action="3533" model="5333" text="EGT bank 1 sensor 3" />
+          <radiobutton id="3854" action="3534" model="5334" text="EGT bank 1 sensor 4" />
+          <radiobutton id="3855" action="3535" model="5335" text="EGT bank 2 sensor 1" />
+          <radiobutton id="3856" action="3536" model="5336" text="EGT bank 2 sensor 2" />
+          <radiobutton id="3857" action="3537" model="5337" text="EGT bank 2 sensor 3" />
+          <radiobutton id="3858" action="3538" model="5338" text="EGT bank 2 sensor 4" />
         </components>
       </hmiState>
     </hmiStates>

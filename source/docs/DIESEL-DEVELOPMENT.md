@@ -57,11 +57,25 @@ This description is not diagnostic confirmation.
 | Firmware, framework hashes, architecture, active screen | Unverified | Authorized read-only head-unit capture. No approved F15 profile added. |
 | Gateway, HSFZ, MOST, standalone operation | Unverified | Parked transport observations with equipment attached and detached. |
 | Standard OBD signals | Simulation / host tests only | Supported bitmaps and independently compared readings from this vehicle. |
+| Standard EGT bank/sensor channels | Simulation / host tests only | Exact DDE support for PID 78/79, sensor bits, physical sensor locations and independently compared temperatures. No regeneration inference. |
 | Standard emissions fault codes | Simulation / host tests only | Confirm that the exact DDE/gateway supports services 03/07/0A and the counted CAN reply format. A category's zero count does not clear other categories. |
 | Fixed BMW diesel, DPF, EGR, SCR, oil pressure | Unsupported in this effort | Credible ECU-specific definitions and repeatable sanitized captures. |
 | Physical installation / factory regression / rollback | Not performed | Separate owner-authorized milestone; staged plan in [#201](https://github.com/inotbarnacle/iDriveDeck/pull/201). |
 
 ## Progress and next actions
+
+- Standard EGT follow-up on `diesel/egt-telemetry`: eight named bank/sensor
+  channels use advertised PID 78/79 and a valid per-bank support layout.
+  Polling is grouped per bank, at most every two seconds with five-second
+  malformed/NRC backoff; conflicting layouts invalidate the bank. Automatic
+  defaults choose at most one EGT. Existing IDs 0–30 and exact legacy NBG7
+  bytes remain intact; appended IDs use wider masks, NBG8/NBC2 and B3 settings.
+  Old B1/B2 ID bounds remain strict. Source/limits and legitimate public protocol
+  references are in [Standard EGT](STANDARD-EGT.md). Local evidence includes
+  two new C/C++ tests, ten transport tests, all 2,097,152 default subsets and
+  six resource checks preserving all 906 image pixels. Static analysis and
+  sanitizer checks pass; all 49 host BMW imports match the pinned old source.
+  Exact target support, QNX and physical validation remain unverified.
 
 - Completed: upstream clone, authenticated fork at
   [voioo/iDriveDeck](https://github.com/voioo/iDriveDeck), remotes, issue and PR

@@ -52,7 +52,7 @@ int most_fake_bind(void)
     if (!strcmp(mode, "no-server")) { fake_dme_start(FAKE_NO_SERVER); return 0; }
     if (strcmp(mode, "up") && strcmp(mode, "drop") && strcmp(mode, "mhd-refuse") &&
         strcmp(mode, "codes-512") && strcmp(mode, "codes-513") &&
-        strcmp(mode, "bm3-unknown") && strcmp(mode, "gauge-mismatch")) return -1;
+        strcmp(mode, "bm3-unknown") && strcmp(mode, "gauge-mismatch") && strcmp(mode,"egt-up")) return -1;
     fake_dme_start(FAKE_UP);
     if (delay && atoi(delay) > 0 && atoi(delay) <= 2000) fake_dme_hold_ms(atoi(delay));
     if (!strcmp(mode, "drop")) fake_dme_drop_link_after(5);
@@ -95,5 +95,14 @@ int most_fake_bind(void)
     }
     fake_dme_raw("1902AF", codes, sizeof codes);
     fake_dme_raw("14FFFFFF", cleared, sizeof cleared);
+    if (!strcmp(mode,"egt-up")) {
+        static const uint8_t first[]={0x41,0,0,0,0,1}, second[]={0x41,0x20,0,0,0,1};
+        static const uint8_t third[]={0x41,0x40,0,0,0,1}, fourth[]={0x41,0x60,0,0,1,0x80};
+        static const uint8_t bank1[]={0x41,0x78,5,0x19,0x05,0,0,0x1c,0xed,0,0};
+        static const uint8_t bank2[]={0x41,0x79,8,0,0,0,0,0,0,0x20,0xd5};
+        fake_dme_raw("0100",first,sizeof first); fake_dme_raw("0120",second,sizeof second);
+        fake_dme_raw("0140",third,sizeof third); fake_dme_raw("0160",fourth,sizeof fourth);
+        fake_dme_raw("0178",bank1,sizeof bank1); fake_dme_raw("0179",bank2,sizeof bank2);
+    }
     return 0;
 }

@@ -61,6 +61,47 @@ class BoostDefaultsResources(unittest.TestCase):
                 if key in node.attrib:
                     self.assertIn(node.get(key), models)
 
+    def test_named_egt_channels_keep_original_signal_ids_and_native_callbacks(self):
+        names = []
+        import re
+        for line in (ROOT / "native/src/common/boost_signals.def").read_text().splitlines():
+            match = re.match(r'SIGNAL\((\w+), "([^"]+)"', line)
+            if match:
+                names.append(match.groups())
+        self.assertEqual(len(names), 39)
+        self.assertEqual(names[30][0], "THROTTLE_TARGET")
+        for index in range(31, 39):
+            bank, sensor = divmod(index - 31, 4)
+            expected = f"EGT bank {bank+1} sensor {sensor+1}"
+            self.assertEqual(names[index][1], expected)
+            action = self.current.find(f".//combinedAction[@id='{3500+index}']/actions/raAction")
+            self.assertEqual(action.get("id"), str(600+index))
+            for slot in range(9):
+                radio = self.current.find(f".//hmiState[@id='{510+slot}']/components/radiobutton[@model='{5300+index}']")
+                self.assertEqual(radio.get("text"), expected)
+                self.assertEqual(radio.get("action"), str(3500+index))
+
+    def test_regenerated_artwork_preserves_all_original_pixels(self):
+        from io import BytesIO
+        from PIL import Image
+        spec = importlib.util.spec_from_file_location("boost_egt_artwork", ROOT / "tools/make_boostdeck_extended.py")
+        generator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(generator)
+        with ZipFile(ROOT.parent / "packages/dashboard.zip") as package:
+            original = package.read("BoostDeck/BoostDeck_ALL_Images.zip")
+        with tempfile.TemporaryDirectory() as directory:
+            source, target = Path(directory)/"original.zip", Path(directory)/"generated.zip"
+            source.write_bytes(original)
+            generator.update_images(source, target)
+            with ZipFile(BytesIO(original)) as old, ZipFile(target) as new:
+                self.assertEqual(set(old.namelist()), set(new.namelist()))
+                self.assertEqual(len(new.namelist()), 906)
+                for name in old.namelist():
+                    a = Image.open(BytesIO(old.read(name))).convert("RGBA")
+                    b = Image.open(BytesIO(new.read(name))).convert("RGBA")
+                    self.assertEqual(a.size, b.size, name)
+                    self.assertEqual(a.tobytes(), b.tobytes(), name)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -23,7 +23,7 @@ def bitmap(base, supported):
 
 
 @contextmanager
-def ecu_server(responses):
+def ecu_server(responses, idle_timeout=5):
     requests, errors = [], []
     stop = threading.Event()
     with socket.socket() as listener:
@@ -38,7 +38,7 @@ def ecu_server(responses):
                 except socket.timeout:
                     continue
                 with conn:
-                    conn.settimeout(5)  # idle channels poll at two-second intervals
+                    conn.settimeout(idle_timeout)  # allow a test to exercise a longer application backoff
                     try:
                         while True:
                             size, control = struct.unpack(">IH", exact(conn, 6))
@@ -112,13 +112,14 @@ class DieselCapabilitiesTest(unittest.TestCase):
     def test_automatic_report_matches_ecu_advertisement_and_valid_transmission(self):
         packets, requests = self.run_boost(self.responses(), automatic=True)
         for packet in packets:
-            self.assertEqual(packet[0], "NBC1")
+            self.assertIn(packet[0], ("NBC1", "NBC2"))
             self.assertEqual(packet[1], "1234")
             self.assertGreater(int(packet[2]), 0)
             self.assertEqual(packet[6], "NBG7")
             self.assertEqual(packet[3], packet[10])  # capability and measurement timestamps match
             self.assertEqual(int(packet[5]) & ~int(packet[4]), 0)
         known, supported = map(int, packets[-1][4:6])
+        self.assertEqual(packets[-1][0], "NBC2")  # extended sensors explicitly known unsupported
         self.assertTrue(known & (1 << 9))
         self.assertFalse(supported & (1 << 9))
         self.assertEqual(supported, (1 << 7) | (1 << 4) | (1 << 5) | (1 << 3))

@@ -81,7 +81,7 @@ class BoostDeck : public bmw::PluginApp {
     BoostDefaultsMode defaults_mode_;
     unsigned char automatic_slots_[BD_DEFAULT_SLOTS];
     uint64_t capability_token_;
-    unsigned capability_known_, capability_supported_;
+    bd_mask capability_known_, capability_supported_;
     int fd_;
     unsigned poll_generation_;
     bd_frame frame_;
@@ -364,14 +364,14 @@ void BoostDeck::startVisibleCollector() {
     if (!gauges_visible_ || collector_>0 || fd_<0 ||
         bd_mono_ms()<retry_at_) return;
     const DiagnosticGateway gateway("/var/opt/hmi/data/ID5/Plugins/" "BoostDeck" "/gateway-ip.txt");
-    unsigned mask=0;
-    for (unsigned i=0;i<kBarCount;++i) mask |= 1u << signals_[diesel_][i];
+    bd_mask mask=0;
+    for (unsigned i=0;i<kBarCount;++i) mask |= UINT64_C(1) << signals_[diesel_][i];
     for (unsigned i=0;i<3;++i)
-        if (preferences_.choice[BOOST_COOLANT_ALERT+i]) mask |= 1u<<kAlertSignals[i];
-    if (preferences_.choice[BOOST_OIL_PRESSURE_ALERT]) mask |= 1u<<BD_RPM;
-    char selected[16];
+        if (preferences_.choice[BOOST_COOLANT_ALERT+i]) mask |= UINT64_C(1)<<kAlertSignals[i];
+    if (preferences_.choice[BOOST_OIL_PRESSURE_ALERT]) mask |= UINT64_C(1)<<BD_RPM;
+    char selected[24];
     char token[32];
-    snprintf(selected,sizeof selected,"%u",mask);
+    snprintf(selected,sizeof selected,"%llu",static_cast<unsigned long long>(mask));
     const uint64_t now=bd_mono_ms();
     capability_token_=now>capability_token_ ? now : capability_token_+1;
     if (!capability_token_) ++capability_token_;
@@ -385,7 +385,7 @@ void BoostDeck::startVisibleCollector() {
                        automaticDiesel() ? token : selected,
                        0,0,0};
     unsigned next=6;
-    if (!automaticDiesel() && (mask & (1u<<BD_ETHANOL))) args[next++]="--ethanol";
+    if (!automaticDiesel() && (mask & (UINT64_C(1)<<BD_ETHANOL))) args[next++]="--ethanol";
     if (diesel_ && !automaticDiesel()) args[next]="--diesel";
     collector_=launch(args,-1);
     retry_at_=bd_mono_ms()+2000;
@@ -535,12 +535,13 @@ void BoostDeck::loadAssignments() {
     fclose(file);
     if (!complete || length<3 || data[0]!='B' || data[2]>1) return;
     unsigned stride=0;
-    if (data[1]==2 && length==3+sizeof signals_) stride=kBarCount;
+    if ((data[1]==2 || data[1]==3) && length==3+sizeof signals_) stride=kBarCount;
     if (data[1]==1 && length==3+2*previousSlots) stride=previousSlots;
     if (!stride) return;
+    const unsigned channels=data[1]==3 ? static_cast<unsigned>(BD_COUNT) : static_cast<unsigned>(BD_LEGACY_COUNT);
     for (unsigned profile=0;profile<2;++profile)
         for (unsigned i=0;i<kBarCount;++i)
-            if (data[3+profile*stride+i]>=BD_COUNT) return;
+            if (data[3+profile*stride+i]>=channels) return;
     diesel_=data[2]!=0;
     defaults_mode_.automatic=false; // preserve every valid legacy/custom layout
     for (unsigned profile=0;profile<2;++profile)
@@ -569,7 +570,11 @@ void BoostDeck::updateAssignments() {
 
 bool BoostDeck::saveAssignments() {
     if (!defaults_mode_.save(defaults_path_)) return false;
-    unsigned char data[3+sizeof signals_]={'B',2,static_cast<unsigned char>(diesel_)};
+    unsigned char revision=2;
+    for (unsigned profile=0;profile<2;++profile)
+        for (unsigned i=0;i<kBarCount;++i)
+            if (signals_[profile][i]>=BD_LEGACY_COUNT) revision=3;
+    unsigned char data[3+sizeof signals_]={'B',revision,static_cast<unsigned char>(diesel_)};
     memcpy(data+3,signals_,sizeof signals_);
     return savePersistentBytes(assignments_path_,data,sizeof data);
 }

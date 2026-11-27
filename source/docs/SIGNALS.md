@@ -55,7 +55,7 @@ existing selection. WarmDeck checks oil support before requesting `01 5C`.
 This avoids the unsupported oil request reported to reset the DDE741 connection
 in [issue #162](https://github.com/inotbarnacle/iDriveDeck/issues/162).
 
-The shared gate follows continuation bits through `01 00`, `01 20` and `01 40`,
+The shared gate follows continuation bits through `01 00`, `01 20`, `01 40` and `01 60`,
 one bitmap read per call. Only an exact positive reply with four bitmap bytes
 enables a channel. A missing bit leaves it unavailable. Unknown, refused,
 truncated or lost bitmap replies do not enable speculative reads; failed
@@ -64,6 +64,12 @@ worker's single DME/endpoint, including across short diagnostic leases. Reopenin
 the app starts a fresh cache. This is PID capability detection, not engine-family
 identification. Advertisement does not validate a reading's meaning or accuracy;
 the existing decoders and freshness rules still apply.
+
+Standard EGT `01 78`/`01 79` adds individually named bank/sensor gauges only
+after PID and per-sensor support evidence. Nine-byte layouts, 0.1 °C scaling,
+independent unavailable values and the versioned wider masks are documented in
+[Standard EGT](STANDARD-EGT.md). This establishes neither a DDE family nor
+the sensor's physical location or DPF regeneration state.
 
 Discovery can delay the first oil reading by a few polling cycles. Unsupported
 oil remains blank in both apps, and WarmDeck can still report the other fluids

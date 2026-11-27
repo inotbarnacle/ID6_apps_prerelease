@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 struct diag_link;
-enum { OBD_CAPABILITY_PAGES = 3, OBD_CAPABILITY_RETRY_MS = 5000, OBD_CAPABILITY_PENDING = 2 };
+enum { OBD_CAPABILITY_PAGES = 4, OBD_CAPABILITY_RETRY_MS = 5000, OBD_CAPABILITY_PENDING = 2 };
 /* One DME and endpoint per worker lifetime. Zero-initialize on worker startup.
  * Retain across short HSFZ leases; never share between vehicles or ECUs. */
 struct obd_capabilities {
@@ -16,7 +16,7 @@ struct obd_capabilities {
 /* Inspect cached evidence without issuing a request. Unknown is not unsupported. */
 static inline int obd_pid_status(const struct obd_capabilities *caps, unsigned pid) {
     unsigned page, wanted;
-    if (!pid || pid>0x60 || !(pid&0x1f)) return 0;
+    if (!pid || pid>0x80 || !(pid&0x1f)) return 0;
     if (!caps) return OBD_CAPABILITY_PENDING;
     wanted=(pid-1)/32;
     for (page=0;page<=wanted;++page) {

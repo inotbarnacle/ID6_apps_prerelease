@@ -5,7 +5,7 @@
 
 int obd_pid_advertised(struct obd_capabilities *caps, struct diag_link *link, unsigned pid) {
     unsigned page, wanted;
-    if (!caps || !link || !pid || pid > 0x60 || !(pid & 0x1f)) return 0;
+    if (!caps || !link || !pid || pid > 0x80 || !(pid & 0x1f)) return 0;
     wanted = (pid - 1) / 32;
     for (page = 0; page <= wanted; ++page) {
         const unsigned flag = 1u << page;

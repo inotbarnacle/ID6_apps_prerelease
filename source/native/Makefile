@@ -3,14 +3,14 @@ PYTHON ?= python3
 CFLAGS ?= -O2 -std=c99 -Wall -Wextra -Werror
 CORE = src/common/gauge_core.c
 CORE_LINK = $(CORE) src/common/boost_defaults.c src/common/diag_link.c src/common/obd_capabilities.c
-HEADERS = src/common/gauge_core.h src/common/boost_signals.def src/ipc/drive_frame.h src/common/diagnostic_lease.h src/common/diag_link.h src/common/gauge_coexistence.h src/common/obd_capabilities.h src/common/boost_defaults.h
+HEADERS = src/common/gauge_core.h src/common/boost_signals.def src/ipc/drive_frame.h src/common/diagnostic_lease.h src/common/diag_link.h src/common/gauge_coexistence.h src/common/obd_capabilities.h src/common/boost_defaults.h src/common/obd_egt.h
 # Every host worker carries the HSFZ-then-MOST link, with a fake DSI selected by ID6_FAKE_MOST.
 MOST = src/common/most/most_link.c src/common/most/dsi_client.c src/common/most/most_proto.c src/common/most/dsi_bind.c
 MOST_HEADERS = src/common/most/most_link.h src/common/most/dsi_client.h src/common/most/most_proto.h src/common/most/dsi_abi.h
 FAKE_DSI = tests/fake_dsi.c tests/fake_dme.c tests/fake_dsi.h tests/fake_dme.h
 WORKER_COMMON = $(CORE_LINK) $(MOST) tests/fake_most_env.c $(FAKE_DSI) $(HEADERS) $(MOST_HEADERS)
 HOST_LINK = $(CC) $(CFLAGS) -pthread -DMOST_HOST -Isrc/common -Isrc/ipc -Isrc/workers -Itests
-.PHONY: assets launch-assets test test-boost-defaults
+.PHONY: assets launch-assets test test-boost-defaults test-egt
 
 assets: | build
 	unzip -p ../../packages/dashboard.zip BoostDeck/BoostDeck_ALL_Images.zip > build/boostdeck-base-images.zip
@@ -63,11 +63,21 @@ build/test-obd-capabilities: tests/test_obd_capabilities.c src/common/obd_capabi
 build/test-boost-defaults: tests/test_boost_defaults.c src/common/boost_defaults.c $(CORE) $(HEADERS) | build
 	$(CC) $(CFLAGS) -Isrc/common $(filter %.c,$^) -lm -o $@
 
+build/test-egt: tests/test_egt.c tests/fixtures/boost_legacy_frame.h src/common/boost_defaults.c $(CORE) $(HEADERS) | build
+	$(CC) $(CFLAGS) -Isrc/common $(filter %.c,$^) -lm -o $@
+
 build/boost-defaults.o: src/common/boost_defaults.c $(HEADERS) | build
 	$(CC) $(CFLAGS) -Isrc/common -c $< -o $@
 
 build/test-boost-defaults-plugin: tests/test_boost_defaults_plugin.cpp tests/fake_bmw.cpp tests/fake_bmw.h build/boost-test-core.o build/boost-defaults.o src/plugins/boost_deck.cpp src/plugins/boost_preferences.h src/plugins/boost_defaults_mode.h $(HEADERS) sdk/bmw_list.h | build
 	$(CXX) $(CXXFLAGS) -std=gnu++98 -fno-access-control -Isdk -Isrc/common -Isrc/ipc -Isrc/plugins -Itests $< tests/fake_bmw.cpp build/boost-test-core.o build/boost-defaults.o -lm -o $@
+
+build/test-egt-plugin: tests/test_egt_plugin.cpp tests/fake_bmw.cpp tests/fake_bmw.h build/boost-test-core.o build/boost-defaults.o src/plugins/boost_deck.cpp src/plugins/boost_preferences.h src/plugins/boost_defaults_mode.h $(HEADERS) sdk/bmw_list.h | build
+	$(CXX) $(CXXFLAGS) -std=gnu++98 -fno-access-control -Isdk -Isrc/common -Isrc/ipc -Isrc/plugins -Itests $< tests/fake_bmw.cpp build/boost-test-core.o build/boost-defaults.o -lm -o $@
+
+test-egt: build/test-egt build/test-egt-plugin
+	./build/test-egt
+	./build/test-egt-plugin
 
 test-boost-defaults: build/test-boost-defaults build/test-boost-defaults-plugin
 	./build/test-boost-defaults
@@ -103,7 +113,7 @@ build/test-boost-preferences: tests/test_boost_preferences.cpp build/boost-test-
 launch-assets:
 	$(PYTHON) ../tools/launch_art.py
 
-test: test-boost-defaults build/xdrive-control build/boost-deck build/shift-deck build/mhd-maps build/engine-codes build/test-core build/test-obd-capabilities build/test-most build/test-diag-link build/bootmod3 build/exhaust-flap build/test-launch-timer build/test-launch-records build/test-boost-preferences build/test-warm-progress build/warmdeck-collector build/mgflasher build/hybriddeck-collector
+test: test-egt test-boost-defaults build/xdrive-control build/boost-deck build/shift-deck build/mhd-maps build/engine-codes build/test-core build/test-obd-capabilities build/test-most build/test-diag-link build/bootmod3 build/exhaust-flap build/test-launch-timer build/test-launch-records build/test-boost-preferences build/test-warm-progress build/warmdeck-collector build/mgflasher build/hybriddeck-collector
 	./build/test-obd-capabilities
 	./build/test-warm-progress
 	./build/test-boost-preferences
@@ -116,3 +126,4 @@ test: test-boost-defaults build/xdrive-control build/boost-deck build/shift-deck
 	$(PYTHON) -B tests/test_oneshot_most.py
 	$(PYTHON) -B tests/test_transport.py
 	$(PYTHON) -B tests/test_diesel_capabilities.py
+	$(PYTHON) -B tests/test_egt_transport.py

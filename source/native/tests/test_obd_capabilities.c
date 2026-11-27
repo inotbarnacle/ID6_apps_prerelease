@@ -39,10 +39,10 @@ int main(void) {
     assert(calls == 3); /* retained across short leases */
 
     /* Every bit, including the MSB, maps to base+1 through base+31. */
-    for (unsigned page = 0; page < 3; ++page) {
-        caps.known = 7;
+    for (unsigned page = 0; page < OBD_CAPABILITY_PAGES; ++page) {
+        caps.known = 15;
         for (unsigned bit = 1; bit < 32; ++bit) {
-            caps.bits[0] = caps.bits[1] = caps.bits[2] = 1;
+            for (unsigned p=0;p<OBD_CAPABILITY_PAGES;++p) caps.bits[p]=1;
             caps.bits[page] |= UINT32_C(1) << (32-bit);
             for (unsigned pid = 1; pid < 32; ++pid)
                 assert(obd_pid_advertised(&caps,&link,page*32+pid) == (pid == bit) &&
@@ -52,7 +52,7 @@ int main(void) {
     assert(calls == 3);
     for (unsigned pid = 0; pid < 0x100; pid += 32)
         assert(obd_pid_advertised(&caps,&link,pid) == 0);
-    assert(obd_pid_advertised(&caps,&link,0x61) == 0);
+    assert(obd_pid_advertised(&caps,&link,0x81) == 0);
     assert(obd_pid_advertised(0,&link,5) == 0);
     assert(obd_pid_advertised(&caps,0,5) == 0);
 
