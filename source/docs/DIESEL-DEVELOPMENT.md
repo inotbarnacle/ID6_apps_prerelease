@@ -17,7 +17,7 @@ application ZIPs are separate maintainer build artifacts.
 | Ownership / lifecycle | Loopback leases coordinate project workers, not external tools. Parent monitoring, signals and MOST watchdogs bound worker lifetime. Plugin `ECHILD` handling and polling remain under review upstream. | PR #143 and [PR #50](https://github.com/inotbarnacle/iDriveDeck/pull/50) cover lifecycle changes. Close other diagnostic clients for parked validation. |
 | Diesel telemetry | Explicit Diesel selection substitutes standard OBD coolant, IAT, rail and boost for unverified gasoline DIDs. Only fuel-rate polling currently checks a supported-PID bitmap. No automatic ECU-specific verified N57 profile exists on main. | Add shared capability checks first. Preserve fixed gasoline decoders and persisted signal IDs. |
 | Oil temperature | [#21](https://github.com/inotbarnacle/iDriveDeck/issues/21), [#162](https://github.com/inotbarnacle/iDriveDeck/issues/162): DDE741 rejects fixed reads and does not advertise PID 5C. Temporary F303 is reused for different signals. | Leave unavailable without a verified fixed source. Never define or poll somebody else's dynamic DID. |
-| Pressure | PID 23 is direct-injection rail gauge pressure, 0.1 bar per count. MAP PID 0B is limited to 255 kPa absolute; subtracting barometric pressure does not extend that range. | Test units and avoid representing saturated MAP as full-range diesel boost. Requested rail/boost require separate evidence. |
+| Pressure | PID 23 is direct-injection rail gauge pressure, 0.1 bar per count. MAP PID 0B is limited to 255 kPa absolute; subtracting barometric pressure does not extend that range. The original graphic fills at only 250 bar. | #202 blanks saturated diesel MAP/boost. [Draft #205](https://github.com/inotbarnacle/iDriveDeck/pull/205) adds a configurable diesel rail display scale, not an ECU pressure limit. Requested rail/boost require separate evidence. |
 | WarmDeck | Three temperatures expire independently and trend estimates require all three. Oil PID is currently queried unconditionally. Thresholds 85/75/40 C are application choices. | Gate unsupported oil and preserve independent coolant/transmission readiness. |
 | ShiftDeck | Source artwork/preferences retain five gasoline targets while the latest installer release advertises 6000–8000 RPM. Neither establishes an N57 limit. | [Draft #203](https://github.com/inotbarnacle/iDriveDeck/pull/203) adds manually selected diesel targets/display scales, legacy settings migration and asset/plugin tests. No universal diesel redline or physical validation is claimed. |
 | Faults | Worker reads 24-bit UDS codes; the old UI discarded status availability and always used a reference gasoline table. | [Draft #204](https://github.com/inotbarnacle/iDriveDeck/pull/204) preserves supported status bits, adds a DDE/raw view and backend clear confirmation. Licensed DDE descriptions and OBD-format validation remain open. |
@@ -99,8 +99,21 @@ This description is not diagnostic confirmation.
   GCC/Clang, static and sanitizer checks. Ten native test programs and 89 Python
   tests cover the fault branch, including mocked read/clear boundaries and
   native resource preservation. No new DDE dictionary is imported.
-- Next: verify the combined source checkout and improve the remaining diesel
-  gauge range/default behavior. Keep lifecycle/MOST work coordinated
+- BoostDeck rail display ranges are implemented in [draft PR #205](https://github.com/inotbarnacle/iDriveDeck/pull/205),
+  independent branch `diesel/boost-rail-scale`, commit `1f2682a`. The Diesel
+  profile uses a selectable 1000/1600/2000/2500-bar graphic range, default 2000;
+  these are display choices, not BMW/DDE limits. Existing units, gasoline/other
+  signal ranges, G1/G2 preferences and B1/B2 assignments are preserved. A
+  separate R1 scale file uses atomic saves and reports failures. Nine native
+  programs, 80 Python worker cases, five resource tests and eight existing
+  tool tests pass locally. All 906 regenerated image dimensions/pixels match
+  the package. Local GCC/Clang syntax, Clang static analysis, ASan/UBSan pass;
+  the host BMW undefined-symbol set matches baseline (49 symbols), not proof
+  of QNX compatibility. [Fork CI](https://github.com/voioo/iDriveDeck/actions/runs/45985869445)
+  passed GCC/Clang, static, resource and sanitizer jobs on the exact pushed
+  source commit. No diagnostic worker or decoder changed.
+- Next: improve capability-aware
+  default gauge assignments. Keep lifecycle/MOST work coordinated
   with #143/#138/#141 rather than replacing their pending fixes.
 - Vehicle status: no vehicle connection, SSH, ECU requests, installation,
   head-unit restart or QNX build has been performed.
@@ -119,31 +132,48 @@ This description is not diagnostic confirmation.
   [#203](https://github.com/inotbarnacle/iDriveDeck/pull/203)
   (draft; configurable ShiftDeck diesel profile, persistence and resources), and
   [#204](https://github.com/inotbarnacle/iDriveDeck/pull/204)
-  (draft; supported fault statuses, raw view and clear confirmation).
+  (draft; supported fault statuses, raw view and clear confirmation), and
+  [#205](https://github.com/inotbarnacle/iDriveDeck/pull/205)
+  (draft; configurable diesel rail display scale and preserved settings/assets).
 
 ## Combined source validation
 
 The isolated [fork integration branch](https://github.com/voioo/iDriveDeck/tree/diesel/integration)
-combines the four source contributions without merging any upstream PR.
-Conflicts in `source/README.md` and `source/native/Makefile` were resolved by
+combines the source contributions without merging any upstream PR.
+Conflicts in `CHANGELOG.md`, `source/README.md` and `source/native/Makefile` were resolved by
 retaining every feature, documentation link and test target. The common MIT
-framework fake is identical across the ShiftDeck and fault branches.
+framework fake is identical across the ShiftDeck, fault and BoostDeck scale branches.
 
 At integration code commit `ab6e1dd`, `make -C source/native test` passes all
 13 native C/C++ test programs and 97 Python cases (36 app, 24 one-shot MOST,
 26 transport, 8 capability and 3 fault-resource tests). Separate tool checks
 pass 11 discovery, 2 probe, 6 head-unit capture and 6 ShiftDeck asset cases:
-122 Python tests in total. These are simulation/host results, not QNX or vehicle
+122 Python tests in total. All four workflows passed on the docs-updated
+integration commit `b54b6e2`: [host diagnostics](https://github.com/voioo/iDriveDeck/actions/runs/45984080553),
+[discovery](https://github.com/voioo/iDriveDeck/actions/runs/45984080700),
+[ShiftDeck](https://github.com/voioo/iDriveDeck/actions/runs/45984080870), and
+[fault handling](https://github.com/voioo/iDriveDeck/actions/runs/45984080510).
+These are simulation/host results, not QNX or vehicle
 validation. A candidate build still needs an authorized SDK and exact firmware
 inputs before any proposed installation can be prepared and reviewed.
 
-One remaining offline gap was confirmed in this combined tree: BoostDeck's
-`BD_RAIL` visual range is still the shared 0–250 bar reference range in
-`boost_signals.def`; the plugin calls `bd_bar(signal,value)` without a diesel
-range override. Thus a correctly decoded synthetic 1000-bar diesel value fills
-the gauge completely. Numeric conversion is correct, but useful diesel range
-presentation and capability-aware default assignments still need work. This
-does not justify assuming a universal DDE pressure limit.
+The fifth contribution (#205) is integrated at code commit `a05e023`. All
+15 native C/C++ test programs and the same 97 native-suite Python cases pass.
+The separate discovery/probe/capture/ShiftDeck checks above plus five new
+BoostDeck generator/resource cases pass: 127 Python tests in total. Both new
+BoostDeck tests also pass standalone ASan/UBSan. The combined source is pushed
+only to the fork; [integration workflow runs](https://github.com/voioo/iDriveDeck/actions?query=branch%3Adiesel%2Fintegration)
+show results for each exact pushed revision. Later progress-only merges do not
+change the tested source at `a05e023`. No upstream PR has been merged.
+
+The rail display gap found in this combined tree is addressed separately by
+#205: a correctly decoded synthetic 1000-bar value previously filled the
+250-bar graphic. The optional diesel range changes presentation without
+assuming an ECU maximum or expanding sensor support. Capability-aware default
+assignments still need work: the current PID gate suppresses unsupported
+polling, but a valid-sample mask is not an explicit supported-capability report
+to the UI. Do not infer permanent support/absence from a transient blank sample
+or replace the owner's saved gauge selections automatically.
 
 ## Fault-data licensing finding
 
