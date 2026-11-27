@@ -188,7 +188,8 @@ static int trial(const char* host, bool requirePark) {
     // Hold the port through process exit, when the MOST client is destroyed by QNX.
     const int mostAccess = gauge_bind(GAUGE_MOST_PORT);
     if (mostAccess < 0 || gauge_active(BOOST_MOST_PORT) ||
-        gauge_active(SHIFT_MOST_PORT) || gauge_active(LAUNCH_MOST_PORT) || gauge_active(WARM_MOST_PORT)) return 8;
+        gauge_active(SHIFT_MOST_PORT) || gauge_active(LAUNCH_MOST_PORT) || gauge_active(WARM_MOST_PORT) ||
+        gauge_active(DPF_MOST_PORT)) return 8;
     const int telemetry = gauge_bind(HUD_TELEMETRY_PORT);
     if (telemetry < 0) return 1;
     hud::Config config;

@@ -40,6 +40,7 @@ worker src/workers/beamer_worker.c out/core.o -o out/beamer-qnx
 worker src/workers/road_jet_worker.c out/core.o -o out/road-jet-qnx
 
 worker src/workers/warm_deck_worker.c out/core.o -o out/warmdeck-collector-qnx
+worker src/workers/dpf_deck_worker.c src/common/dpf_core.c src/common/obd_capabilities.c out/core.o -o out/dpfdeck-collector-qnx
 
 # The desktop installer stages this static helper on the head unit.
 c -O2 -static fileops.c -o out/gaugedeck-fileops

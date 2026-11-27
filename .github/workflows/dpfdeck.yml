@@ -1,0 +1,35 @@
+name: DPFDeck development
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        compiler: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - name: DPF worker and existing native regressions
+        env:
+          CC: ${{ matrix.compiler }}
+        run: make -C source/native test
+      - name: C++98 public header and QNX build script syntax
+        run: |
+          printf '#include "dpf_core.h"\nint main() { return DPF_COUNT != 11; }\n' > /tmp/dpf-header.cpp
+          g++ -std=gnu++98 -Wall -Wextra -Werror -Isource/native/src/common -fsyntax-only /tmp/dpf-header.cpp
+          sh -n source/native/build.sh
+      - name: Memory safety and static analysis
+        if: matrix.compiler == 'clang'
+        run: |
+          clang -std=c99 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -Isource/native/src/common source/native/tests/test_dpf.c source/native/src/common/dpf_core.c -lm -o /tmp/dpf-sanitized
+          mkdir -p /tmp/dpf-locales
+          localedef --no-archive -i de_DE -f UTF-8 /tmp/dpf-locales/de_DE.UTF-8
+          LOCPATH=/tmp/dpf-locales DPF_REQUIRE_COMMA_LOCALE=1 /tmp/dpf-sanitized
+          clang --analyze -std=c99 -Wall -Wextra -Isource/native/src/common source/native/src/common/dpf_core.c -o /tmp/dpf-core.plist
+          clang --analyze -std=c99 -Wall -Wextra -Isource/native/src/common -Isource/native/src/ipc source/native/src/workers/dpf_deck_worker.c -o /tmp/dpf-worker.plist

@@ -10,7 +10,21 @@ MOST_HEADERS = src/common/most/most_link.h src/common/most/dsi_client.h src/comm
 FAKE_DSI = tests/fake_dsi.c tests/fake_dme.c tests/fake_dsi.h tests/fake_dme.h
 WORKER_COMMON = $(CORE_LINK) $(MOST) tests/fake_most_env.c $(FAKE_DSI) $(HEADERS) $(MOST_HEADERS)
 HOST_LINK = $(CC) $(CFLAGS) -pthread -DMOST_HOST -Isrc/common -Isrc/ipc -Isrc/workers -Itests
-.PHONY: assets launch-assets test
+.PHONY: assets launch-assets test test-dpf
+
+build/dpfdeck-collector: src/workers/dpf_deck_worker.c src/common/dpf_core.c src/common/dpf_core.h src/common/obd_capabilities.c src/common/obd_capabilities.h $(WORKER_COMMON) | build
+	$(HOST_LINK) $(filter %.c,$^) -lm -o $@
+
+build/test-dpf: tests/test_dpf.c src/common/dpf_core.c src/common/dpf_core.h | build
+	$(CC) $(CFLAGS) -Isrc/common $(filter %.c,$^) -lm -o $@
+
+build/test-dpf-capabilities: tests/test_obd_capabilities.c src/common/obd_capabilities.c src/common/obd_capabilities.h $(HEADERS) | build
+	$(CC) $(CFLAGS) -Isrc/common $(filter %.c,$^) -o $@
+
+test-dpf: build/test-dpf build/test-dpf-capabilities build/dpfdeck-collector
+	./build/test-dpf
+	./build/test-dpf-capabilities
+	$(PYTHON) -B tests/test_dpf_transport.py
 
 assets: | build
 	unzip -p ../../packages/dashboard.zip BoostDeck/BoostDeck_ALL_Images.zip > build/boostdeck-base-images.zip
@@ -87,7 +101,7 @@ build/test-boost-preferences: tests/test_boost_preferences.cpp build/boost-test-
 launch-assets:
 	$(PYTHON) ../tools/launch_art.py
 
-test: build/xdrive-control build/boost-deck build/shift-deck build/mhd-maps build/engine-codes build/test-core build/test-most build/test-diag-link build/bootmod3 build/exhaust-flap build/test-launch-timer build/test-launch-records build/test-boost-preferences build/test-warm-progress build/warmdeck-collector build/mgflasher build/hybriddeck-collector
+test: test-dpf build/xdrive-control build/boost-deck build/shift-deck build/mhd-maps build/engine-codes build/test-core build/test-most build/test-diag-link build/bootmod3 build/exhaust-flap build/test-launch-timer build/test-launch-records build/test-boost-preferences build/test-warm-progress build/warmdeck-collector build/mgflasher build/hybriddeck-collector
 	./build/test-warm-progress
 	./build/test-boost-preferences
 	./build/test-launch-timer

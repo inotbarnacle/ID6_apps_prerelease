@@ -221,6 +221,7 @@ static int open_most(struct diag_link *l) {
         else if (!strcmp(l->cfg.dsi_name, "shiftdeck")) gauge_port = SHIFT_MOST_PORT;
         else if (!strcmp(l->cfg.dsi_name, "launchdeck")) gauge_port = LAUNCH_MOST_PORT;
         else if (!strcmp(l->cfg.dsi_name, "warmdeck")) gauge_port = WARM_MOST_PORT;
+        else if (!strcmp(l->cfg.dsi_name, "dpfdeck")) gauge_port = DPF_MOST_PORT;
     }
     if (gauge_port) {
         l->gauge_most_lock = gauge_bind(gauge_port);
