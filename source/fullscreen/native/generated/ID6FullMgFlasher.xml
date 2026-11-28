@@ -1,0 +1,703 @@
+<?xml version='1.0' encoding='utf-8'?>
+<pluginApps>
+  <pluginApp applicationType="VehicleInformation" applicationWeight="242" text="MG Flasher">
+    <entryButton id="1" action="10">
+      <properties>
+        <property id="23" value="2" />
+      </properties>
+    </entryButton>
+    <actions>
+      <hmiAction id="10" target="100" />
+      <raAction id="20" />
+      <hmiAction id="90" target="190" />
+      <raAction id="91" />
+      <raAction id="92" />
+      <raAction id="93" />
+      <hmiAction id="11" target="101" />
+      <raAction id="21" />
+      <raAction id="22" />
+      <raAction id="23" />
+      <raAction id="24" />
+      <raAction id="25" />
+      <hmiAction id="12" target="102" />
+      <raAction id="30" />
+      <raAction id="31" />
+      <raAction id="32" />
+      <raAction id="33" />
+      <raAction id="34" />
+      <raAction id="35" />
+      <hmiAction id="13" target="103" />
+      <raAction id="40" />
+      <raAction id="41" />
+      <hmiAction id="14" target="104" />
+      <raAction id="1000" />
+      <raAction id="1001" />
+      <raAction id="1002" />
+      <raAction id="1003" />
+      <raAction id="1004" />
+      <raAction id="1005" />
+      <raAction id="1006" />
+      <raAction id="1007" />
+      <raAction id="1008" />
+      <raAction id="1009" />
+      <raAction id="1010" />
+      <raAction id="1011" />
+      <raAction id="1012" />
+      <raAction id="1013" />
+      <raAction id="1014" />
+      <raAction id="1015" />
+      <raAction id="1016" />
+      <raAction id="1017" />
+      <raAction id="1018" />
+      <raAction id="1019" />
+      <raAction id="1020" />
+      <raAction id="1021" />
+      <raAction id="1022" />
+      <raAction id="1023" />
+      <raAction id="1024" />
+      <raAction id="1025" />
+      <raAction id="1026" />
+      <raAction id="1027" />
+      <raAction id="1028" />
+      <raAction id="1029" />
+      <raAction id="1030" />
+      <raAction id="1031" />
+      <raAction id="1032" />
+      <raAction id="1033" />
+      <raAction id="1034" />
+      <raAction id="1035" />
+      <raAction id="1036" />
+      <raAction id="1037" />
+      <raAction id="1038" />
+      <raAction id="1039" />
+      <raAction id="1040" />
+      <raAction id="1041" />
+      <raAction id="1042" />
+      <raAction id="1043" />
+      <raAction id="1044" />
+      <raAction id="1045" />
+      <hmiAction id="15" target="105" />
+      <raAction id="1100" />
+      <raAction id="1101" />
+      <raAction id="1102" />
+      <hmiAction id="16" target="106" />
+      <raAction id="1200" />
+      <raAction id="1201" />
+      <hmiAction id="17" target="107" />
+      <raAction id="1300" />
+      <raAction id="1301" />
+      <hmiAction id="18" target="108" />
+      <raAction id="1400" />
+      <raAction id="1401" />
+      <raAction id="1402" />
+      <raAction id="1403" />
+      <raAction id="1404" />
+      <raAction id="1405" />
+      <raAction id="1406" />
+      <raAction id="1407" />
+      <raAction id="1408" />
+      <raAction id="1409" />
+      <raAction id="1410" />
+      <raAction id="1411" />
+      <raAction id="1412" />
+      <raAction id="1413" />
+      <raAction id="1414" />
+      <raAction id="1415" />
+      <raAction id="1416" />
+      <raAction id="1417" />
+      <raAction id="1418" />
+      <raAction id="1419" />
+      <raAction id="1420" />
+      <hmiAction id="19" target="109" />
+      <raAction id="1500" />
+      <raAction id="1501" />
+      <raAction id="1502" />
+      <raAction id="8016" />
+      <raAction id="8017" />
+      <raAction id="8018" />
+      <raAction id="8019" />
+      <raAction id="8020" />
+      <raAction id="8021" />
+      <raAction id="8022" />
+      <raAction id="8023" />
+      <raAction id="8024" />
+      <raAction id="8025" />
+      <raAction id="8026" />
+      <raAction id="8027" />
+      <raAction id="8028" />
+      <raAction id="8029" />
+      <raAction id="8030" />
+      <raAction id="8031" />
+      <raAction id="8032" />
+      <raAction id="8033" />
+      <raAction id="8034" />
+      <raAction id="8035" />
+      <raAction id="8036" />
+      <raAction id="8037" />
+      <raAction id="8038" />
+      <raAction id="8039" />
+      <raAction id="8040" />
+      <raAction id="8041" />
+      <raAction id="8042" />
+      <raAction id="8043" />
+      <raAction id="8044" />
+      <raAction id="8045" />
+      <raAction id="8046" />
+      <raAction id="8047" />
+      <raAction id="8048" />
+      <raAction id="8049" />
+      <raAction id="8050" />
+      <raAction id="8051" />
+      <raAction id="8052" />
+      <raAction id="8053" />
+      <raAction id="8054" />
+      <raAction id="8055" />
+      <raAction id="8056" />
+      <raAction id="8057" />
+      <raAction id="8058" />
+      <raAction id="8059" />
+      <raAction id="8060" />
+      <raAction id="8061" />
+      <raAction id="8062" />
+      <raAction id="8063" />
+      <raAction id="8064" />
+      <raAction id="8065" />
+      <raAction id="8066" />
+      <raAction id="8067" />
+      <raAction id="8068" />
+      <raAction id="8069" />
+      <raAction id="8070" />
+      <raAction id="8071" />
+      <raAction id="8072" />
+      <raAction id="8073" />
+      <raAction id="8074" />
+      <raAction id="8075" />
+      <raAction id="8076" />
+      <raAction id="8077" />
+      <raAction id="8078" />
+      <raAction id="8079" />
+      <raAction id="8080" />
+      <raAction id="8081" />
+      <raAction id="8082" />
+      <raAction id="8083" />
+      <raAction id="8084" />
+      <raAction id="8085" />
+      <raAction id="8086" />
+      <raAction id="8087" />
+      <raAction id="8088" />
+      <raAction id="8089" />
+      <raAction id="8090" />
+      <raAction id="8091" />
+      <raAction id="8092" />
+      <raAction id="8093" />
+      <raAction id="8094" />
+      <raAction id="8095" />
+      <raAction id="8096" />
+      <raAction id="8097" />
+      <raAction id="8098" />
+      <raAction id="8099" />
+      <raAction id="8100" />
+      <raAction id="8101" />
+      <raAction id="8102" />
+      <raAction id="8103" />
+      <raAction id="8104" />
+      <raAction id="8105" />
+      <raAction id="8106" />
+      <raAction id="8107" />
+      <raAction id="8108" />
+      <raAction id="8109" />
+      <raAction id="8110" />
+      <raAction id="8111" />
+      <raAction id="8112" />
+      <raAction id="8113" />
+      <raAction id="8114" />
+      <raAction id="8115" />
+      <raAction id="8116" />
+      <raAction id="8117" />
+      <raAction id="8118" />
+      <raAction id="8119" />
+      <raAction id="8120" />
+      <raAction id="8121" />
+      <raAction id="8122" />
+      <raAction id="8123" />
+    </actions>
+    <models>
+      <raDataModel id="50" modelType="Richtext" />
+      <raDataModel id="69" modelType="Richtext" />
+      <imageIdModel id="65" imageId="59105" />
+      <raDataModel id="51" modelType="Richtext" />
+      <imageIdModel id="60" imageId="59100" />
+      <imageIdModel id="61" imageId="59101" />
+      <imageIdModel id="62" imageId="59102" />
+      <imageIdModel id="63" imageId="59103" />
+      <imageIdModel id="64" imageId="59104" />
+      <raDataModel id="52" modelType="Richtext" />
+      <raDataModel id="53" modelType="Richtext" />
+      <raDataModel id="54" modelType="Richtext" />
+      <raDataModel id="55" modelType="Richtext" />
+      <raDataModel id="56" modelType="Richtext" />
+      <raDataModel id="57" modelType="Richtext" />
+      <raDataModel id="58" modelType="Richtext" />
+      <raDataModel id="59" modelType="Richtext" />
+    </models>
+    <hmiStates>
+      <hmiState id="100" text="MG Flasher">
+        <components>
+          <button id="3990" action="21" text="Map slot 0" selectAction="8016">
+            <properties>
+              <property id="20" value="52" />
+              <property id="21" value="50" />
+              <property id="9" value="220" />
+              <property id="10" value="138" />
+            </properties>
+          </button>
+          <button id="3991" action="22" text="Map slot 1" selectAction="8017">
+            <properties>
+              <property id="20" value="292" />
+              <property id="21" value="50" />
+              <property id="9" value="220" />
+              <property id="10" value="138" />
+            </properties>
+          </button>
+          <button id="3992" action="23" text="Map slot 2" selectAction="8018">
+            <properties>
+              <property id="20" value="532" />
+              <property id="21" value="50" />
+              <property id="9" value="220" />
+              <property id="10" value="138" />
+            </properties>
+          </button>
+          <button id="3993" action="24" text="Map slot 3" selectAction="8019">
+            <properties>
+              <property id="20" value="772" />
+              <property id="21" value="50" />
+              <property id="9" value="220" />
+              <property id="10" value="138" />
+            </properties>
+          </button>
+          <button id="3994" action="25" text="Map slot 4" selectAction="8020">
+            <properties>
+              <property id="20" value="1012" />
+              <property id="21" value="50" />
+              <property id="9" value="220" />
+              <property id="10" value="138" />
+            </properties>
+          </button>
+          <button id="20" action="20" text="Refresh current settings" selectAction="8021">
+            <properties>
+              <property id="20" value="52" />
+              <property id="21" value="206" />
+              <property id="9" value="280" />
+              <property id="10" value="44" />
+            </properties>
+          </button>
+          <label id="50" model="50" />
+          <button id="90" action="90" text="DME profile for Custom Code 7.3–7.3.4" selectAction="8022">
+            <properties>
+              <property id="20" value="352" />
+              <property id="21" value="206" />
+              <property id="9" value="280" />
+              <property id="10" value="44" />
+            </properties>
+          </button>
+          <button id="12" action="12" text="Burbles" selectAction="8023">
+            <properties>
+              <property id="20" value="652" />
+              <property id="21" value="206" />
+              <property id="9" value="280" />
+              <property id="10" value="44" />
+            </properties>
+          </button>
+          <button id="13" action="13" text="Max Cooling" selectAction="8024">
+            <properties>
+              <property id="20" value="952" />
+              <property id="21" value="206" />
+              <property id="9" value="280" />
+              <property id="10" value="44" />
+            </properties>
+          </button>
+          <button id="14" action="14" text="Antilag RPM" selectAction="8025">
+            <properties>
+              <property id="20" value="52" />
+              <property id="21" value="256" />
+              <property id="9" value="280" />
+              <property id="10" value="44" />
+            </properties>
+          </button>
+          <button id="15" action="15" text="Exhaust flap" selectAction="8026">
+            <properties>
+              <property id="20" value="352" />
+              <property id="21" value="256" />
+              <property id="9" value="280" />
+              <property id="10" value="44" />
+            </properties>
+          </button>
+          <button id="16" action="16" text="Valet mode" selectAction="8027">
+            <properties>
+              <property id="20" value="652" />
+              <property id="21" value="256" />
+              <property id="9" value="280" />
+              <property id="10" value="44" />
+            </properties>
+          </button>
+          <button id="17" action="17" text="Ethanol override" selectAction="8028">
+            <properties>
+              <property id="20" value="952" />
+              <property id="21" value="256" />
+              <property id="9" value="280" />
+              <property id="10" value="44" />
+            </properties>
+          </button>
+          <button id="18" action="18" text="Ethanol override value" selectAction="8029">
+            <properties>
+              <property id="20" value="52" />
+              <property id="21" value="306" />
+              <property id="9" value="280" />
+              <property id="10" value="44" />
+            </properties>
+          </button>
+          <button id="19" action="19" text="Radiator flap (Gen 2)" selectAction="8030">
+            <properties>
+              <property id="20" value="352" />
+              <property id="21" value="306" />
+              <property id="9" value="280" />
+              <property id="10" value="44" />
+            </properties>
+          </button>
+        </components>
+      </hmiState>
+      <hmiState id="190" text="DME profile" parentId="100">
+        <components>
+          <label id="169" model="69" />
+          <button id="91" action="91" text="Gen 1 (A2L starts with R0 or R1)" selectAction="8031">
+            <properties>
+              <property id="20" value="62" />
+              <property id="21" value="100" />
+              <property id="9" value="545" />
+              <property id="10" value="43" />
+            </properties>
+          </button>
+          <button id="92" action="92" text="Gen 2 (A2L starts with R4 or F4)" selectAction="8032">
+            <properties>
+              <property id="20" value="627" />
+              <property id="21" value="100" />
+              <property id="9" value="545" />
+              <property id="10" value="43" />
+            </properties>
+          </button>
+          <button id="93" action="93" text="Disable live controls" selectAction="8033">
+            <properties>
+              <property id="20" value="62" />
+              <property id="21" value="148" />
+              <property id="9" value="545" />
+              <property id="10" value="43" />
+            </properties>
+          </button>
+        </components>
+      </hmiState>
+      <hmiState id="101" text="Switchable maps" parentId="100">
+        <components>
+          <label id="51" model="51">
+            <properties>
+              <property id="20" value="90" />
+              <property id="21" value="346" />
+              <property id="9" value="1050" />
+              <property id="10" value="64" />
+            </properties>
+          </label>
+          <button id="21" action="21" text="Map slot 0" selectAction="8034">
+            <properties>
+              <property id="20" value="52" />
+              <property id="21" value="50" />
+              <property id="9" value="220" />
+              <property id="10" value="138" />
+            </properties>
+          </button>
+          <button id="22" action="22" text="Map slot 1" selectAction="8035">
+            <properties>
+              <property id="20" value="292" />
+              <property id="21" value="50" />
+              <property id="9" value="220" />
+              <property id="10" value="138" />
+            </properties>
+          </button>
+          <button id="23" action="23" text="Map slot 2" selectAction="8036">
+            <properties>
+              <property id="20" value="532" />
+              <property id="21" value="50" />
+              <property id="9" value="220" />
+              <property id="10" value="138" />
+            </properties>
+          </button>
+          <button id="24" action="24" text="Map slot 3" selectAction="8037">
+            <properties>
+              <property id="20" value="772" />
+              <property id="21" value="50" />
+              <property id="9" value="220" />
+              <property id="10" value="138" />
+            </properties>
+          </button>
+          <button id="25" action="25" text="Map slot 4" selectAction="8038">
+            <properties>
+              <property id="20" value="1012" />
+              <property id="21" value="50" />
+              <property id="9" value="220" />
+              <property id="10" value="138" />
+            </properties>
+          </button>
+        </components>
+      </hmiState>
+      <hmiState id="102" text="Burbles" parentId="100">
+        <components>
+          <label id="52" model="52" />
+          <button id="30" action="30" text="OEM" selectAction="8039">
+            <properties>
+              <property id="20" value="62" />
+              <property id="21" value="100" />
+              <property id="9" value="545" />
+              <property id="10" value="43" />
+            </properties>
+          </button>
+          <button id="31" action="31" text="App Slider" selectAction="8040">
+            <properties>
+              <property id="20" value="627" />
+              <property id="21" value="100" />
+              <property id="9" value="545" />
+              <property id="10" value="43" />
+            </properties>
+          </button>
+          <button id="32" action="32" text="Level 1" selectAction="8041">
+            <properties>
+              <property id="20" value="62" />
+              <property id="21" value="148" />
+              <property id="9" value="545" />
+              <property id="10" value="43" />
+            </properties>
+          </button>
+          <button id="33" action="33" text="Level 2" selectAction="8042">
+            <properties>
+              <property id="20" value="627" />
+              <property id="21" value="148" />
+              <property id="9" value="545" />
+              <property id="10" value="43" />
+            </properties>
+          </button>
+          <button id="34" action="34" text="Level 3" selectAction="8043">
+            <properties>
+              <property id="20" value="62" />
+              <property id="21" value="196" />
+              <property id="9" value="545" />
+              <property id="10" value="43" />
+            </properties>
+          </button>
+          <button id="35" action="35" text="Off" selectAction="8044">
+            <properties>
+              <property id="20" value="627" />
+              <property id="21" value="196" />
+              <property id="9" value="545" />
+              <property id="10" value="43" />
+            </properties>
+          </button>
+        </components>
+      </hmiState>
+      <hmiState id="103" text="Max Cooling" parentId="100">
+        <components>
+          <label id="53" model="53" />
+          <button id="40" action="40" text="Off" selectAction="8045">
+            <properties>
+              <property id="20" value="62" />
+              <property id="21" value="100" />
+              <property id="9" value="545" />
+              <property id="10" value="43" />
+            </properties>
+          </button>
+          <button id="41" action="41" text="On" selectAction="8046">
+            <properties>
+              <property id="20" value="627" />
+              <property id="21" value="100" />
+              <property id="9" value="545" />
+              <property id="10" value="43" />
+            </properties>
+          </button>
+        </components>
+      </hmiState>
+      <hmiState id="104" text="Antilag RPM" parentId="100">
+        <components>
+          <label id="54" model="54" />
+          <button id="1000" action="1000" text="1,500 RPM" selectAction="8047" />
+          <button id="1001" action="1001" text="1,600 RPM" selectAction="8048" />
+          <button id="1002" action="1002" text="1,700 RPM" selectAction="8049" />
+          <button id="1003" action="1003" text="1,800 RPM" selectAction="8050" />
+          <button id="1004" action="1004" text="1,900 RPM" selectAction="8051" />
+          <button id="1005" action="1005" text="2,000 RPM" selectAction="8052" />
+          <button id="1006" action="1006" text="2,100 RPM" selectAction="8053" />
+          <button id="1007" action="1007" text="2,200 RPM" selectAction="8054" />
+          <button id="1008" action="1008" text="2,300 RPM" selectAction="8055" />
+          <button id="1009" action="1009" text="2,400 RPM" selectAction="8056" />
+          <button id="1010" action="1010" text="2,500 RPM" selectAction="8057" />
+          <button id="1011" action="1011" text="2,600 RPM" selectAction="8058" />
+          <button id="1012" action="1012" text="2,700 RPM" selectAction="8059" />
+          <button id="1013" action="1013" text="2,800 RPM" selectAction="8060" />
+          <button id="1014" action="1014" text="2,900 RPM" selectAction="8061" />
+          <button id="1015" action="1015" text="3,000 RPM" selectAction="8062" />
+          <button id="1016" action="1016" text="3,100 RPM" selectAction="8063" />
+          <button id="1017" action="1017" text="3,200 RPM" selectAction="8064" />
+          <button id="1018" action="1018" text="3,300 RPM" selectAction="8065" />
+          <button id="1019" action="1019" text="3,400 RPM" selectAction="8066" />
+          <button id="1020" action="1020" text="3,500 RPM" selectAction="8067" />
+          <button id="1021" action="1021" text="3,600 RPM" selectAction="8068" />
+          <button id="1022" action="1022" text="3,700 RPM" selectAction="8069" />
+          <button id="1023" action="1023" text="3,800 RPM" selectAction="8070" />
+          <button id="1024" action="1024" text="3,900 RPM" selectAction="8071" />
+          <button id="1025" action="1025" text="4,000 RPM" selectAction="8072" />
+          <button id="1026" action="1026" text="4,100 RPM" selectAction="8073" />
+          <button id="1027" action="1027" text="4,200 RPM" selectAction="8074" />
+          <button id="1028" action="1028" text="4,300 RPM" selectAction="8075" />
+          <button id="1029" action="1029" text="4,400 RPM" selectAction="8076" />
+          <button id="1030" action="1030" text="4,500 RPM" selectAction="8077" />
+          <button id="1031" action="1031" text="4,600 RPM" selectAction="8078" />
+          <button id="1032" action="1032" text="4,700 RPM" selectAction="8079" />
+          <button id="1033" action="1033" text="4,800 RPM" selectAction="8080" />
+          <button id="1034" action="1034" text="4,900 RPM" selectAction="8081" />
+          <button id="1035" action="1035" text="5,000 RPM" selectAction="8082" />
+          <button id="1036" action="1036" text="5,100 RPM" selectAction="8083" />
+          <button id="1037" action="1037" text="5,200 RPM" selectAction="8084" />
+          <button id="1038" action="1038" text="5,300 RPM" selectAction="8085" />
+          <button id="1039" action="1039" text="5,400 RPM" selectAction="8086" />
+          <button id="1040" action="1040" text="5,500 RPM" selectAction="8087" />
+          <button id="1041" action="1041" text="5,600 RPM" selectAction="8088" />
+          <button id="1042" action="1042" text="5,700 RPM" selectAction="8089" />
+          <button id="1043" action="1043" text="5,800 RPM" selectAction="8090" />
+          <button id="1044" action="1044" text="5,900 RPM" selectAction="8091" />
+          <button id="1045" action="1045" text="6,000 RPM" selectAction="8092" />
+        </components>
+      </hmiState>
+      <hmiState id="105" text="Exhaust flap" parentId="100">
+        <components>
+          <label id="55" model="55" />
+          <button id="1100" action="1100" text="OEM" selectAction="8093">
+            <properties>
+              <property id="20" value="62" />
+              <property id="21" value="100" />
+              <property id="9" value="545" />
+              <property id="10" value="43" />
+            </properties>
+          </button>
+          <button id="1101" action="1101" text="Closed" selectAction="8094">
+            <properties>
+              <property id="20" value="627" />
+              <property id="21" value="100" />
+              <property id="9" value="545" />
+              <property id="10" value="43" />
+            </properties>
+          </button>
+          <button id="1102" action="1102" text="Open" selectAction="8095">
+            <properties>
+              <property id="20" value="62" />
+              <property id="21" value="148" />
+              <property id="9" value="545" />
+              <property id="10" value="43" />
+            </properties>
+          </button>
+        </components>
+      </hmiState>
+      <hmiState id="106" text="Valet mode" parentId="100">
+        <components>
+          <label id="56" model="56" />
+          <button id="1200" action="1200" text="Off" selectAction="8096">
+            <properties>
+              <property id="20" value="62" />
+              <property id="21" value="100" />
+              <property id="9" value="545" />
+              <property id="10" value="43" />
+            </properties>
+          </button>
+          <button id="1201" action="1201" text="On" selectAction="8097">
+            <properties>
+              <property id="20" value="627" />
+              <property id="21" value="100" />
+              <property id="9" value="545" />
+              <property id="10" value="43" />
+            </properties>
+          </button>
+        </components>
+      </hmiState>
+      <hmiState id="107" text="Ethanol override" parentId="100">
+        <components>
+          <label id="57" model="57" />
+          <button id="1300" action="1300" text="Off" selectAction="8098">
+            <properties>
+              <property id="20" value="62" />
+              <property id="21" value="100" />
+              <property id="9" value="545" />
+              <property id="10" value="43" />
+            </properties>
+          </button>
+          <button id="1301" action="1301" text="On" selectAction="8099">
+            <properties>
+              <property id="20" value="627" />
+              <property id="21" value="100" />
+              <property id="9" value="545" />
+              <property id="10" value="43" />
+            </properties>
+          </button>
+        </components>
+      </hmiState>
+      <hmiState id="108" text="Ethanol override value" parentId="100">
+        <components>
+          <label id="58" model="58" />
+          <button id="1400" action="1400" text="0%" selectAction="8100" />
+          <button id="1401" action="1401" text="5%" selectAction="8101" />
+          <button id="1402" action="1402" text="10%" selectAction="8102" />
+          <button id="1403" action="1403" text="15%" selectAction="8103" />
+          <button id="1404" action="1404" text="20%" selectAction="8104" />
+          <button id="1405" action="1405" text="25%" selectAction="8105" />
+          <button id="1406" action="1406" text="30%" selectAction="8106" />
+          <button id="1407" action="1407" text="35%" selectAction="8107" />
+          <button id="1408" action="1408" text="40%" selectAction="8108" />
+          <button id="1409" action="1409" text="45%" selectAction="8109" />
+          <button id="1410" action="1410" text="50%" selectAction="8110" />
+          <button id="1411" action="1411" text="55%" selectAction="8111" />
+          <button id="1412" action="1412" text="60%" selectAction="8112" />
+          <button id="1413" action="1413" text="65%" selectAction="8113" />
+          <button id="1414" action="1414" text="70%" selectAction="8114" />
+          <button id="1415" action="1415" text="75%" selectAction="8115" />
+          <button id="1416" action="1416" text="80%" selectAction="8116" />
+          <button id="1417" action="1417" text="85%" selectAction="8117" />
+          <button id="1418" action="1418" text="90%" selectAction="8118" />
+          <button id="1419" action="1419" text="95%" selectAction="8119" />
+          <button id="1420" action="1420" text="100%" selectAction="8120" />
+        </components>
+      </hmiState>
+      <hmiState id="109" text="Radiator flap (Gen 2)" parentId="100">
+        <components>
+          <label id="59" model="59" />
+          <button id="1500" action="1500" text="OEM" selectAction="8121">
+            <properties>
+              <property id="20" value="62" />
+              <property id="21" value="100" />
+              <property id="9" value="545" />
+              <property id="10" value="43" />
+            </properties>
+          </button>
+          <button id="1501" action="1501" text="Closed" selectAction="8122">
+            <properties>
+              <property id="20" value="627" />
+              <property id="21" value="100" />
+              <property id="9" value="545" />
+              <property id="10" value="43" />
+            </properties>
+          </button>
+          <button id="1502" action="1502" text="Open" selectAction="8123">
+            <properties>
+              <property id="20" value="62" />
+              <property id="21" value="148" />
+              <property id="9" value="545" />
+              <property id="10" value="43" />
+            </properties>
+          </button>
+        </components>
+      </hmiState>
+    </hmiStates>
+  </pluginApp>
+</pluginApps>

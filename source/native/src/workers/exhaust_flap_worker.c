@@ -43,6 +43,13 @@ int main(int argc, char **argv) {
         {0x2f, 0x60, 0xfd, 3, 0x14, 0xfe},
         {0x2f, 0x60, 0xfd, 3, 0x23, 0x28}
     };
+    /* Stock S55 DME, from ISTA's flap actuator test on an F87 M2 Competition: shortTermAdjustment
+     * takes four data bytes and the two-byte form above gets NRC 13. 1999 opens and E666 closes
+     * (checked by ear); 0A FF is sent exactly as ISTA sends it. Used only after an NRC 13. */
+    static const unsigned char s55[][8] = {
+        {0x2f, 0x60, 0xfd, 3, 0x19, 0x99, 0x0a, 0xff},
+        {0x2f, 0x60, 0xfd, 3, 0xe6, 0x66, 0x0a, 0xff}
+    };
     static const char *labels[] = {"Exhaust auto", "Exhaust open", "Exhaust closed"};
     const unsigned char prefix[] = {0x6f, 0x60, 0xfd};
     unsigned char reply[64];
@@ -73,6 +80,9 @@ int main(int argc, char **argv) {
     if (diag_link_up(&link)) {
         n = diag_link_request(&link, 0x12, requests[mode], mode ? 6u : 4u,
                               prefix, sizeof prefix, reply, sizeof reply, 1600, &negative);
+        if (n == -2 && negative == 0x13 && mode)
+            n = diag_link_request(&link, 0x12, s55[mode - 1], 8u,
+                                  prefix, sizeof prefix, reply, sizeof reply, 1600, &negative);
         if (n >= 3) printf("Confirmed: %s\n", labels[mode]);
         else if (n == -2) printf("%s refused by DME (NRC %02X)\n", labels[mode], negative);
         else printf("%s: no DME reply\n", labels[mode]);

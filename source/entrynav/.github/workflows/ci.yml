@@ -1,0 +1,56 @@
+# Every push and pull request, as four jobs that run side by side: the PC tests, the apps' C++ compiled for errors,
+# ShellCheck, and the committed screens matching their generators. Together they are make check. The ARM build links
+# against the car's libraries (BMW files), so it runs on a developer's machine with tools/check.py, not here.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: PC tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: The decoders, and each worker against a simulated gateway
+        run: make test
+
+  syntax:
+    name: C++ compile
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: The apps' C++, for errors and warnings
+        run: make syntax
+
+  lint:
+    name: ShellCheck
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: setup.sh and the toolchain scripts
+        run: make lint
+
+  generated:
+    name: Generated files
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Pillow and the DejaVu fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends python3-pil fonts-dejavu-core fonts-dejavu-extra
+      - name: The committed screens and headers match their generators
+        run: make generated

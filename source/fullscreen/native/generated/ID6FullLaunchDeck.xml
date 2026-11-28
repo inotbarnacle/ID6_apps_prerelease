@@ -1,0 +1,134 @@
+<?xml version='1.0' encoding='utf-8'?>
+<pluginApps>
+  <pluginApp applicationType="VehicleInformation" applicationWeight="251" text="LaunchDeck">
+    <entryButton id="1" action="10">
+      <properties>
+        <property id="23" value="2" />
+      </properties>
+    </entryButton>
+    <actions>
+      <hmiAction id="10" target="206" />
+      <raAction id="231" />
+      <raAction id="6231" />
+    </actions>
+    <models>
+      <raDataModel id="615" modelType="Richtext" />
+      <raDataModel id="1520" modelType="Richtext" />
+      <raDataModel id="1521" modelType="Richtext" />
+      <raDataModel id="1522" modelType="Richtext" />
+      <raDataModel id="1523" modelType="Richtext" />
+      <raDataModel id="1524" modelType="Richtext" />
+      <raDataModel id="606" modelType="Richtext" />
+    </models>
+    <hmiStates>
+      <hmiState id="206" text="LaunchDeck">
+        <components>
+          <button id="521" text="Change mode" action="231" selectAction="6231">
+            <properties>
+              <property id="20" value="810" />
+              <property id="21" value="348" />
+              <property id="9" value="395" />
+              <property id="10" value="52" />
+            </properties>
+          </button>
+          <label id="522" model="615">
+            <properties>
+              <property id="20" value="435" />
+              <property id="21" value="348" />
+              <property id="9" value="365" />
+              <property id="10" value="52" />
+            </properties>
+          </label>
+          <label id="1240" text="Speed">
+            <properties>
+              <property id="20" value="28" />
+              <property id="21" value="42" />
+              <property id="9" value="365" />
+              <property id="10" value="52" />
+            </properties>
+          </label>
+          <label id="1260" model="1520">
+            <properties>
+              <property id="20" value="28" />
+              <property id="21" value="95" />
+              <property id="9" value="365" />
+              <property id="10" value="65" />
+            </properties>
+          </label>
+          <label id="1241" text="Timer">
+            <properties>
+              <property id="20" value="431" />
+              <property id="21" value="42" />
+              <property id="9" value="365" />
+              <property id="10" value="52" />
+            </properties>
+          </label>
+          <label id="1261" model="1521">
+            <properties>
+              <property id="20" value="431" />
+              <property id="21" value="95" />
+              <property id="9" value="365" />
+              <property id="10" value="65" />
+            </properties>
+          </label>
+          <label id="1242" text="Last time">
+            <properties>
+              <property id="20" value="834" />
+              <property id="21" value="42" />
+              <property id="9" value="365" />
+              <property id="10" value="52" />
+            </properties>
+          </label>
+          <label id="1262" model="1522">
+            <properties>
+              <property id="20" value="834" />
+              <property id="21" value="95" />
+              <property id="9" value="365" />
+              <property id="10" value="65" />
+            </properties>
+          </label>
+          <label id="1243" text="Previous 2">
+            <properties>
+              <property id="20" value="28" />
+              <property id="21" value="180" />
+              <property id="9" value="365" />
+              <property id="10" value="52" />
+            </properties>
+          </label>
+          <label id="1263" model="1523">
+            <properties>
+              <property id="20" value="28" />
+              <property id="21" value="233" />
+              <property id="9" value="365" />
+              <property id="10" value="65" />
+            </properties>
+          </label>
+          <label id="1244" text="Previous 3">
+            <properties>
+              <property id="20" value="431" />
+              <property id="21" value="180" />
+              <property id="9" value="365" />
+              <property id="10" value="52" />
+            </properties>
+          </label>
+          <label id="1264" model="1524">
+            <properties>
+              <property id="20" value="431" />
+              <property id="21" value="233" />
+              <property id="9" value="365" />
+              <property id="10" value="65" />
+            </properties>
+          </label>
+          <label id="466" model="606">
+            <properties>
+              <property id="20" value="30" />
+              <property id="21" value="365" />
+              <property id="9" value="1110" />
+              <property id="10" value="70" />
+            </properties>
+          </label>
+        </components>
+      </hmiState>
+    </hmiStates>
+  </pluginApp>
+</pluginApps>

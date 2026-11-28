@@ -30,13 +30,15 @@ const (
 
 type vehicleInput struct {
 	Head, Gateway, Local, Version, Fingerprint, DisplayResolution string
-	WiFi, Split                                                   bool
+	WiFi, Split, EntryNav                                         bool
+	EntryPassword                                                 string
 }
 
 type inspection struct {
 	Version, Result, Fingerprint, Display, Touch string
 	Ready, CanRecover                            bool
 	screen                                       panel
+	pair                                         frameworkPair
 }
 
 var firmwarePattern = regexp.MustCompile(`(?i)\bNBTevo(?:_|[ \t]+)([a-z][0-9]{5}[a-z])\b`)
@@ -60,8 +62,16 @@ func sshConnect(in vehicleInput) (*ssh.Client, net.Conn, string, error) {
 		},
 		HostKeyAlgorithms: append(append([]string{}, ssh.SupportedAlgorithms().HostKeys...), "ssh-rsa", "ssh-dss"),
 	}
+	if in.EntryNav {
+		config.Config = ssh.Config{}
+		config.HostKeyAlgorithms = nil
+	}
 	if in.Fingerprint != "" {
-		config.Auth = []ssh.AuthMethod{ssh.Password("ts&SK412")}
+		if in.EntryNav {
+			config.Auth = []ssh.AuthMethod{ssh.Password(in.EntryPassword)}
+		} else {
+			config.Auth = []ssh.AuthMethod{ssh.Password("ts&SK412")}
+		}
 	}
 	var observed string
 	config.HostKeyCallback = func(_ string, _ net.Addr, key ssh.PublicKey) error {
@@ -179,8 +189,7 @@ func inspect(r remoteRunner, in vehicleInput, gatewayCheck func(string, string) 
 		result.Version = entered
 	}
 	if result.Version == "" {
-		result.Result = "The head unit did not expose the screen version over SSH. Enter the full code shown in iDrive and check again."
-		return result
+		result.Version = "NBT Evo (version unavailable)"
 	}
 	info, err := r.run("uname -a", nil, 1024)
 	if err != nil || !isNBTPlatform(info) {
@@ -199,22 +208,7 @@ func inspect(r remoteRunner, in vehicleInput, gatewayCheck func(string, string) 
 		}
 		*framework.hash = digest(raw)
 	}
-	if !approvedFrameworkPair(actual) {
-		profile, listed := profiles[result.Version]
-		switch {
-		case listed && actual == profile && captureOnly[result.Version]:
-			result.Result = result.Version + " matches the submitted framework fingerprints. This firmware still needs a native ABI check and parked runtime validation before installation."
-		case listed:
-			name := coreFramework
-			if actual.app != profile.app {
-				name = appFramework
-			}
-			result.Result = "The on-car framework fingerprint for " + name + " differs from the listed profile, and the pair has no approved match. Collect a compatibility ZIP from this car."
-		default:
-			result.Result = result.Version + " has no approved framework pair and needs a compatible native build. Use the read-only capture tool linked in the repository to share a compatibility report."
-		}
-		return result
-	}
+	result.pair = actual
 	display, err := r.run("LD_LIBRARY_PATH=/opt/sys/lib:/lib:/usr/lib /opt/sys/bin/LayerManagerControl get screen 0", nil, 8192)
 	if err == nil {
 		result.screen = readPanel(display)
@@ -262,6 +256,9 @@ func inspect(r remoteRunner, in vehicleInput, gatewayCheck func(string, string) 
 		return result
 	}
 	result.Result = "Frameworks matched. The selected apps are ready to stage."
+	if !approvedFrameworkPair(actual) {
+		result.Result = "Early beta: this framework pair has no approved runtime profile. Installation is available; menu loading may differ."
+	}
 	result.Ready = true
 	return result
 }
@@ -281,9 +278,66 @@ var apps = []plugin{
 	{"RoadJet", "road-jet-qnx", "217"},
 	{"BEAMer", "beamer-qnx", "218"},
 	{"LaunchDeck", "shift-deck-qnx", "120"},
-	{"HudTest", "hud-shape-qnx", "107"},
 	{"WarmDeck", "warmdeck-collector-qnx", "115"},
 	{"HybridDeck", "hybriddeck-collector-qnx", "117"},
+}
+
+var fullscreenApps = []plugin{
+	{"ID6LibraryLab", "id6-library-fullscreen-qnx", "229"},
+	{"ID6FullBoostDeck", "", "231"},
+	{"ID6FullShiftDeck", "", "232"},
+	{"ID6FullMhdMaps", "", "233"},
+	{"ID6FullEngineCodes", "", "234"},
+	{"ID6FullRoadJet", "", "235"},
+	{"ID6FullBEAMer", "", "236"},
+	{"ID6FullLaunchDeck", "", "237"},
+	{"ID6FullWarmDeck", "", "238"},
+}
+
+var fullscreenCompanions = []plugin{
+	{"ID6FullBootmod3Suite", "bootmod3-qnx", "239"},
+	{"ID6FullMgFlasher", "mgflasher-qnx", "240"},
+	{"ID6FullXDriveControl", "xdrive-control-qnx", "241"},
+	{"ID6FullHybridDeck", "hybriddeck-collector-qnx", "242"},
+}
+
+var fullscreenReplacedMenus = []plugin{
+	{"BoostDeck", "", "100"}, {"ShiftDeck", "", "104"}, {"MhdMaps", "", "103"},
+	{"EngineCodes", "", "102"}, {"RoadJet", "", "217"}, {"BEAMer", "", "218"},
+	{"LaunchDeck", "", "120"}, {"WarmDeck", "", "115"}, {"ExhaustFlap", "", "120"},
+	{"AppUpdates", "", "121"},
+	{"HudTest", "", "107"},
+	{"ID6AirPlayLab", "", "230"},
+}
+
+func replacedMenuBackups(r remoteRunner, selection []plugin, replaceAll bool) ([]string, error) {
+	var candidates []plugin
+	if replaceAll {
+		candidates = append(append(append([]plugin{}, apps...), fullscreenApps...), fullscreenReplacedMenus...)
+		candidates = append(candidates, fullscreenCompanions...)
+	}
+	for _, app := range selection {
+		if app.name == "ID6LibraryLab" {
+			candidates = append(candidates, fullscreenReplacedMenus...)
+			break
+		}
+	}
+	seen := make(map[string]bool)
+	for _, app := range selection {
+		seen[app.name] = true
+	}
+	var retired []plugin
+	for _, app := range candidates {
+		if !seen[app.name] {
+			retired = append(retired, app)
+			seen[app.name] = true
+		}
+	}
+	return installedMenuBackups(r, retired)
+}
+
+func (p plugin) fullscreen() bool {
+	return p.name == "ID6LibraryLab" || strings.HasPrefix(p.name, "ID6Full")
 }
 
 func checkAppLayouts(screen panel, selection []plugin) error {
@@ -296,10 +350,18 @@ func checkAppLayouts(screen panel, selection []plugin) error {
 }
 
 func (p plugin) usesImages() bool {
-	return p.name != "XDriveControl" && p.name != "HudTest"
+	return !p.fullscreen()
 }
 
 func (p plugin) executables() []string {
+	if p.name == "ID6LibraryLab" {
+		return []string{p.worker, "beamer-qnx", "boostdeck-collector-qnx", "engine-codes-qnx", "exhaust-flap-worker-qnx",
+			"library-usb-update-qnx", "mhd-maps-qnx", "road-jet-qnx", "shift-deck-qnx", "warmdeck-collector-qnx"}
+	}
+	if p.worker == "" {
+		return nil
+	}
+
 	if p.name == "MhdMaps" {
 		return []string{p.worker, "exhaust-flap-worker-qnx"}
 	}
@@ -314,6 +376,10 @@ type manifest struct {
 var pluginPath = regexp.MustCompile(`^/var/opt/hmi/data/ID5/Plugins/[A-Za-z0-9_.+/-]+\.manifest$`)
 
 func checkConnectors(r remoteRunner, selection ...plugin) error {
+	return checkConnectorsReplacing(r, nil, selection...)
+}
+
+func checkConnectorsReplacing(r remoteRunner, replaced []string, selection ...plugin) error {
 	if len(selection) == 0 {
 		selection = apps
 	}
@@ -324,6 +390,10 @@ func checkConnectors(r remoteRunner, selection ...plugin) error {
 	for _, path := range strings.Fields(string(list)) {
 		if !pluginPath.MatchString(path) || strings.Contains(path, "..") {
 			return errors.New("unexpected existing plugin path")
+		}
+		app := strings.TrimSuffix(path[strings.LastIndex(path, "/")+1:], ".manifest")
+		if slices.Contains(replaced, app+":") && path == root+"/Plugins/"+app+"/"+app+".manifest" {
+			continue
 		}
 		raw, err := r.run("cat "+path, nil, 65536)
 		if err != nil {
@@ -347,11 +417,24 @@ type blockedInstall struct {
 	canRecover bool
 }
 
+const emptyDirectoryScript = `empty_directory() {
+    test -d "$1" && test ! -L "$1" || return 1
+    for member in "$1"/* "$1"/.[!.]* "$1"/..?*; do
+        if test -e "$member" || test -L "$member"; then return 1; fi
+    done
+    return 0
+}
+`
+
 func (e *blockedInstall) Error() string {
 	return "The install lock already exists.\n\n" + e.report
 }
 
 func install(r remoteRunner, gateway string, screen panel, recoverLock bool, selection ...plugin) (string, error) {
+	return installReplacing(r, gateway, screen, recoverLock, false, selection...)
+}
+
+func installReplacing(r remoteRunner, gateway string, screen panel, recoverLock, replaceAll bool, selection ...plugin) (string, error) {
 	if len(selection) == 0 {
 		selection = apps
 	}
@@ -381,7 +464,11 @@ func install(r remoteRunner, gateway string, screen panel, recoverLock bool, sel
 	} else if len(bytes.TrimSpace(lock)) != 0 {
 		return "", errors.New("unexpected response from the install-lock check")
 	}
-	if err := checkConnectors(r, selection...); err != nil {
+	replaced, err := replacedMenuBackups(r, selection, replaceAll)
+	if err != nil {
+		return "", err
+	}
+	if err := checkConnectorsReplacing(r, replaced, selection...); err != nil {
 		return "", err
 	}
 	var nonce [8]byte
@@ -408,7 +495,9 @@ func install(r remoteRunner, gateway string, screen panel, recoverLock bool, sel
 	for _, app := range selection {
 		stage := tx + "/new-" + app.name
 		live := root + "/Plugins/" + app.name
-		check := "test ! -L " + live + " && { test ! -e " + live + " || { test -d " + live + " && test -f " + live + "/" + app.name + ".manifest; }; }"
+		path := live + "/" + app.name + ".manifest"
+		check := emptyDirectoryScript + "test ! -L " + live + " && { test ! -e " + live +
+			" || empty_directory " + live + " || { test ! -L " + path + " && test -f " + path + "; }; }"
 		if _, err := r.run(check+" && umask 022 && mkdir "+stage, nil, 512); err != nil {
 			return tx, fmt.Errorf("could not prepare %s staging directory: %w", app.name, err)
 		}
@@ -419,6 +508,9 @@ func install(r remoteRunner, gateway string, screen panel, recoverLock bool, sel
 		filesData := map[string][]byte{"gateway-ip.txt": []byte(gateway + "\n")}
 		executables := app.executables()
 		expected := append([]string{app.name + ".manifest", app.name + ".xml", "lib" + app.name + ".so"}, executables...)
+		if app.name == "ID6LibraryLab" {
+			expected = append(expected, "update-key.der", "screen-size.txt", "panel.txt")
+		}
 		if app.usesImages() {
 			expected = append(expected, app.name+"_ALL_Images.zip")
 		}
@@ -431,13 +523,17 @@ func install(r remoteRunner, gateway string, screen panel, recoverLock bool, sel
 			if err != nil {
 				return tx, err
 			}
-			if screen.compact() && app.name != "XDriveControl" && (name == app.name+".xml" || name == app.name+"_ALL_Images.zip") {
+			if screen.compact() && (name == app.name+".xml" || name == app.name+"_ALL_Images.zip") {
 				data, err = bundled.ReadFile(fmt.Sprintf("payload/layouts/%dx%d/%s", screen.width, screen.height, name))
 				if err != nil {
 					return tx, fmt.Errorf("missing bundled layout for %s: %w", app.name, err)
 				}
 			}
 			filesData[name] = data
+		}
+		if app.name == "ID6LibraryLab" {
+			filesData["screen-size.txt"] = []byte(fmt.Sprintf("%d %d\n", screen.width, screen.height))
+			filesData["panel.txt"] = []byte(fmt.Sprintf("%dx%d\n", screen.width, screen.height))
 		}
 		for _, required := range expected {
 			if len(filesData[required]) == 0 {
@@ -463,7 +559,7 @@ func install(r remoteRunner, gateway string, screen panel, recoverLock bool, sel
 	}
 	// Keep the lock and rollback in one QNX shell. Pass the script over stdin
 	// so SSH only has to execute a short, fixed command.
-	if _, err := r.run("/bin/sh -s", publicationScript(tx, selection...), 1024); err != nil {
+	if _, err := r.run("/bin/sh -s", publicationScriptWithBackups(tx, replaced, selection...), 1024); err != nil {
 		return tx, fmt.Errorf("publication was interrupted: %w", err)
 	}
 	for path, expected := range verifyFiles {
@@ -493,22 +589,9 @@ func uninstall(r remoteRunner, selection []plugin) (string, int, error) {
 	if err := checkConnectors(r, selection...); err != nil {
 		return "", 0, err
 	}
-	var names []string
-	for _, app := range selection {
-		live := root + "/Plugins/" + app.name
-		path := live + "/" + app.name + ".manifest"
-		raw, err := r.run("test ! -L "+live+" && { test ! -e "+live+" || { test ! -L "+path+" && cat "+path+"; }; }", nil, 65536)
-		if err != nil {
-			return "", 0, fmt.Errorf("could not verify %s: %w", app.name, err)
-		}
-		if len(raw) == 0 {
-			continue
-		}
-		var identity manifest
-		if err := xml.Unmarshal(raw, &identity); err != nil || identity.Name != app.name || strings.TrimSpace(identity.Connector) != app.connector {
-			return "", 0, fmt.Errorf("the manifest for %s does not match this installer", app.name)
-		}
-		names = append(names, app.name+":")
+	names, err := installedMenuBackups(r, selection)
+	if err != nil {
+		return "", 0, err
 	}
 	if len(names) == 0 {
 		return "", 0, nil
@@ -529,6 +612,37 @@ func uninstall(r remoteRunner, selection []plugin) (string, int, error) {
 		return tx, 0, fmt.Errorf("uninstall was interrupted: %w", err)
 	}
 	return tx, len(strings.Fields(string(moved))), nil
+}
+
+func installedMenuBackups(r remoteRunner, selection []plugin) ([]string, error) {
+	var names []string
+	for _, app := range selection {
+		live := root + "/Plugins/" + app.name
+		path := live + "/" + app.name + ".manifest"
+		cmd := emptyDirectoryScript + "test ! -L " + live + " || exit 1\n" +
+			"if test ! -e " + live + "; then exit 0; fi\n" +
+			"if empty_directory " + live + "; then echo empty; else " +
+			"test ! -L " + path + " && test -f " + path + " && echo manifest && cat " + path + "; fi"
+		raw, err := r.run(cmd, nil, 65536)
+		if err != nil {
+			return nil, fmt.Errorf("could not verify %s: %w", app.name, err)
+		}
+		if len(raw) == 0 {
+			continue
+		}
+		if strings.TrimSpace(string(raw)) == "empty" {
+			names = append(names, app.name+":")
+			continue
+		}
+		kind, body, _ := strings.Cut(string(raw), "\n")
+		var identity manifest
+		if err := xml.Unmarshal([]byte(body), &identity); strings.TrimSpace(kind) != "manifest" || err != nil ||
+			identity.Name != app.name || strings.TrimSpace(identity.Connector) != app.connector {
+			return nil, fmt.Errorf("the manifest for %s does not match this installer", app.name)
+		}
+		names = append(names, app.name+":")
+	}
+	return names, nil
 }
 
 func stageFileOps(r remoteRunner, tx string) error {
@@ -640,22 +754,31 @@ done
 }
 
 func publicationScript(tx string, selection ...plugin) []byte {
+	return publicationScriptWithBackups(tx, nil, selection...)
+}
+
+func publicationScriptWithBackups(tx string, replaced []string, selection ...plugin) []byte {
 	if len(selection) == 0 {
 		selection = apps
 	}
 	names := make([]string, 0, len(selection))
 	for _, app := range selection {
-		names = append(names, app.name+":"+app.worker)
-		if app.name == "MhdMaps" {
+		worker := app.worker
+		if worker == "" {
+			worker = "-"
+		}
+		names = append(names, app.name+":"+worker)
+		if app.name == "MhdMaps" && !slices.Contains(replaced, "ExhaustFlap:") {
 			names = append(names, "ExhaustFlap:")
 		}
 	}
-	return menuTransactionScript(tx, names)
+	return menuTransactionScript(tx, append(names, replaced...))
 }
 
 func menuTransactionScript(tx string, names []string) []byte {
 	var script bytes.Buffer
 	fmt.Fprintf(&script, "root=%s\ntx=%s\nops=\"$tx/%s\"\napps='%s'\n", root, tx, fileOpsName, strings.Join(names, " "))
+	script.WriteString(emptyDirectoryScript)
 	script.WriteString(`lock="$root/GaugeDeck-install-lock"
 fail() { echo "$1" >&2; exit 1; }
 paths() {
@@ -716,8 +839,14 @@ for entry in $apps; do
     fi
     test ! -L "$live" || fail "$app plugin path is a symbolic link."
     if test -e "$live"; then
-        test -d "$live" && test -f "$live/$app.manifest" || fail "$app plugin path cannot be replaced."
-        "$ops" move "$live" "$old" || fail "Could not back up $app."
+        if empty_directory "$live"; then
+            "$ops" move "$live" "$old" || fail "Could not back up $app."
+            empty_directory "$old" || fail "$app changed while it was being backed up."
+        else
+            test -d "$live" && test ! -L "$live/$app.manifest" && test -f "$live/$app.manifest" ||
+                fail "$app plugin path cannot be replaced."
+            "$ops" move "$live" "$old" || fail "Could not back up $app."
+        fi
     else
         : > "$fresh" || fail "Could not record the new $app install."
     fi
@@ -728,7 +857,12 @@ for entry in $apps; do
         continue
     fi
     "$ops" move "$stage" "$live" || fail "Could not publish $app."
-    test -f "$live/$app.manifest" && test -x "$live/$worker" || fail "Published $app is missing its manifest or executable worker."
+    test -f "$live/$app.manifest" || fail "Published $app is missing its manifest."
+    if test "$worker" = "-"; then
+        test -f "$live/lib$app.so" || fail "Published $app is missing its plugin library."
+    else
+        test -x "$live/$worker" || fail "Published $app is missing its executable worker."
+    fi
 done
 done_ok=1
 `)

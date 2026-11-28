@@ -35,10 +35,12 @@ code{display:block;overflow-wrap:anywhere;margin-bottom:1rem}
 <main>
 <header>
 <h1>ID6Apps Installer</h1>
-<p>Park the car and wake iDrive. Enable temporary SSH with <a href="https://ssh.bavarian-aa.uk/" target="_blank" rel="noopener noreferrer">Bavarian SSH Client</a> before continuing.</p>
+<p>Park the car and wake iDrive. Enable temporary SSH with <a href="https://ssh.bavarian-aa.uk/" target="_blank" rel="noopener noreferrer">Bavarian SSH Client</a> before continuing on NBT Evo. EntryNav2 uses the head unit’s existing SSH access.</p>
 </header>
 <form id="installer">
-<label>Operation <select id="operation"><option value="install">Install</option><option value="uninstall">Uninstall</option><option value="carplay">CarPlay Advanced HUD</option></select></label>
+<label>Head unit <select id="platform"><option value="nbt">NBT Evo</option><option value="entry">EntryNav2 (early beta)</option></select></label>
+<label>Operation <select id="operation"><option value="install">Install</option><option value="uninstall">Uninstall</option><option value="fullscreen">Install full-screen apps</option><option value="remove-fullscreen">Uninstall full-screen apps</option></select></label>
+<p>Installing replaces the previous ID6Apps menu set. Select every menu you want to keep. Firmware without a verified profile is available as early beta.</p>
 <fieldset id="install-menus" class="options">
 <legend>Menus to install</legend>
 <label><input type="checkbox" name="apps" value="BoostDeck" checked>BoostDeck</label>
@@ -46,8 +48,6 @@ code{display:block;overflow-wrap:anywhere;margin-bottom:1rem}
 <label><input type="checkbox" name="apps" value="LaunchDeck">LaunchDeck</label>
 <label><input type="checkbox" name="apps" value="WarmDeck">WarmDeck</label>
 <label><input type="checkbox" name="apps" value="HybridDeck">HybridDeck</label>
-<label><input type="checkbox" name="apps" value="HudTest">HUD Gauges (experimental)</label>
-<p class="hint">HUD Gauges is enabled per iDrive session. The overlay is unavailable when native Android Auto or a supported CarPlay HUD add-on is installed.</p>
 <label><input type="radio" name="tuning" value="MhdMaps">MHD+ Suite (includes Exhaust Flap and Max Cooling)</label>
 <label><input type="radio" name="tuning" value="Bootmod3Suite">Bootmod3 Suite</label>
 <label><input type="radio" name="tuning" value="MgFlasher">MG Flasher</label>
@@ -72,22 +72,45 @@ code{display:block;overflow-wrap:anywhere;margin-bottom:1rem}
 <label><input type="checkbox" name="remove" value="XDriveControl">xDrive Control (experimental)</label>
 <label><input type="checkbox" name="remove" value="RoadJet">Road Jet</label>
 <label><input type="checkbox" name="remove" value="BEAMer">BEAMer</label>
-<label><input type="checkbox" name="remove" value="HudTest">HUD Gauges</label>
 <label><input type="checkbox" name="remove" value="ExhaustFlap">Standalone Exhaust Flap</label>
 </fieldset>
-<fieldset id="carplay-options" hidden disabled>
-<legend>CarPlay Advanced by st1ng</legend>
-<p>Adds CarPlay turn-by-turn directions to a compatible cluster or HUD. It downloads and verifies st1ng’s v1.3.0 release and uses its HUD-only installer. It backs up the original boot script, adds a boot hook and leaves iDrive running until you restart it. Wired ENET, working factory CarPlay and internet access are required.</p>
-<p>Native Android Auto and CarPlay Advanced can compete for the same cluster and HUD. <a href="https://github.com/st1ng/nbtevo-carplay-advanced" target="_blank" rel="noopener noreferrer">Upstream project and rollback instructions</a>.</p>
+<fieldset id="entry-menus" class="options" hidden disabled>
+<legend>EntryNav2 menus</legend>
+<label>Display resolution<select id="entry-resolution"><option value="1280x480">1280 × 480</option><option value="800x480">800 × 480 (6.5-inch)</option></select></label>
+<label><input type="checkbox" name="entryApp" value="BoostDeck" checked>BoostDeck</label>
+<label><input type="checkbox" name="entryApp" value="ShiftDeck" checked>ShiftDeck</label>
+<label><input type="checkbox" name="entryApp" value="EngineCodes" checked>Engine Fault Codes</label>
+<label><input type="checkbox" name="entryApp" value="MhdMaps">MHD+ Suite</label>
+<label><input type="checkbox" name="entryApp" value="Bootmod3Suite">Bootmod3 Suite</label>
+<label><input type="checkbox" name="entryApp" value="WarmDeck">WarmDeck</label>
+<label><input type="checkbox" name="entryApp" value="LaunchDeck">LaunchDeck</label>
+<label><input type="checkbox" name="entryApp" value="HybridDeck">HybridDeck</label>
+<label><input type="checkbox" name="entryApp" value="RoadJet">Road Jet</label>
+<label><input type="checkbox" name="entryApp" value="BEAMer">BEAMer</label>
+<label><input type="checkbox" name="entryApp" value="XDriveControl">xDrive Control (experimental)</label>
+<label><input type="checkbox" name="entryApp" value="MgFlasher">MG Flasher</label>
+</fieldset>
+<fieldset id="fullscreen-menus" hidden disabled>
+<legend>Full-screen apps</legend>
+<p>Installs the separate My Vehicle dashboards and ID6 App Updates. Uses the detected display size.</p>
+<fieldset id="full-companions" class="options">
+<legend>Tuning and optional menus</legend>
+<label><input type="radio" name="fullTuning" value="" checked>MHD+ Suite</label>
+<label><input type="radio" name="fullTuning" value="Bootmod3Suite">Bootmod3 Suite</label>
+<label><input type="radio" name="fullTuning" value="MgFlasher">MG Flasher</label>
+<label><input type="checkbox" name="fullApp" value="XDriveControl">xDrive Control (experimental)</label>
+<label><input type="checkbox" name="fullApp" value="HybridDeck">HybridDeck</label>
+</fieldset>
 </fieldset>
 <details>
 <summary>Connection settings</summary>
 <div class="fields">
 <label>Adapter<select id="adapter"><option value="enet">Wired ENET</option><option value="wifi">MHD Wi-Fi</option></select></label>
+<label id="entry-password-label" hidden>EntryNav2 SSH password<input id="entry-password" type="password" autocomplete="off"></label>
 <label>Head unit IP<input id="head" placeholder="Discover automatically" inputmode="decimal" autocomplete="off"></label>
 <label>Diagnostic gateway IP<input id="gateway" placeholder="169.254.21.3" inputmode="decimal" autocomplete="off"></label>
 <label>Firmware<input id="version" placeholder="Automatic or enter the full NBTevo code" autocomplete="off"></label>
-<label>Display resolution<select id="resolution"><option value="">Automatic</option><option value="800x480">800 × 480</option><option value="960x480">960 × 480</option><option value="1280x480">1280 × 480</option><option value="1440x540">1440 × 540</option><option value="1920x720">1920 × 720</option></select></label>
+<label id="nbt-resolution-label">Display resolution<select id="resolution"><option value="">Automatic</option><option value="800x480">800 × 480</option><option value="960x480">960 × 480</option><option value="1280x480">1280 × 480</option><option value="1440x540">1440 × 540</option><option value="1920x720">1920 × 720</option></select></label>
 </div>
 </details>
 <div class="row"><button id="check" type="submit">Check compatibility</button><button id="install" class="primary">Install selected menus</button><button id="quit" type="button">Quit</button></div>
@@ -104,17 +127,31 @@ code{display:block;overflow-wrap:anywhere;margin-bottom:1rem}
 const byID = id => document.getElementById(id);
 const form = byID('installer'), status = byID('status'), dialog = byID('trust');
 const check = byID('check'), install = byID('install'), quit = byID('quit');
-const operation = byID('operation');
+const operation = byID('operation'), platform = byID('platform');
 function updateOperation() {
-  const removing = operation.value === 'uninstall', carplay = operation.value === 'carplay';
-  byID('install-menus').hidden = byID('install-menus').disabled = removing || carplay;
-  byID('remove-menus').hidden = byID('remove-menus').disabled = !removing;
-  byID('carplay-options').hidden = byID('carplay-options').disabled = !carplay;
+  const entry = platform.value === 'entry';
+  for (const option of operation.options) option.disabled = entry && !['install', 'uninstall'].includes(option.value);
+  if (operation.selectedOptions[0].disabled) operation.value = 'install';
+  const removing = operation.value === 'uninstall' || operation.value === 'remove-fullscreen';
+  const full = operation.value === 'fullscreen' || operation.value === 'remove-fullscreen';
+  byID('install-menus').hidden = byID('install-menus').disabled = removing || entry || full;
+  byID('remove-menus').hidden = byID('remove-menus').disabled = !removing || entry || full;
+  byID('entry-menus').hidden = byID('entry-menus').disabled = !entry;
+  byID('fullscreen-menus').hidden = byID('fullscreen-menus').disabled = !full;
+  byID('full-companions').hidden = byID('full-companions').disabled = removing;
+  byID('entry-password-label').hidden = !entry;
+  byID('entry-password-label').style.display = entry ? '' : 'none';
+  byID('entry-password').disabled = !entry;
+  byID('adapter').disabled = entry;
+  byID('version').disabled = entry;
+  byID('nbt-resolution-label').style.display = entry ? 'none' : '';
+  if (entry) byID('adapter').value = 'enet';
   check.hidden = check.disabled = removing;
-  check.textContent = carplay ? 'Preview CarPlay installation' : 'Check compatibility';
-  install.textContent = carplay ? 'Install CarPlay HUD' : removing ? 'Uninstall selected menus' : 'Install selected menus';
+  check.textContent = 'Check compatibility';
+  install.textContent = removing ? 'Uninstall selected menus' : full ? 'Install full-screen apps' : 'Install selected menus';
 }
 operation.addEventListener('change', updateOperation);
+platform.addEventListener('change', updateOperation);
 updateOperation();
 let pending;
 function report(message, error = false) {
@@ -130,7 +167,7 @@ async function run(request) {
   check.disabled = true;
   install.disabled = true;
   quit.disabled = true;
-  operation.disabled = true;
+  operation.disabled = platform.disabled = true;
   const progress = request.CarPlay ? 'Checking the head unit and verifying the upstream CarPlay release…' :
     request.Uninstall ? 'Moving selected menus to backup…' :
     request.CheckOnly ? 'Checking compatibility…' : 'Checking iDrive and installing selected menus…';
@@ -149,7 +186,7 @@ async function run(request) {
   } catch (error) {
     report(error.message, true);
   } finally {
-    operation.disabled = false;
+    operation.disabled = platform.disabled = false;
     updateOperation();
     install.disabled = false;
     quit.disabled = false;
@@ -158,16 +195,19 @@ async function run(request) {
 form.addEventListener('submit', event => {
   event.preventDefault();
   const fields = new FormData(form);
-  const removing = operation.value === 'uninstall', carplay = operation.value === 'carplay';
+  const removing = operation.value === 'uninstall' || operation.value === 'remove-fullscreen';
+  const full = operation.value === 'fullscreen' || operation.value === 'remove-fullscreen';
+  const entry = platform.value === 'entry';
   const checkOnly = !removing && event.submitter === check;
-  if (carplay && !checkOnly && !window.confirm('Install CarPlay turn-by-turn and its boot hook on the parked car?')) return;
-  const apps = carplay ? [] : fields.getAll(removing ? 'remove' : 'apps');
-  const tuning = fields.get('tuning');
+  const apps = full ? fields.getAll('fullApp') : fields.getAll(entry ? 'entryApp' : removing ? 'remove' : 'apps');
+  const tuning = fields.get(full ? 'fullTuning' : 'tuning');
   if (tuning) apps.push(tuning);
-  if (!carplay && !apps.length) return report('Choose at least one menu.', true);
+  if (!full && !apps.length) return report('Choose at least one menu.', true);
+  if (entry && (!byID('head').value.trim() || !byID('entry-password').value)) return report('Enter the EntryNav2 head-unit IP and SSH password.', true);
   run({Apps: apps, Head: byID('head').value, Gateway: byID('gateway').value,
-       Version: byID('version').value, DisplayResolution: byID('resolution').value,
-       Uninstall: removing, CarPlay: carplay,
+       Version: entry ? '' : byID('version').value, DisplayResolution: byID(entry ? 'entry-resolution' : 'resolution').value,
+       EntryNav: entry, EntryPassword: entry ? byID('entry-password').value : '',
+       Fullscreen: full, Uninstall: removing,
        CheckOnly: checkOnly, WiFi: byID('adapter').value === 'wifi'});
 });
 dialog.addEventListener('close', () => {

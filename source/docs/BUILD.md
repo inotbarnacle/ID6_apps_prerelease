@@ -7,9 +7,35 @@ make -C native test
 python3 tools/test_probe_signals.py
 ```
 
+Run `make -C native test-launch-records` for the [LaunchDeck file and I/O checks](LAUNCH-RECORDS.md).
+The host suite uses [isolated UDP receivers](../native/tests/udp_test_socket.py) to avoid project IPC ports.
+
 ## Native payload
 
-If you need the toolchain for a native build, the [QNX SDP 6.5 archive](https://archive.org/details/qnxsdp-65.7z) includes the SDK and a license key generator, according to the archive listing.
+### Obtaining the QNX toolchain
+
+The build script selects QNX SDP 6.5 Linux x86 tools and ARM GCC 4.4.2
+(`qcc -V4.4.2,gcc_ntoarmv7le`, with the corresponding C++98 compiler). Obtain
+the installer and license through QNX or another source authorized to provide
+them under the applicable license.
+
+Check your existing entitlement through myQNX and the official
+[QNX Download Center](https://www.qnx.com/download/), which lists products,
+updates, and legacy products. If the matching legacy installer or entitlement
+is unavailable, ask [QNX licensing](https://qnx.software/en/contact) whether
+SDP 6.5 and its required compiler can legitimately be supplied for this use.
+Customers with a support plan can use the support portal linked on that page.
+Availability and permission for this legacy toolchain must be confirmed;
+the public catalog alone does not establish either.
+
+The currently advertised [30-day evaluation](https://www.qnx.com/products/evaluation/)
+is for SDP 8.0 and commercial projects. It does not establish entitlement to
+SDP 6.5 or compatibility with this build. Confirm license terms, compiler
+components, and vendor-supported host requirements before installing.
+Keep SDK files, license material, and private BMW link inputs outside public
+commits. Host tests above remain available without the proprietary toolchain.
+
+### Build with licensed inputs
 
 1. Prepare a licensed QNX SDP 6.5 Linux x86 toolchain with ARM GCC 4.4.2. Set `QNX_HOST`, `QNX_TARGET`, and `QNX_CONFIGURATION` if your installation differs from the paths in `native/build.sh`.
 
@@ -62,7 +88,3 @@ python3 tools/audit_framework_abi.py \
 After changing a plugin's framework imports, regenerate the fingerprint from the private reference pair with `--reference-dir`, `--plugin` for every packaged plugin, `--emit-fingerprint native/framework-fingerprint.json`, and `--label`. `native/tests/test_fingerprint.py` checks that the fingerprint covers the packaged plugin imports and expected vtables.
 
 Inspect the report's limitations. The tool checks required imports, function instruction prefixes, and expected vtable relocation slots. It does not simulate HMI calls or prove that a matched framework works at runtime.
-
-## Build HUD Gauges
-
-Set `NBTAAD_SOURCE` to the absolute path of `milestone-7/src` from the licensed [NBT-AAD reference source](https://github.com/Sq00ky/Supra-iDrive6-Android-Auto/tree/47ff0ae89712f2b5cbfe743cc8b7ff413ed235cc/milestone-7). Run `sh native/build.sh` to produce the optional HUD library and worker. HUD retains the original 6WA handle map and factory-navigation ownership checks. The rebuilt worker accepts a configured gateway IPv4 address. A cluster that rejects the reference handles still requires a parked HUD protocol capture for porting.

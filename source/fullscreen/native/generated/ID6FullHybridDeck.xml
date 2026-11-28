@@ -1,0 +1,177 @@
+<?xml version='1.0' encoding='utf-8'?>
+<pluginApps>
+  <pluginApp applicationType="VehicleInformation" applicationWeight="240" text="HybridDeck">
+    <entryButton id="1" action="10">
+      <properties>
+        <property id="23" value="2" />
+      </properties>
+    </entryButton>
+    <actions>
+      <hmiAction id="10" target="100" />
+      <raAction id="21" />
+      <raAction id="8129" />
+    </actions>
+    <models>
+      <imageIdModel id="60" imageId="59000" />
+      <raDataModel id="50" modelType="Richtext" />
+      <raDataModel id="57" modelType="Richtext" />
+      <raDataModel id="56" modelType="Richtext" />
+      <raDataModel id="51" modelType="Richtext" />
+      <raDataModel id="52" modelType="Richtext" />
+      <raDataModel id="53" modelType="Richtext" />
+      <raDataModel id="54" modelType="Richtext" />
+      <raDataModel id="55" modelType="Richtext" />
+      <raDataModel id="58" modelType="Richtext" />
+    </models>
+    <hmiStates>
+      <hmiState id="100" text="HybridDeck">
+        <components>
+          <label id="220" text="HV charge">
+            <properties>
+              <property id="20" value="56" />
+              <property id="21" value="72" />
+              <property id="9" value="232" />
+              <property id="10" value="38" />
+            </properties>
+          </label>
+          <label id="240" model="50">
+            <properties>
+              <property id="20" value="56" />
+              <property id="21" value="121" />
+              <property id="9" value="232" />
+              <property id="10" value="45" />
+            </properties>
+          </label>
+          <label id="227" text="Battery power">
+            <properties>
+              <property id="20" value="334" />
+              <property id="21" value="72" />
+              <property id="9" value="232" />
+              <property id="10" value="38" />
+            </properties>
+          </label>
+          <label id="247" model="57">
+            <properties>
+              <property id="20" value="334" />
+              <property id="21" value="121" />
+              <property id="9" value="232" />
+              <property id="10" value="45" />
+            </properties>
+          </label>
+          <label id="226" text="Battery health">
+            <properties>
+              <property id="20" value="612" />
+              <property id="21" value="72" />
+              <property id="9" value="232" />
+              <property id="10" value="38" />
+            </properties>
+          </label>
+          <label id="246" model="56">
+            <properties>
+              <property id="20" value="612" />
+              <property id="21" value="121" />
+              <property id="9" value="232" />
+              <property id="10" value="45" />
+            </properties>
+          </label>
+          <label id="221" text="Pack voltage">
+            <properties>
+              <property id="20" value="890" />
+              <property id="21" value="72" />
+              <property id="9" value="232" />
+              <property id="10" value="38" />
+            </properties>
+          </label>
+          <label id="241" model="51">
+            <properties>
+              <property id="20" value="890" />
+              <property id="21" value="121" />
+              <property id="9" value="232" />
+              <property id="10" value="45" />
+            </properties>
+          </label>
+          <label id="222" text="Pack current">
+            <properties>
+              <property id="20" value="56" />
+              <property id="21" value="248" />
+              <property id="9" value="232" />
+              <property id="10" value="38" />
+            </properties>
+          </label>
+          <label id="242" model="52">
+            <properties>
+              <property id="20" value="56" />
+              <property id="21" value="297" />
+              <property id="9" value="232" />
+              <property id="10" value="45" />
+            </properties>
+          </label>
+          <label id="223" text="Battery coolant">
+            <properties>
+              <property id="20" value="334" />
+              <property id="21" value="248" />
+              <property id="9" value="232" />
+              <property id="10" value="38" />
+            </properties>
+          </label>
+          <label id="243" model="53">
+            <properties>
+              <property id="20" value="334" />
+              <property id="21" value="297" />
+              <property id="9" value="232" />
+              <property id="10" value="45" />
+            </properties>
+          </label>
+          <label id="224" text="Engine coolant">
+            <properties>
+              <property id="20" value="612" />
+              <property id="21" value="248" />
+              <property id="9" value="232" />
+              <property id="10" value="38" />
+            </properties>
+          </label>
+          <label id="244" model="54">
+            <properties>
+              <property id="20" value="612" />
+              <property id="21" value="297" />
+              <property id="9" value="232" />
+              <property id="10" value="45" />
+            </properties>
+          </label>
+          <label id="225" text="12 V module voltage">
+            <properties>
+              <property id="20" value="890" />
+              <property id="21" value="248" />
+              <property id="9" value="232" />
+              <property id="10" value="38" />
+            </properties>
+          </label>
+          <label id="245" model="55">
+            <properties>
+              <property id="20" value="890" />
+              <property id="21" value="297" />
+              <property id="9" value="232" />
+              <property id="10" value="45" />
+            </properties>
+          </label>
+          <label id="250" model="58">
+            <properties>
+              <property id="20" value="40" />
+              <property id="21" value="417" />
+              <property id="9" value="1110" />
+              <property id="10" value="46" />
+            </properties>
+          </label>
+          <button id="21" action="21" text="Refresh" selectAction="8129">
+            <properties>
+              <property id="20" value="62" />
+              <property id="21" value="100" />
+              <property id="9" value="545" />
+              <property id="10" value="43" />
+            </properties>
+          </button>
+        </components>
+      </hmiState>
+    </hmiStates>
+  </pluginApp>
+</pluginApps>

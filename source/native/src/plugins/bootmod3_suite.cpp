@@ -1,4 +1,9 @@
 #include "plugin_factory.h"
+#ifdef ID6_COMPANION
+#include "companion_surface.h"
+#else
+#define ID6_MENU_NAME "Bootmod3Suite"
+#endif
 #include "diagnostic_worker.h"
 #include "diagnostic_gateway.h"
 #include <stdio.h>
@@ -7,10 +12,13 @@
 namespace {
 const unsigned kMapPoll = 0x4d48444du;
 const unsigned kMapClear = 0x4d484443u;
-const char kMapWorker[] = "/var/opt/hmi/data/ID5/Plugins/Bootmod3Suite/bootmod3-qnx";
+const char kMapWorker[] = "/var/opt/hmi/data/ID5/Plugins/" ID6_MENU_NAME "/bootmod3-qnx";
 }
 
 class Bootmod3SuiteApp : public bmw::PluginApp {
+#ifdef ID6_COMPANION
+    CompanionSurface companion_;
+#endif
     pid_t child_;
     int pipe_;
     unsigned generation_;
@@ -22,6 +30,9 @@ class Bootmod3SuiteApp : public bmw::PluginApp {
 
     void status(const char* value) {
         updateModel(resultModel_,bmw::BasicString<char>(value));
+#ifdef ID6_COMPANION
+        companion_.update(resultModel_,value);
+#endif
     }
     void reap() {
         if (child_<=0) return;
@@ -57,7 +68,7 @@ class Bootmod3SuiteApp : public bmw::PluginApp {
         const char argument[]={static_cast<char>('0'+value),0};
         const char* mode=function==1 ? "--map" : function==2 ? "--flap" : function==3 ? "--sound" :
                          function==4 ? "--burbles" : "--current-map";
-        const DiagnosticGateway gateway("/var/opt/hmi/data/ID5/Plugins/Bootmod3Suite/gateway-ip.txt");
+        const DiagnosticGateway gateway("/var/opt/hmi/data/ID5/Plugins/" ID6_MENU_NAME "/gateway-ip.txt");
         const char* worker=kMapWorker;
         const char* args[]={worker,"--host",gateway.host(),mode,argument,0};
         if (fcntl(channel[0],F_SETFL,O_NONBLOCK)>=0 &&
@@ -105,8 +116,17 @@ public:
           used_(0)
            {}
     virtual ~Bootmod3SuiteApp() { stopWorker(); }
-    virtual bool onFinalize() { stopWorker(); return true; }
+    virtual bool onFinalize() {
+#ifdef ID6_COMPANION
+        companion_.close();
+#endif
+        stopWorker();
+        return true;
+    }
     virtual bool onInit() {
+#ifdef ID6_COMPANION
+        companion_.bind(*this);
+#endif
         stopWorker();
         typedef bmw::Delegate<bool,const bmw::Parcel&> Action;
         Action action;
@@ -144,6 +164,9 @@ public:
         return true;
     }
     virtual bool invokeDataUpdate(unsigned key,const bmw::Parcel& data) {
+#ifdef ID6_COMPANION
+        if (companion_.poll(key)) return true;
+#endif
         if (key!=kMapPoll && key!=kMapClear) return PluginApp::invokeDataUpdate(key,data);
         unsigned generation;
         if (!data.readUInt32(generation)) return false;
@@ -177,6 +200,6 @@ public:
 };
 
 extern "C" {
-PluginAppInfo pluginAppInfo={1,"Bootmod3Suite","owner-development",1,
+PluginAppInfo pluginAppInfo={1,ID6_MENU_NAME,"owner-development",1,
                             create_app<Bootmod3SuiteApp>,destroy_app};
 }

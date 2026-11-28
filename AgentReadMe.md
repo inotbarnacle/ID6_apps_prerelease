@@ -2,7 +2,7 @@
 
 ## Select the apps
 
-Ask the owner for their choice of **MHD+ Suite** or **Bootmod3 Suite**, and whether they want **xDrive Control (experimental)** and **HUD Gauges**. Install only the selected tuning menu. Install xDrive Control (experimental) only when selected. BoostDeck, ShiftDeck, and Engine Fault Codes are independent apps.
+Ask the owner for their choice of **MHD+ Suite** or **Bootmod3 Suite**, and whether they want **xDrive Control (experimental)**. Install only the selected tuning menu. Install xDrive Control (experimental) only when selected. BoostDeck, ShiftDeck, and Engine Fault Codes are independent apps.
 
 ## Identify the car
 
@@ -21,7 +21,10 @@ The reference dashboard build uses **NBTevo_N18032I** at **1280 × 480**. The de
 
 Check the gateway used by the payload, 169.254.21.3. For a different gateway, put its verified IPv4 address in /var/opt/hmi/data/ID5/gateway-ip.txt on the HMI node. The shared setting applies to the updated workers and overrides app-local gateway-ip.txt files. App-local files are still read when the shared file is absent. Without either file, supported workers try the reference gateway, then look for one HSFZ gateway on wired link-local ENET. Use the actual diagnostic gateway address for other subnets. Use the desktop installer to verify both live hashes and select the layout for the active display. If the framework pair has no approved match in the [compatibility matrix](source/docs/COMPATIBILITY.md), follow the [porting workflow](source/docs/PORTING.md) to verify compatibility. Native changes need the QNX SDP 6.5 Linux host tools and ARM GCC 4.4.2. Matching packaged binaries and compatible layout resource changes do not need QNX on the ENET computer.
 
-If you need the toolchain for a native build, the [QNX SDP 6.5 archive](https://archive.org/details/qnxsdp-65.7z) includes the SDK and a license key generator, according to the archive listing. See [Build and deploy](source/docs/BUILD.md) for toolchain setup.
+Native builds require a legitimately licensed QNX SDP 6.5 toolchain. See
+[Obtaining the QNX toolchain](source/docs/BUILD.md#obtaining-the-qnx-toolchain)
+for official download and licensing contacts, version requirements, and host-only
+development while a matching legacy entitlement is unavailable.
 
 ## Stage and verify
 
@@ -31,11 +34,6 @@ Inventory /var/opt/hmi/data/ID5/Plugins for conflicting names and connector IDs.
 
 After verification, have the owner hold the volume knob until iDrive goes dark, then check the selected menus while parked. Check live readings and settings. Menu installation alone does not verify an engine or drivetrain command. Get the owner's authorization before testing a command that changes ECU or drivetrain state.
 
-## Optional HUD Gauges
-
-Install the [HUD Gauges package](packages/hud-gauges.zip) when the owner selects it and the car has the matching reference configuration. Verify the reference firmware, framework hashes, resolution, and gateway above. The worker also expects a unique factory MOST HUDTerminal service 82/00 at node 0101. Treat other configurations as porting targets.
-
-Extract and verify SHA256SUMS. Stage only the HudTest directory and check for an existing HudTest or an app using connector ID 107. Preserve the prior app outside Plugins if replacing it. If an app-local gateway override is needed, set gateway-ip.txt beside the worker. Set hud-shape-qnx executable, verify the uploaded files, and restart iDrive while parked. Open My Vehicle → HUD Gauges and check Show HUD gauges. Verify the tach and PSI display, that the checkbox persists across a restart, and that unchecking clears the overlay. If the display fails its parked checks, turn it off and restore the prior app folder or remove HudTest from Plugins, then restart iDrive.
 
 ## LaunchDeck
 
@@ -56,10 +54,9 @@ Each app is one folder under /var/opt/hmi/data/ID5/Plugins. Keep each folder int
 | MG Flasher | MgFlasher |
 | HybridDeck | HybridDeck |
 | xDrive Control (experimental) | XDriveControl |
-| HUD Gauges | HudTest |
 
 1. Ask the owner which apps to remove. Leave every other folder in Plugins untouched.
-2. While the menus still exist, have the owner put the car back in the state they want to keep. Uncheck **My Vehicle → HUD Gauges → Show HUD gauges** and confirm the overlay clears. With the engine off, switch xDrive Control (experimental) back to AWD. Select the wanted map slot, exhaust flap, Max Cooling, Active Sound, and burble settings. Removing a menu does not undo a setting already sent to the DME or DSC.
+2. While the menus still exist, have the owner put the car back in the state they want to keep. With the engine off, switch xDrive Control (experimental) back to AWD. Select the wanted map slot, exhaust flap, Max Cooling, Active Sound, and burble settings. Removing a menu does not undo a setting already sent to the DME or DSC.
 3. Park the car, keep iDrive awake, and connect as in [Identify the car](#identify-the-car). On a split-node unit, use the OMAP address or the Qnet write path described in [Split-node units](source/docs/PORTING.md#split-node-units).
 4. List Plugins and confirm that each folder to remove is one of the apps above. Move only those folders into a new backup directory outside Plugins, such as /var/opt/hmi/data/ID5/PluginBackups/<timestamp>. Keep the original folder names, avoid overwriting an existing backup, and record the backup path.
 5. List Plugins again and verify that the removed folders are gone and the remaining ones are unchanged.

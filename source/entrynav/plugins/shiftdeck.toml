@@ -1,0 +1,14 @@
+# ShiftDeck in Flare Drive's plugin catalog (Flare Drive's design/dynamic-plugins.md, Plugin manifest).
+# tools/publish_release.py sends it with every release. The catalog already has this plugin, so name, summary,
+# description and order here only describe it; edit them on the publishing page (publish.darkzone.dev).
+# folder and worker can never change: installs on cars use them.
+id = "shiftdeck"
+name = "ShiftDeck"
+summary = ""
+description = "A full-width rev bar with a shift light, and road speed in MPH or km/h, under My Vehicle in iDrive. It reads the standard engine speed and road speed that nearly every car reports."
+contract = "entrynav-app/1"
+order = 30
+
+[entrynav-app]
+folder = "ShiftDeck"
+worker = "shift-deck"
