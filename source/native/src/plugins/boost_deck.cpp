@@ -6,6 +6,8 @@
 #include "diagnostic_worker.h"
 #include "diagnostic_gateway.h"
 #include "boost_preferences.h"
+#include "boost_rail_scale.h"
+
 #include "dct_settings.h"
 #include <arpa/inet.h>
 #include <errno.h>
@@ -36,6 +38,8 @@ const unsigned kActivePollIntervalMs = 25u;
 const unsigned kIdlePollIntervalMs = 250u;
 const char kCollector[] = "/var/opt/hmi/data/ID5/Plugins/BoostDeck/boostdeck-collector-qnx";
 const char kPreferences[] = "/var/opt/hmi/data/ID5/BoostDeck.prefs";
+const char kRailScalePreferences[] = "/var/opt/hmi/data/ID5/BoostDeck.rail-scale";
+const unsigned kRailScaleRow = BOOST_SETTING_COUNT;
 const unsigned kBarCount = 9;
 const unsigned kVerticalSlot = 8;
 const char* const kGaugeCaptions[][2] = {
@@ -74,6 +78,9 @@ const char kAssignments[] = "/var/opt/hmi/data/ID5/BoostDeck.signals";
 }
 
 class BoostDeck : public bmw::PluginApp {
+    const char* preferences_path_;
+    const char* assignments_path_;
+    const char* rail_scale_path_;
     int fd_;
     unsigned poll_generation_;
     bd_frame frame_;
@@ -82,6 +89,7 @@ class BoostDeck : public bmw::PluginApp {
     bool stopping_;
     bool gauges_visible_;
     BoostPreferences preferences_;
+    BoostRailScale rail_scale_;
     BoostAlerts alerts_;
     pid_t tone_;
     uint64_t last_tone_;
@@ -105,8 +113,12 @@ class BoostDeck : public bmw::PluginApp {
     void postPoll();
 public:
     BoostDeck(bmw::IDispatcher& d, bmw::BasicString<char> name, unsigned maj, unsigned mn,
-              bmw::RHMIInterfaceVersion rhmi, const bmw::Bundle& cfg, const bmw::Bundle& res)
-        : bmw::PluginApp(d,name,maj,mn,rhmi,cfg,res), fd_(-1), poll_generation_(0),
+              bmw::RHMIInterfaceVersion rhmi, const bmw::Bundle& cfg, const bmw::Bundle& res,
+              const char* preferences=kPreferences, const char* assignments=kAssignments,
+              const char* rail_scale=kRailScalePreferences)
+        : bmw::PluginApp(d,name,maj,mn,rhmi,cfg,res),
+          preferences_path_(preferences), assignments_path_(assignments), rail_scale_path_(rail_scale),
+          fd_(-1), poll_generation_(0),
           received_(0), collector_(-1), stopping_(false), gauges_visible_(false),
           tone_(-1), last_tone_(0), alert_mask_(0),
           retry_at_(0), diesel_(false), editing_(kBarCount) {
@@ -127,7 +139,7 @@ public:
     template <unsigned Color> bool changeColor(const bmw::Parcel&) {
         BoostPreferences changed=preferences_;
         changed.color=Color;
-        if (changed.save(kPreferences)) {
+        if (changed.save(preferences_path_)) {
             preferences_=changed;
             updateModel(118u,bmw::BasicString<char>(""));
         } else updateModel(118u,bmw::BasicString<char>("Could not save settings"));
@@ -139,7 +151,7 @@ public:
         if (preferences_.choice[Row]==Choice) return true;
         BoostPreferences changed=preferences_;
         changed.choice[Row]=Choice;
-        if (!changed.save(kPreferences)) {
+        if (!changed.save(preferences_path_)) {
             updateModel(118u,bmw::BasicString<char>("Could not save settings"));
             return true;
         }
@@ -150,7 +162,20 @@ public:
         }
         updateModel(118u,bmw::BasicString<char>(""));
         updateSettings();
-        refresh();
+        updateAssignments();
+        return true;
+    }
+    template <unsigned Choice> bool changeRailScale(const bmw::Parcel&) {
+        BoostRailScale changed=rail_scale_;
+        changed.choice=Choice;
+        if (!changed.save(rail_scale_path_)) {
+            updateModel(118u,bmw::BasicString<char>("Could not save diesel rail scale"));
+            return true;
+        }
+        rail_scale_=changed;
+        updateModel(118u,bmw::BasicString<char>(""));
+        updateSettings();
+        updateAssignments();
         return true;
     }
     template <unsigned Slot> bool editGauge(const bmw::Parcel& event) {
@@ -279,6 +304,19 @@ bool BoostDeck::onInit() {
             addHandler(2400u+20u*row+choice,action);
         }
     }
+    static const Handler railScaleHandlers[]={
+        &Action::execImpl<BoostDeck,&BoostDeck::changeRailScale<0> >,
+        &Action::execImpl<BoostDeck,&BoostDeck::changeRailScale<1> >,
+        &Action::execImpl<BoostDeck,&BoostDeck::changeRailScale<2> >,
+        &Action::execImpl<BoostDeck,&BoostDeck::changeRailScale<3> >
+    };
+    typedef char rail_scale_count[(sizeof railScaleHandlers/sizeof railScaleHandlers[0]==BoostRailScale::COUNT &&
+                                   kRailScaleRow==8) ? 1 : -1];
+    (void)sizeof(rail_scale_count);
+    for (unsigned i=0;i<BoostRailScale::COUNT;++i) {
+        action.m_exec=railScaleHandlers[i];
+        addHandler(2400u+20u*kRailScaleRow+i,action);
+    }
     action.m_exec=&Action::execImpl<BoostDeck,&BoostDeck::changeProfile<false> >;
     addHandler(502u,action);
     action.m_exec=&Action::execImpl<BoostDeck,&BoostDeck::changeProfile<true> >;
@@ -302,7 +340,8 @@ bool BoostDeck::onInit() {
         action.m_exec=changes[i];
         addHandler(600u+i,action);
     }
-    preferences_.load(kPreferences, sizeof kColorNames / sizeof kColorNames[0]);
+    preferences_.load(preferences_path_, sizeof kColorNames / sizeof kColorNames[0]);
+    rail_scale_.load(rail_scale_path_);
     updateSettings();
     updateAssignments();
     if (fd_>=0) {
@@ -366,6 +405,20 @@ void BoostDeck::updateSettings() {
             settingValue(preferences_,row,choice,value,sizeof value);
             updateModel(700u+row*20u+choice,bmw::BasicString<char>(value));
             updateModel(5000u+row*20u+choice,preferences_.choice[row]==choice);
+        }
+    }
+    const unsigned units=preferences_.units(BD_RAIL);
+    for (unsigned i=0;i<BoostRailScale::COUNT;++i) {
+        BoostRailScale option;
+        option.choice=i;
+        char value[32];
+        snprintf(value,sizeof value,"0 - %.0f %s",bd_display_selected(BD_RAIL,option.maximum(),units),
+                 bd_unit_selected(BD_RAIL,units));
+        updateModel(700u+20u*kRailScaleRow+i,bmw::BasicString<char>(value));
+        updateModel(5000u+20u*kRailScaleRow+i,rail_scale_.choice==i);
+        if (rail_scale_.choice==i) {
+            snprintf(label,sizeof label,"Diesel rail scale: %s",value);
+            updateModel(120u+kRailScaleRow,bmw::BasicString<char>(label));
         }
     }
 }
@@ -468,7 +521,7 @@ void BoostDeck::loadAssignments() {
     diesel_=false;
     for (unsigned i=0;i<kBarCount;++i) signals_[0][i]=static_cast<unsigned char>(i);
     memcpy(signals_[1],dieselDefaults,sizeof dieselDefaults);
-    FILE* file=fopen(kAssignments,"rb");
+    FILE* file=fopen(assignments_path_,"rb");
     if (!file) return;
     const unsigned previousSlots=11;
     unsigned char data[3+2*previousSlots];
@@ -495,6 +548,14 @@ void BoostDeck::updateAssignments() {
         updateModel(340u+i,bmw::BasicString<char>(name));
         const unsigned signal=signals_[diesel_][i];
         const char* caption=kGaugeCaptions[signal][i==kVerticalSlot];
+        char railCaption[64];
+        if (diesel_ && signal==BD_RAIL) {
+            const unsigned units=preferences_.units(signal);
+            // The reading below carries the unit; keep the narrow caption compact.
+            snprintf(railCaption,sizeof railCaption,i==kVerticalSlot ? "Rail\n0-%.0f" : "Rail 0-%.0f",
+                     bd_display_selected(signal,rail_scale_.maximum(),units));
+            caption=railCaption;
+        }
         updateModel(370u+i,bmw::BasicString<char>(caption));
     }
     updateModel(360u,bmw::BasicString<char>(diesel_ ? "Engine profile: Diesel" : "Engine profile: Gasoline"));
@@ -506,7 +567,7 @@ void BoostDeck::updateAssignments() {
 bool BoostDeck::saveAssignments() {
     unsigned char data[3+sizeof signals_]={'B',2,static_cast<unsigned char>(diesel_)};
     memcpy(data+3,signals_,sizeof signals_);
-    return savePersistentBytes(kAssignments,data,sizeof data);
+    return savePersistentBytes(assignments_path_,data,sizeof data);
 }
 
 void BoostDeck::restartCollector() {
@@ -546,7 +607,7 @@ void BoostDeck::refresh() {
                      *unit && *unit!='%' ? " " : "",unit);
             const unsigned color=preferences_.color;
             const unsigned palette=color==kMulticolor ? kMulticolor+(i%8) : color;
-            const int fill=bd_bar(signal,value);
+            const int fill=rail_scale_.bar(signal,value,diesel_);
             if (circular) {
                 const unsigned step=(fill*kCircularSteps+500)/1000;
                 dial+=1+palette*(kCircularSteps+1)+step;

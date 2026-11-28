@@ -27,6 +27,7 @@ SETTINGS = (
     ("Pressure", 3), ("Speed", 2), ("Temperature", 2), ("Gauge style", 2),
     ("Alert mode", 2), ("Coolant high", 10), ("Oil temp high", 10),
     ("Oil pressure low", 6),
+    ("Diesel rail display scale", 4),
 )
 
 

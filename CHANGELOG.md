@@ -1,5 +1,11 @@
 # Change notes
 
+## Unreleased (source only)
+
+- BoostDeck offers a separate diesel rail-pressure display scale instead of
+  filling its gasoline 250-bar scale for every higher reading. This is host-tested
+  source, with no rebuilt QNX package or vehicle validation.
+
 ## v0.7.20
 
 - BEAMer and Road Jet use a speed cutoff of 8 km/h (about 5 mph). Either app pauses or stops if speed exceeds the cutoff or the reading is lost.
