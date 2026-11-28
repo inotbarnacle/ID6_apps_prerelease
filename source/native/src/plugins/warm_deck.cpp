@@ -22,8 +22,9 @@ class WarmDeck : public bmw::PluginApp {
     bool visible_, stopping_, fahrenheit_;
     uint64_t opened_, retry_;
     warm_frame frame_;
+    uint64_t newest_[WARM_COUNT];
     WarmProgress progress_;
-    char displayed_[5][80];
+    char displayed_[8][80];
     unsigned bars_[WARM_COUNT];
 
     void reap() {
@@ -68,6 +69,7 @@ class WarmDeck : public bmw::PluginApp {
                 showUnits();
             }
             memset(&frame_,0,sizeof frame_);
+            memset(newest_,0,sizeof newest_);
             progress_.reset();
             opened_=bd_mono_ms();
             retry_=0;
@@ -92,18 +94,13 @@ class WarmDeck : public bmw::PluginApp {
 
     void showUnits() {
         updateModel(56u,bmw::BasicString<char>(warmUnitsLabel(fahrenheit_)));
-        for (unsigned i=0;i<WARM_COUNT;++i) {
-            char target[24];
-            snprintf(target,sizeof target,"Target %.0f %c",
-                     warm_display_temperature(kWarmTarget[i],fahrenheit_),fahrenheit_ ? 'F' : 'C');
-            updateModel(70u+i,bmw::BasicString<char>(target));
-        }
     }
 
     bool toggleUnits(const bmw::Parcel&) {
         if (saveWarmFahrenheit(!fahrenheit_)) {
             fahrenheit_=!fahrenheit_;
             showUnits();
+            tick();
         } else updateModel(56u,bmw::BasicString<char>("Could not save temperature units"));
         return true;
     }
@@ -111,7 +108,7 @@ class WarmDeck : public bmw::PluginApp {
     void text(unsigned slot, const char* value) {
         if (strcmp(displayed_[slot],value)) {
             snprintf(displayed_[slot],sizeof displayed_[slot],"%s",value);
-            updateModel(50u+slot,bmw::BasicString<char>(value));
+            updateModel(slot<5 ? 50u+slot : 70u+slot-5,bmw::BasicString<char>(value));
         }
     }
 
@@ -126,14 +123,28 @@ class WarmDeck : public bmw::PluginApp {
             retry_=now+2000;
         }
         for (unsigned i=0;i<8;++i) {
-            warm_frame candidate;
+            char packet[sizeof(warm_frame)+1];
             struct sockaddr_in peer;
             socklen_t size=sizeof peer;
-            ssize_t length=recvfrom(socket_,&candidate,sizeof candidate,0,
+            ssize_t length=recvfrom(socket_,packet,sizeof packet,0,
                 reinterpret_cast<struct sockaddr*>(&peer),&size);
             if (length<0) break;
-            if (length==sizeof candidate && ntohs(peer.sin_port)==WARM_ACTIVE_PORT && !stopping_)
-                frame_=candidate;
+            if (length!=sizeof(warm_frame) || peer.sin_family!=AF_INET ||
+                peer.sin_addr.s_addr!=htonl(INADDR_LOOPBACK) ||
+                ntohs(peer.sin_port)!=WARM_ACTIVE_PORT || stopping_) continue;
+            warm_frame candidate;
+            memcpy(&candidate,packet,sizeof candidate);
+            for (unsigned fluid=0;fluid<WARM_COUNT;++fluid) {
+                const uint64_t sample=candidate.sample[fluid];
+                // Zero is the existing worker's explicit unavailable marker.
+                // Keep the high-water timestamp so queued old readings cannot
+                // resurrect a value after it has been invalidated.
+                if (!sample) frame_.sample[fluid]=0;
+                else if (sample>=opened_ && sample<=now && sample>newest_[fluid]) {
+                    newest_[fluid]=frame_.sample[fluid]=sample;
+                    frame_.celsius[fluid]=candidate.celsius[fluid];
+                }
+            }
         }
         unsigned valid=0;
         for (unsigned i=0;i<WARM_COUNT;++i) {
@@ -158,14 +169,16 @@ class WarmDeck : public bmw::PluginApp {
         char status[80];
         if (!valid) strcpy(status,"Waiting for temperature readings");
         else if (valid!=(1u<<WARM_COUNT)-1) strcpy(status,"Waiting for all three temperatures");
-        else if (!eta) strcpy(status,"Temperature targets reached");
+        else if (!eta) strcpy(status,"App temperature targets met");
         else if (eta<0) strcpy(status,"Measuring warm-up trend");
-        else snprintf(status,sizeof status,"Estimated warm-up  %d:%02d",eta/60,eta%60);
+        else snprintf(status,sizeof status,"Estimated time to app targets  %d:%02d",eta/60,eta%60);
         text(3,status);
-        if ((valid&1u) && eta!=0)
-            snprintf(status,sizeof status,"Warm-up guide  %u RPM",frame_.celsius[WARM_OIL]<60 ? 2500u : 3500u);
-        else status[0]=0;
-        text(4,status);
+        for (unsigned i=0;i<WARM_COUNT;++i) {
+            snprintf(status,sizeof status,"%.0f %c target: %s",
+                warm_display_temperature(kWarmTarget[i],fahrenheit_),fahrenheit_ ? 'F' : 'C',
+                !(valid&(1u<<i)) ? "unknown" : progress_.targetReached(i) ? "met" : "pending");
+            text(5+i,status);
+        }
     }
 
 public:
@@ -182,6 +195,8 @@ public:
         memset(displayed_,0,sizeof displayed_);
         memset(bars_,0,sizeof bars_);
         memset(&frame_,0,sizeof frame_);
+        memset(newest_,0,sizeof newest_);
+        progress_.reset();
         socket_=gauge_bind(WARM_PORT);
         typedef bmw::Delegate<bool,const bmw::Parcel&> Handler;
         Handler show;
@@ -195,7 +210,15 @@ public:
         addHandler(5752u,show);
         fahrenheit_=loadWarmFahrenheit();
         showUnits();
-        for (unsigned i=0;i<WARM_COUNT;++i) text(i,"--");
+        for (unsigned i=0;i<WARM_COUNT;++i) {
+            text(i,"--");
+            char target[80];
+            snprintf(target,sizeof target,"%.0f %c target: unknown",
+                     warm_display_temperature(kWarmTarget[i],fahrenheit_),fahrenheit_ ? 'F' : 'C');
+            text(5+i,target);
+            updateModel(60u+i,bmw::ImageID(58100u));
+        }
+        text(4,"App targets are advisory; follow vehicle guidance");
         text(3,socket_>=0 ? "Waiting for temperature readings" : "Telemetry unavailable");
         if (socket_>=0) postPoll();
         return true;

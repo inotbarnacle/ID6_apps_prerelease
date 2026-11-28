@@ -5,7 +5,6 @@
 #include "companion_logos.h"
 #include "companions.h"
 #include "road_jet_frame.h"
-#include "warm_units.h"
 #include "launch_timer.h"
 #include "dme_descriptions.h"
 #include <stdbool.h>
@@ -404,32 +403,22 @@ static void draw_boost(struct canvas c, const struct surface_state *s)
 static void draw_warm(struct canvas c, const struct surface_state *s)
 {
     static const char *const names[] = {"Engine oil","Coolant","Transmission"};
-    bool complete=true, valid=true;
     for (unsigned i=0;i<COUNT(names);++i) {
         int x=24+i*199;
         card(c,x,46,192,115,false);
         text(c,x+14,55,names[i],muted,20);
         text(c,x+14,82,value(s,i),bright,30);
-        char *end;
-        const double shown=strtod(value(s,i),&end);
-        const double temp=s->warm_fahrenheit ? (shown-32.0)/1.8 : shown;
-        const double target=kWarmTarget[i];
-        const bool known=end!=value(s,i) && temp>=-48 && temp<=180;
-        const bool reached=known && shown>=warm_display_temperature(target,s->warm_fahrenheit);
-        valid=valid && known;
-        complete=complete && reached;
+        const bool known=s->boost_signal[i]==surface_warm_pending || s->boost_signal[i]==surface_warm_met;
+        const bool reached=known && s->boost_signal[i]==surface_warm_met;
         rounded(c,x+14,122,163,6,frame);
-        int width=known && temp>0 ? reached ? 163 : (int)(163*temp/target) : 0;
+        unsigned level=s->boost_level[i]>1000 ? 1000 : s->boost_level[i];
+        int width=known ? (int)(163*level/1000) : 0;
         if (width>=6) rounded(c,x+14,122,width,6,reached ? active : accent);
-        char label[24];
-        snprintf(label,sizeof label,"Target %.0f %c",warm_display_temperature(target,s->warm_fahrenheit),
-                 s->warm_fahrenheit ? 'F' : 'C');
-        text(c,x+14,133,label,muted,15);
+        text(c,x+14,133,value(s,i+3),!known ? muted : reached ? active : accent,15);
     }
     card(c,24,169,590,33,false);
-    text(c,38,174,complete ? "Temperature targets reached" :
-                   valid ? "Warming up" : "Waiting for all three temperatures",
-         complete ? active : bright,19);
+    text(c,38,174,s->status,bright,19);
+    text(c,38,212,"App targets are advisory; follow vehicle guidance",muted,15);
 }
 
 static void segment(struct canvas c, int x1, int y1, int x2, int y2, unsigned tint)
@@ -584,5 +573,5 @@ void surface_draw(struct canvas c, const struct surface_state *s)
     }
     default: break;
     }
-    if (s->status[0]) text(c,26,211,s->status,muted,13);
+    if (s->status[0] && s->page!=surface_warm) text(c,26,211,s->status,muted,13);
 }
