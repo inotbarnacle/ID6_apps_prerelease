@@ -3,6 +3,7 @@
 
 #include "gauge_preferences.h"
 #include "shift_assets.h"
+#include <errno.h>
 
 // Display/advisory choices, never ECU limits or a claimed BMW redline.
 struct ShiftPreferences {
@@ -52,37 +53,80 @@ struct ShiftPreferences {
         return diesel ? (lead-remaining)*12/1000 : (lead-remaining)*12/2000;
     }
 
-    bool load(const char* path) {
+    // 0 means absent; an unreadable/malformed new sidecar must not revive
+    // an older profile choice from a legacy S1 record.
+    static int record(const char* path, unsigned char data[8], size_t& count) {
         FILE* file = fopen(path,"rb");
-        if (!file) return false;
-        unsigned char data[8];
-        const size_t count = fread(data,1,sizeof data,file);
+        if (!file) return errno==ENOENT ? 0 : -1;
+        count = fread(data,1,8,file);
         bool complete = !ferror(file);
         if (complete && !feof(file)) complete = fgetc(file) == EOF && !ferror(file);
         fclose(file);
-        if (!complete) return false;
+        return complete ? 1 : -1;
+    }
+
+    bool load(const char* gasoline, const char* legacy, const char* profile) {
         ShiftPreferences candidate;
-        if (count == 4 && data[0] == 'G' && data[1] == 1 && data[2] < GASOLINE_TARGETS && data[3] <= 1) {
-            candidate.gasoline_target = data[2];
-            candidate.metric = data[3] != 0;
-        } else if (count == 8 && data[0] == 'S' && data[1] == 1 && data[2] <= 1 &&
-                   data[4] <= 1 && data[7] == 0) {
-            candidate.diesel = data[2] != 0;
-            candidate.gasoline_target = data[3];
-            candidate.metric = data[4] != 0;
-            candidate.diesel_target = MIN_TARGET+static_cast<unsigned>(data[5])*STEP;
-            candidate.diesel_scale = data[6];
-        } else return false;
-        if (!candidate.valid()) return false;
+        bool loaded=loadGaugePreferences(gasoline,GASOLINE_TARGETS,
+                                         candidate.gasoline_target,candidate.metric);
+        const bool current=loaded;
+        static const unsigned converted[]={0,0,3,5,7}; // upstream's five-preset migration
+        unsigned char data[8];
+        size_t count=0;
+        bool legacy_profile=false;
+        ShiftPreferences previous;
+        if (record(legacy,data,count)==1) {
+            if (count==4 && data[0]=='G' && data[1]==1 && data[2]<5 && data[3]<=1) {
+                previous.gasoline_target=converted[data[2]];
+                previous.metric=data[3]!=0;
+                if (!current) {
+                    candidate.gasoline_target=previous.gasoline_target;
+                    candidate.metric=previous.metric;
+                    loaded=true;
+                }
+            } else if (count==8 && data[0]=='S' && data[1]==1 && data[2]<=1 &&
+                       data[3]<5 && data[4]<=1 && data[7]==0) {
+                previous.gasoline_target=converted[data[3]];
+                previous.metric=data[4]!=0;
+                previous.diesel=data[2]!=0;
+                previous.diesel_target=MIN_TARGET+static_cast<unsigned>(data[5])*STEP;
+                previous.diesel_scale=data[6];
+                legacy_profile=previous.valid();
+                if (legacy_profile && !current) {
+                    candidate.gasoline_target=previous.gasoline_target;
+                    candidate.metric=previous.metric;
+                    loaded=true;
+                }
+            }
+        }
+        const int profile_status=record(profile,data,count);
+        if (profile_status==1 && count==5 && data[0]=='S' && data[1]==2 && data[2]<=1) {
+            ShiftPreferences next=candidate;
+            next.diesel=data[2]!=0;
+            next.diesel_target=MIN_TARGET+static_cast<unsigned>(data[3])*STEP;
+            next.diesel_scale=data[4];
+            if (next.valid()) { candidate=next; loaded=true; }
+        } else if (profile_status==0 && legacy_profile) {
+            candidate.diesel=previous.diesel;
+            candidate.diesel_target=previous.diesel_target;
+            candidate.diesel_scale=previous.diesel_scale;
+            loaded=true;
+        }
+        if (!loaded) return false;
         *this = candidate;
         return true;
     }
-    bool save(const char* path) const {
+    bool saveGasoline(const char* path) const {
         if (!valid()) return false;
-        const unsigned char data[] = {'S',1,static_cast<unsigned char>(diesel),
-            static_cast<unsigned char>(gasoline_target),static_cast<unsigned char>(metric),
+        const unsigned char data[]={'G',1,static_cast<unsigned char>(gasoline_target),
+                                   static_cast<unsigned char>(metric)};
+        return savePersistentBytes(path,data,sizeof data);
+    }
+    bool saveProfile(const char* path) const {
+        if (!valid()) return false;
+        const unsigned char data[]={'S',2,static_cast<unsigned char>(diesel),
             static_cast<unsigned char>((diesel_target-MIN_TARGET)/STEP),
-            static_cast<unsigned char>(diesel_scale),0};
+            static_cast<unsigned char>(diesel_scale)};
         return savePersistentBytes(path,data,sizeof data);
     }
 };

@@ -1,6 +1,6 @@
-# iDriveDeck Desktop Installer v0.7.18
+# iDriveDeck Desktop Installer v0.7.19
 
-[Download the installer](https://github.com/inotbarnacle/iDriveDeck/releases/tag/installer-v0.7.18). The macOS app supports Apple silicon and Intel Macs. On Windows, open the x64 folder for Intel or AMD PCs, or the ARM64 folder for Windows on ARM.
+[Download the installer](https://github.com/inotbarnacle/iDriveDeck/releases/tag/installer-v0.7.19). The macOS app supports Apple silicon and Intel Macs. On Windows, open the x64 folder for Intel or AMD PCs, or the ARM64 folder for Windows on ARM.
 
 ## Enable temporary SSH on NBT Evo
 
@@ -14,7 +14,7 @@
 2. For NBT Evo, choose the adapter. Leave the head unit IP blank for automatic discovery. Enter the IP in **Connection settings** if you know it or discovery fails. The installer uses the default SSH password.
 3. Select the menus you want. Choose MHD+ Suite, Bootmod3 Suite, MG Flasher, or no tuning suite. WarmDeck shows engine oil, coolant, and transmission warm-up progress. xDrive Control is experimental and depends on the DSC controller.
 4. Choose **Check compatibility**. Verify the SSH fingerprint for your head unit when prompted. For NBT Evo, the check reports the firmware profile status, display size, and diagnostic gateway. See the [compatibility matrix](https://github.com/inotbarnacle/iDriveDeck/blob/main/source/docs/COMPATIBILITY.md) for the evidence behind each profile.
-5. Choose **Install selected menus**. Wait for verification and record the backup path. Restart iDrive while parked, then open the menus under **My Vehicle**. Select every app you want to keep because the installer replaces the previous managed menu set.
+5. Choose **Install selected menus**. Wait for verification and record the backup path. Restart iDrive while parked, then open the menus under **My Vehicle**.
 
 Display layouts follow Andreas Boehm’s measured RHMI coordinate rules.
 
@@ -43,12 +43,14 @@ the full-screen highlight and press it to activate the selected control.
 
 On NBT Evo, the optional **DCT temperature** setting is in BoostDeck Settings
 and in WarmDeck under OPTIONS. It switches the transmission-temperature source
-for both apps and is off by default. The DCT source is pending vehicle validation.
+for both apps and is off by default. The DCT source includes the GS7D36SG
+status block recorded on an F82 M4.
 If the transmission does not return a usable value, the temperature stays blank.
 Use **OPTIONS → Temperature units** in WarmDeck to switch between Celsius and Fahrenheit.
 
-Select **EntryNav2 (early beta)** for the native 1280 × 480 menus. Connect
-over wired ENET and supply the head unit IP and existing SSH password. The
+Select **EntryNav2 (early beta)** for native menus and choose 1280 × 480
+or the 6.5-inch 800 × 480 layout. Connect over wired ENET and supply the
+head unit IP and existing SSH password. The
 installer prefers an exact framework match and offers the reference beta
 builds for other firmware. Each archive still checks platform, storage,
 connector conflicts, and loader dependencies before installing. Previous
@@ -57,6 +59,10 @@ managed menus are backed up before replacement.
 The W2408C1R, Q2051B1R and C1643D1R test builds passed ARM QEMU plugin-loader
 checks. Confirm menu loading and vehicle functions while parked.
 
-## Future updates on full-screen ID6
+## Recovery and updates
 
-The full-screen bundle adds **My Vehicle → ID6 App Updates** for future signed USB app updates. Use the desktop installer to install v0.7.18.
+If a reset leaves empty iDriveDeck folders, rerun the current installer. It backs up empty managed folders as part of the same transaction. A nonempty folder without a valid manifest needs inspection.
+
+For a working previous setup, record the installer's backup location before changing menus. If you need to roll back, use the matching intact transaction backup and its original folders. See [restore directions](AgentReadMe.md#uninstall).
+
+Use **My Vehicle → ID6 App Updates** on full-screen ID6 for future signed USB packages. The desktop installer installs v0.7.19.

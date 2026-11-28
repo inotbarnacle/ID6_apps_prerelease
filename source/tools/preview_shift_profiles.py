@@ -14,9 +14,9 @@ def preview(images, snapshots, xml):
     root = ET.fromstring(xml)
     states = root.find(".//hmiState[@id='100']/components")
     initial = {int(node.get("id")): int(node.get("imageId")) for node in root.findall(".//models/imageIdModel")}
-    output = Image.new("RGBA", (1200, 1320), "#101722")
+    output = Image.new("RGBA", (1200, 1500), "#101722")
     draw = ImageDraw.Draw(output)
-    cases = (("gasoline", "Gasoline: 6250 RPM, existing target reached"),
+    cases = (("gasoline", "Gasoline: 6300 RPM, existing target reached"),
              ("diesel", "Diesel: 2500 RPM, target 3900, display 5000"),
              ("stale", "Stale RPM: shift light suppressed"))
     with ZipFile(images) as archive:
@@ -24,7 +24,7 @@ def preview(images, snapshots, xml):
             models = dict(initial)
             models.update({int(model): int(image) for model, image in
                            (row.split() for row in (snapshots/f"{name}.models").read_text().splitlines())})
-            y = index*440
+            y = index*500
             draw.text((15, y+3), caption, fill="#f0f4fb", font=font(20))
             draw.text((15, y+28), "HOST SIMULATION - no QNX or vehicle validation", fill="#90a4ba", font=font(15))
             for node in states.findall("image"):

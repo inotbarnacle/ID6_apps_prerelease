@@ -1,4 +1,4 @@
-# ID6Apps Desktop Installer v0.7.6
+# iDriveDeck Desktop Installer v0.7.20
 
 The macOS app supports Apple silicon and Intel Macs. On Windows, open the x64 folder for Intel or AMD PCs, or the ARM64 folder for Windows on ARM.
 
@@ -12,26 +12,54 @@ The macOS app supports Apple silicon and Intel Macs. On Windows, open the x64 fo
 
 1. Unzip the download and open **ID6Apps Installer**. It opens a page in your browser on the local computer.
 2. Choose the adapter. Leave the head unit IP blank for automatic discovery. Enter the IP in **Connection settings** if you know it or discovery fails. The installer uses the default SSH password.
-3. Select the menus you want. Choose MHD+ Suite, Bootmod3 Suite, or no tuning suite. WarmDeck shows engine oil, coolant, and transmission warm-up progress. xDrive Control is experimental and depends on the DSC controller.
-4. Choose **Check compatibility**. Verify the SSH fingerprint for your head unit when prompted. A successful check reports the exact matched firmware, display size, and diagnostic gateway. See the [compatibility matrix](https://github.com/inotbarnacle/ID6_apps_prerelease/blob/main/source/docs/COMPATIBILITY.md) for the evidence behind each profile.
+3. Select the menus you want. Choose MHD+ Suite, Bootmod3 Suite, MG Flasher, or no tuning suite. WarmDeck shows engine oil, coolant, and transmission warm-up progress. xDrive Control is experimental and depends on the DSC controller.
+4. Choose **Check compatibility**. Verify the SSH fingerprint for your head unit when prompted. For NBT Evo, the check reports the firmware profile status, display size, and diagnostic gateway. See the [compatibility matrix](https://github.com/inotbarnacle/ID6_apps_prerelease/blob/main/source/docs/COMPATIBILITY.md) for the evidence behind each profile.
 5. Choose **Install selected menus**. Wait for verification and record the backup path. Restart iDrive while parked, then open the menus under **My Vehicle**.
 
-Display layouts follow Andreas Boehm’s measured RHMI coordinate rules. HUD Gauges is
-experimental and starts only when enabled for the current iDrive session. HUD Gauges
-checks for native NBT-AAD and the CarPlay Advanced HUD hook and stays off if it detects
-either. The capture-only J16383I and O18184I firmware profiles require further validation.
-[Layout measurements](https://github.com/AndreasBoehm/idrive6-layout-preview)
+Display layouts follow Andreas Boehm’s measured RHMI coordinate rules.
 
 ## Uninstall
 
-1. Before removing an app, set the vehicle controls to the state you want to keep. For example, turn off the HUD overlay while HUD Gauges is still installed. Re-enable temporary SSH if iDrive has since rebooted.
+1. Before removing an app, set the vehicle controls to the state you want to keep. Re-enable temporary SSH if iDrive has since rebooted.
 2. Open the installer, change **Operation** to **Uninstall**, and select only the menus you want to remove. Choose **Uninstall selected menus**.
 3. Record the backup path shown by the installer. Restart iDrive while parked and check **My Vehicle**. Follow the [restore directions](https://github.com/inotbarnacle/ID6_apps_prerelease/blob/main/AgentReadMe.md#uninstall) to move the original folder back if needed.
 
-## CarPlay Advanced HUD
+## Head unit choices
 
-Choose CarPlay Advanced HUD under Operation to preview or install
-[st1ng's HUD-only add-on](https://github.com/st1ng/nbtevo-carplay-advanced).
-It downloads and verifies the upstream release. Use wired ENET, internet access
-and an existing working CarPlay setup. Restart iDrive while parked after
-installation. The upstream installer saves backups on the head unit.
+Select **NBT Evo** for the standard menus or choose **Install full-screen
+apps** to install the independent dashboards together. The full-screen
+installer supports 800 × 480, 960 × 480, 1280 × 480, 1440 × 540 and
+1920 × 720. It detects the panel and installs the matching layout.
+Unverified NBT Evo firmware is available as early beta. Installing backs up
+the previous ID6Apps menu set and retires managed menus outside the new
+selection. HUD Gauges is retired and excluded. The full-screen installer can
+also install full-screen Bootmod3 Suite or MG Flasher instead of MHD+ Suite,
+and can add full-screen xDrive Control or HybridDeck.
+Full-screen ShiftDeck has a 6,000–8,000 RPM
+target picker and a **Speed units** toggle under OPTIONS. The RPM number
+updates in 10 RPM steps. Standalone NBT Evo
+ShiftDeck has the same RPM range under OPTIONS. Turn the iDrive knob to move
+the full-screen highlight and press it to activate the selected control.
+
+On NBT Evo, the optional **DCT temperature** setting is in BoostDeck Settings
+and in WarmDeck under OPTIONS. It switches the transmission-temperature source
+for both apps and is off by default. The DCT source includes the GS7D36SG
+status block recorded on an F82 M4.
+If the transmission does not return a usable value, the temperature stays blank.
+Use **OPTIONS → Temperature units** in WarmDeck to switch between Celsius and Fahrenheit.
+
+Select **EntryNav2 (early beta)** for native menus and choose 1280 × 480
+or the 6.5-inch 800 × 480 layout. Connect over wired ENET and supply the
+head unit IP and existing SSH password. The
+installer prefers an exact framework match and offers the reference beta
+builds for other firmware. Each archive still checks platform, storage,
+connector conflicts, and loader dependencies before installing. Previous
+managed menus are backed up before replacement.
+
+The W2408C1R, Q2051B1R and C1643D1R test builds passed ARM QEMU plugin-loader
+checks. Confirm menu loading and vehicle functions while parked.
+
+## BEAMer and Road Jet
+
+Both apps use a speed cutoff of 8 km/h (about 5 mph). They pause or stop if
+the reported speed exceeds the cutoff or the app loses the speed reading.

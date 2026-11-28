@@ -79,12 +79,12 @@ class RoadJet : public bmw::PluginApp {
             ROAD_JET_MOST_STALE_MS : ROAD_JET_STALE_MS;
         if (frame_.started_ms >= shown_at_ && frame_.started_ms <= now &&
             now - frame_.started_ms < stale_after) mode = frame_.mode;
-        if (mode != ROAD_JET_WAITING && mode != ROAD_JET_MOST_PEDAL) {
+        if (mode == ROAD_JET_ACTIVE || mode == ROAD_JET_PEDAL_ONLY) {
             mode = steering_at_ && now - steering_at_ < ROAD_JET_STALE_MS ?
                 ROAD_JET_ACTIVE : ROAD_JET_PEDAL_ONLY;
         }
         unsigned sprite = ROAD_JET_NO_SPRITE;
-        if (mode != ROAD_JET_WAITING) {
+        if (mode == ROAD_JET_ACTIVE || mode == ROAD_JET_PEDAL_ONLY || mode == ROAD_JET_MOST_PEDAL) {
             if (mode != ROAD_JET_ACTIVE) lane_ = 2;
             const int angle = mode == ROAD_JET_ACTIVE ? steering_ : 0;
             while (lane_ < ROAD_JET_LANES - 1 &&
@@ -124,6 +124,7 @@ class RoadJet : public bmw::PluginApp {
             if (mode == ROAD_JET_ACTIVE) label = "Live vehicle data";
             if (mode == ROAD_JET_PEDAL_ONLY) label = "Live vehicle data  |  Pedal only";
             if (mode == ROAD_JET_MOST_PEDAL) label = "MOST  |  Pedal only";
+            if (mode == ROAD_JET_TOO_FAST) label = "Slow to 5 mph or less to play";
             if (mode == ROAD_JET_WAITING && frame_.started_ms) label = "Vehicle data paused";
             updateModel(52u, bmw::BasicString<char>(label));
             mode_ = mode;
@@ -210,15 +211,16 @@ public:
             ssize_t length = recv(socket_, &next, sizeof next, 0);
             if (length < 0) break;
             if (length == sizeof next && next.started_ms >= shown_at_ && next.started_ms <= bd_mono_ms() &&
-                next.started_ms >= frame_.started_ms && next.mode > ROAD_JET_WAITING &&
-                next.mode <= ROAD_JET_MOST_PEDAL && next.pedal >= 0 && next.pedal <= 1000 &&
+                next.started_ms >= frame_.started_ms && next.mode >= ROAD_JET_WAITING &&
+                next.mode <= ROAD_JET_TOO_FAST && next.pedal >= 0 && next.pedal <= 1000 &&
                 next.steering >= -90000 && next.steering <= 90000) {
                 frame_ = next;
                 if (next.mode == ROAD_JET_ACTIVE) {
                     steering_at_ = next.started_ms;
                     steering_ = next.steering;
                 }
-                if (next.mode == ROAD_JET_MOST_PEDAL) steering_at_ = 0;
+                if (next.mode == ROAD_JET_MOST_PEDAL || next.mode == ROAD_JET_WAITING || next.mode == ROAD_JET_TOO_FAST)
+                    steering_at_ = 0;
             }
         }
         draw(bd_mono_ms());

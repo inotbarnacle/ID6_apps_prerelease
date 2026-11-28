@@ -26,6 +26,15 @@ static void sample(ShiftDeck& deck, int rpm) {
     deck.rpm_started_=0;
     deck.draw(test_now);
 }
+static std::string bytes(const char* path) {
+    char data[16];
+    FILE* file=fopen(path,"rb");
+    assert(file);
+    const size_t count=fread(data,1,sizeof data,file);
+    assert(!ferror(file) && feof(file));
+    fclose(file);
+    return std::string(data,count);
+}
 static void snapshot(const char* directory, const char* name) {
     if (!directory) return;
     char path[256];
@@ -42,45 +51,60 @@ static void snapshot(const char* directory, const char* name) {
 
 int main(int argc, char** argv) {
     const char* previews=argc==2 ? argv[1] : 0;
-    char path[]="/tmp/shift-profile-plugin.XXXXXX";
-    int fd=mkstemp(path);
-    assert(fd>=0);
-    close(fd);
-    const unsigned char legacy[]={'G',1,2,1};
-    assert(savePersistentBytes(path,legacy,sizeof legacy));
+    char directory[]="/tmp/shift-profile-plugin.XXXXXX";
+    assert(mkdtemp(directory));
+    char path[128],legacy[128],profile[128];
+    snprintf(path,sizeof path,"%s/v2",directory);
+    snprintf(legacy,sizeof legacy,"%s/legacy",directory);
+    snprintf(profile,sizeof profile,"%s/profile",directory);
+    const unsigned char current[]={'G',1,3,1},old[]={'G',1,0,0};
+    assert(savePersistentBytes(path,current,sizeof current));
+    assert(savePersistentBytes(legacy,old,sizeof old));
     bmw::IDispatcher dispatcher;
     bmw::Bundle bundle;
     bmw::RHMIInterfaceVersion version={1};
     fake_reset();
     {
-        ShiftDeck deck(dispatcher,bmw::BasicString<char>("ShiftDeck"),1,0,version,bundle,bundle,path);
+        ShiftDeck deck(dispatcher,bmw::BasicString<char>("ShiftDeck"),1,0,version,bundle,bundle,path,legacy,profile);
         assert(deck.onInit());
         assert(deck.child_==-1); // no diagnostic worker is needed by these tests
-        assert(last(56).number==kTargetBase+2 && last(66).number==55918);
-        assert(last(64).number==56660 && last(53).text=="Shift light at 6250 RPM");
+        assert(access(profile,F_OK)!=0);
+        const std::string old_bytes=bytes(legacy);
+        for (unsigned index=0;index<21;++index) {
+            action(400+index);
+            assert(!deck.prefs_.diesel && deck.prefs_.targetRpm()==6000+index*100);
+            assert(last(56).number==kTargetBase+index && last(68).number==kMarkBase+index);
+            unsigned target=99; bool metric=false;
+            assert(loadGaugePreferences(path,21,target,metric) && target==index && metric);
+            assert(bytes(legacy)==old_bytes);
+        }
+        action(403);
+        const std::string gasoline_bytes=bytes(path);
+        assert(last(56).number==kTargetBase+3 && last(66).number==55918);
+        assert(last(64).number==56660 && last(53).text=="Shift light at 6300 RPM");
         bmw::Parcel show(true);
         assert(fake_fire(100,11,show));
-        sample(deck,6249);
+        sample(deck,6299);
         assert(last(57).number==kShiftOff && last(55).number==kLightBase+11);
-        sample(deck,6250);
+        sample(deck,6300);
         assert(last(57).number==kShiftOn);
         snapshot(previews,"gasoline");
 
-        action(49); // diesel profile, retained 4000 RPM target, 6000 display
+        action(601); // diesel profile, retained 4000 RPM target, 6000 display
         assert(last(66).number==kDieselScaleBase+2 && last(56).number==kDieselTargetBase+30);
         sample(deck,3999);
         assert(last(57).number==kShiftOff);
         sample(deck,4000);
         assert(last(57).number==kShiftOn);
-        action(50); // 3900 target
+        action(602); // 3900 target
         assert(last(53).text=="Shift light at 3900 RPM");
-        action(51);
+        action(603);
         assert(deck.prefs_.diesel_target==4000);
-        action(52); // smaller scale clamps the target to 3900
+        action(604); // smaller scale clamps the target to 3900
         assert(deck.prefs_.diesel_target==3900 && last(66).number==kDieselScaleBase);
-        action(54);
+        action(606);
         assert(last(66).number==kDieselScaleBase+2);
-        action(53); // 5000 display
+        action(605); // 5000 display
         assert(last(66).number==kDieselScaleBase+1);
         assert(last(68).number==kDieselMarkBase+64+29);
         sample(deck,2500);
@@ -88,12 +112,15 @@ int main(int argc, char** argv) {
         snapshot(previews,"diesel");
 
         ShiftPreferences stored;
-        assert(stored.load(path) && stored.diesel && stored.diesel_target==3900);
-        assert(stored.gasoline_target==2 && stored.metric && stored.diesel_scale==1);
-        action(48); // gasoline restored, not a shared diesel target
-        assert(last(53).text=="Shift light at 6250 RPM" && last(66).number==55918);
-        assert(last(56).number==kTargetBase+2 && last(68).number==kMarkBase+2);
-        action(49);
+        assert(stored.load(path,legacy,profile) && stored.diesel && stored.diesel_target==3900);
+        assert(stored.gasoline_target==3 && stored.metric && stored.diesel_scale==1);
+        assert(bytes(path)==gasoline_bytes && bytes(legacy)==old_bytes);
+        const unsigned char expected_profile[]={'S',2,1,29,1};
+        assert(bytes(profile)==std::string(reinterpret_cast<const char*>(expected_profile),sizeof expected_profile));
+        action(600); // gasoline restored, not a shared diesel target
+        assert(last(53).text=="Shift light at 6300 RPM" && last(66).number==55918);
+        assert(last(56).number==kTargetBase+3 && last(68).number==kMarkBase+3);
+        action(601);
         sample(deck,4500);
         assert(last(57).number==kShiftOn);
         test_now+=DRIVE_STALE_MS;
@@ -113,21 +140,33 @@ int main(int argc, char** argv) {
         assert(fake_fire(100,11,hide));
         assert(last(57).number==kShiftOff);
 
-        action(41); // explicit gasoline preset returns to gasoline profile
-        assert(!deck.prefs_.diesel && deck.prefs_.targetRpm()==5800);
+        action(400); // explicit gasoline preset returns to gasoline profile
+        assert(!deck.prefs_.diesel && deck.prefs_.targetRpm()==6000);
+        const std::string profile_bytes=bytes(profile);
         action(46);
         assert(last(64).number==55916 && !deck.prefs_.metric);
+        assert(last(58).text=="Speed: MPH" && bytes(profile)==profile_bytes);
         assert(deck.onFinalize());
     }
     fake_reset();
     {
         ShiftDeck deck(dispatcher,bmw::BasicString<char>("ShiftDeck"),1,0,version,bundle,bundle,
-                       "/nonexistent-idrive-directory/preferences");
+                       "/nonexistent-idrive-directory/preferences",legacy,profile);
         assert(deck.onInit());
-        action(49);
+        const std::string profile_bytes=bytes(profile);
+        action(47);
+        assert(last(81).text.find("not saved")!=std::string::npos && bytes(profile)==profile_bytes);
+        assert(deck.onFinalize());
+    }
+    fake_reset();
+    {
+        ShiftDeck deck(dispatcher,bmw::BasicString<char>("ShiftDeck"),1,0,version,bundle,bundle,
+                       path,legacy,"/nonexistent-idrive-directory/preferences");
+        assert(deck.onInit());
+        action(601);
         assert(last(81).text.find("not saved")!=std::string::npos);
         assert(deck.onFinalize());
     }
-    unlink(path);
+    unlink(path); unlink(legacy); unlink(profile); rmdir(directory);
     puts("ShiftDeck production actions, gasoline/diesel rendering, stale/hidden light suppression and save failure passed.");
 }

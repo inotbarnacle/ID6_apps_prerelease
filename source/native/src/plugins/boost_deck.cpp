@@ -6,6 +6,7 @@
 #include "diagnostic_worker.h"
 #include "diagnostic_gateway.h"
 #include "boost_preferences.h"
+#include "dct_settings.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -116,6 +117,13 @@ public:
     virtual bool onFinalize() { shutdown(); return true; }
     virtual bool invokeDataUpdate(unsigned key, const bmw::Parcel& data);
     bool gaugeVisibility(const bmw::Parcel&);
+    bool changeDctTemperature(const bmw::Parcel&) {
+        const bool saved=toggleDctTemperature();
+        if (saved) restartCollector();
+        updateSettings();
+        updateModel(118u,bmw::BasicString<char>(saved ? "" : "Could not save DCT setting"));
+        return true;
+    }
     template <unsigned Color> bool changeColor(const bmw::Parcel&) {
         BoostPreferences changed=preferences_;
         changed.color=Color;
@@ -230,6 +238,8 @@ bool BoostDeck::onInit() {
     action.m_exec=&bmw::Delegate<bool,const bmw::Parcel&>::execImpl<BoostDeck,&BoostDeck::gaugeVisibility>;
     addHandler(100u,11u,action);
     typedef bmw::Delegate<bool,const bmw::Parcel&> Action;
+    action.m_exec=&Action::execImpl<BoostDeck,&BoostDeck::changeDctTemperature>;
+    addHandler(5750u,action);
     typedef bool (*Handler)(void*,const bmw::Parcel&);
     static const Handler colorHandlers[] = {
         &Action::execImpl<BoostDeck,&BoostDeck::changeColor<0> >,
@@ -306,6 +316,7 @@ bool BoostDeck::gaugeVisibility(const bmw::Parcel& event) {
     bool visible;
     if (!event.readBool(visible) || gauges_visible_==visible) return true;
     gauges_visible_=visible;
+    if (visible) updateModel(1880u,bmw::BasicString<char>(dctTemperatureLabel()));
     if (visible) {
         retry_at_=0;
         startVisibleCollector();
@@ -343,6 +354,7 @@ void BoostDeck::updateSettings() {
     char label[80];
     snprintf(label,sizeof label,"Gauge color: %s",kColorNames[preferences_.color]);
     updateModel(110u,bmw::BasicString<char>(label));
+    updateModel(1880u,bmw::BasicString<char>(dctTemperatureLabel()));
     for (unsigned color=0;color<sizeof kColorNames / sizeof kColorNames[0];++color)
         updateModel(5200u+color,preferences_.color==color);
     for (unsigned row=0;row<BOOST_SETTING_COUNT;++row) {
@@ -440,7 +452,7 @@ void BoostDeck::poll() {
         if (k<=0) break;
         bd_frame next;
         if (gauges_visible_ && !stopping_ && bd_parse(data,static_cast<size_t>(k),&next) &&
-            next.sent_ms && next.sent_ms<=bd_mono_ms() &&
+            !next.demo && next.sent_ms && next.sent_ms<=bd_mono_ms() &&
             (!received_ || next.sent_ms>=received_)) {
             frame_=next; received_=next.sent_ms; // queued UDP does not reset sample age
         }

@@ -12,15 +12,18 @@ from xml.etree import ElementTree as ET
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 from PIL import Image, ImageDraw, ImageFont
+import shift_art
 
 ROOT = Path(__file__).resolve().parents[1] / "native"
-TARGET_BASE, MARK_BASE, SCALE_BASE = 57000, 57100, 57400
+TARGET_BASE, MARK_BASE, SCALE_BASE = 57500, 57100, 57400
 SCALES = (4000, 5000, 6000)
 TARGETS = range(1000, 6000, 100)
 REQUIRED_BASE = {f"{identifier}.png" for identifier in (
-    *range(56400, 56658), *range(55866, 55885), *range(55890, 55919),
-    *range(55920, 55925), 56660,
+    *range(56400, 56658), *range(55866, 55880), *range(55890, 55919), 56660,
 )}
+GASOLINE_IMAGES = {shift_art.TARGET_BASE+i for i in range(len(shift_art.TARGETS))} | \
+                  {shift_art.MARK_BASE+i for i in range(len(shift_art.TARGETS))}
+UPSTREAM_ADDITIONS = GASOLINE_IMAGES | {shift_art.LOWER}
 FONT = next((path for path in (
     Path("/System/Library/Fonts/Supplemental/DIN Condensed Bold.ttf"),
     Path("/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf"),
@@ -48,14 +51,17 @@ def update_xml(data):
             app.find("hmiStates/hmiState[@id='101']") is None:
         raise ValueError("expected the current ShiftDeck 128-step layout")
     actions, models, states = (app.find(tag) for tag in ("actions", "models", "hmiStates"))
-    for parent, ids in ((actions, set(map(str, range(48, 57)))), (models, {"81", "82"}),
-                        (states, {"102", "103"})):
+    if states.find("hmiState[@id='102'][@text='Speed']") is None or \
+            actions.find("raAction[@id='420']") is None:
+        raise ValueError("expected the current 21-target gasoline layout and Speed menu")
+    for parent, ids in ((actions, set(map(str, (*range(600, 607), 55, 56)))), (models, {"81", "82"}),
+                        (states, {"103", "104"})):
         for node in list(parent):
             if node.get("id") in ids:
                 parent.remove(node)
-    for identifier in range(48, 55):
+    for identifier in range(600, 607):
         ET.SubElement(actions, "raAction", id=str(identifier))
-    for identifier, target in ((55, 102), (56, 103)):
+    for identifier, target in ((55, 103), (56, 104)):
         ET.SubElement(actions, "hmiAction", id=str(identifier), target=str(target))
     for identifier in (81, 82):
         ET.SubElement(models, "raDataModel", id=str(identifier), modelType="Richtext")
@@ -68,21 +74,21 @@ def update_xml(data):
     ET.SubElement(options, "button", id="412", action="55", text="Engine profile")
     states.find("hmiState[@id='101']").set("text", "Gasoline shift presets")
 
-    profile = ET.SubElement(states, "hmiState", id="102", parentId="100", text="Engine profile")
+    profile = ET.SubElement(states, "hmiState", id="103", parentId="100", text="Engine profile")
     content = ET.SubElement(profile, "components")
     ET.SubElement(content, "label", id="420", model="81")
     ET.SubElement(content, "label", id="421", text="Advisory light only. Choose a target for your engine.")
-    ET.SubElement(content, "button", id="422", action="48", text="Use gasoline profile")
-    ET.SubElement(content, "button", id="423", action="49", text="Use diesel profile")
+    ET.SubElement(content, "button", id="422", action="600", text="Use gasoline profile")
+    ET.SubElement(content, "button", id="423", action="601", text="Use diesel profile")
     ET.SubElement(content, "button", id="424", action="56", text="Configure diesel target and display")
 
-    settings = ET.SubElement(states, "hmiState", id="103", parentId="102", text="Diesel settings")
+    settings = ET.SubElement(states, "hmiState", id="104", parentId="103", text="Diesel settings")
     content = ET.SubElement(settings, "components")
     ET.SubElement(content, "label", id="430", model="82")
     ET.SubElement(content, "label", id="431", text="Display range and shift light are not an engine redline.")
-    for identifier, action, title in ((432, 50, "Target -100 RPM"), (433, 51, "Target +100 RPM"),
-                                      (434, 52, "Display 0-4,000 RPM"), (435, 53, "Display 0-5,000 RPM"),
-                                      (436, 54, "Display 0-6,000 RPM")):
+    for identifier, action, title in ((432, 602, "Target -100 RPM"), (433, 603, "Target +100 RPM"),
+                                      (434, 604, "Display 0-4,000 RPM"), (435, 605, "Display 0-5,000 RPM"),
+                                      (436, 606, "Display 0-6,000 RPM")):
         ET.SubElement(content, "button", id=str(identifier), action=str(action), text=title)
     ET.indent(root, space="  ")
     return ET.tostring(root, encoding="utf-8", xml_declaration=True)+b"\n"
@@ -102,7 +108,7 @@ def bitmaps():
         draw = ImageDraw.Draw(image)
         for tick in range(maximum//500+1):
             rpm = tick*500
-            x = 8+round(1088*rpm/maximum)
+            x = shift_art.BAR_START+round(16*shift_art.BAR_PITCH*rpm/maximum)
             draw.line((x, 3, x, 17 if rpm % 1000 == 0 else 11), fill="#90a4ba", width=2)
             if rpm % 1000 == 0:
                 draw.text((x, 22), str(rpm//1000), font=font(26), fill="#90a4ba", anchor="mt")
@@ -112,7 +118,7 @@ def bitmaps():
                 continue
             marker = Image.new("RGBA", (1104, 9))
             draw = ImageDraw.Draw(marker)
-            x = 8+round(1088*rpm/maximum)
+            x = shift_art.BAR_START+shift_art.BAR_SLANT+round(16*shift_art.BAR_PITCH*rpm/maximum)
             draw.line((x, 1, x, 8), fill="#ffc34d", width=3)
             yield MARK_BASE+index*64+target_index, marker
 
@@ -121,7 +127,13 @@ def add_images(base, out):
     with ZipFile(base) as original:
         if not REQUIRED_BASE.issubset(original.namelist()):
             raise ValueError("base archive lacks current ShiftDeck sweep/digit/target/unit images")
+        if any(f"{identifier}.png" in original.namelist() for identifier in range(57021, 57030)):
+            raise ValueError("base archive uses the retired overlapping diesel image range; rebuild from upstream assets")
         generated = list(bitmaps())
+        # The packaged legacy archive predates upstream's 21 gasoline targets.
+        # Fill missing gasoline tiles/markers and the lower separator from its current generator.
+        generated = [(identifier, image) for identifier, image in shift_art.bitmaps(face=font)
+                     if identifier in UPSTREAM_ADDITIONS and f"{identifier}.png" not in original.namelist()] + generated
         added = {f"{identifier}.png" for identifier, _ in generated}
         with ZipFile(out, "w", ZIP_DEFLATED) as target:
             for item in original.infolist():

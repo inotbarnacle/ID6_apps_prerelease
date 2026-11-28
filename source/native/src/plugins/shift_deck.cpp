@@ -13,8 +13,9 @@
 namespace {
 const unsigned kShiftPoll=0x53484654u;
 const char kShiftWorker[]="/var/opt/hmi/data/ID5/Plugins/ShiftDeck/shift-deck-qnx";
-const char kPreferences[]="/var/opt/hmi/data/ID5/ShiftDeck.prefs";
-const unsigned kSweepBase=56400, kSweepAlert=56529;
+const char kPreferences[]="/var/opt/hmi/data/ID5/ShiftDeck.v2.prefs";
+const char kLegacyPreferences[]="/var/opt/hmi/data/ID5/ShiftDeck.prefs";
+const char kProfilePreferences[]="/var/opt/hmi/data/ID5/ShiftDeck.diesel.prefs";
 const unsigned kEaseMs=50;
 }
 
@@ -25,6 +26,8 @@ class ShiftDeck : public bmw::PluginApp {
     bool visible_;
     ShiftPreferences prefs_;
     const char* preferences_;
+    const char* legacy_preferences_;
+    const char* profile_preferences_;
     bool saved_;
     uint64_t retry_at_;
     drive_frame frame_;
@@ -76,9 +79,8 @@ class ShiftDeck : public bmw::PluginApp {
         int kph=live ? frame_.kph : -1;
         int target=static_cast<int>(prefs_.targetRpm());
         bool shift=rpm>=target;
-        int displayed_rpm=rpm;
-        if (rpm>=0) displayed_rpm=static_cast<int>(animatedRpm(now)+.5);
-        unsigned bars=prefs_.sweep(displayed_rpm);
+        const int eased_rpm=rpm>=0 ? static_cast<int>(animatedRpm(now)+.5) : -1;
+        unsigned bars=prefs_.sweep(eased_rpm);
         unsigned image=(shift ? kSweepAlert : kSweepBase)+bars;
         if (image!=bar_) {
             updateModel(54u,bmw::ImageID(image));
@@ -90,9 +92,10 @@ class ShiftDeck : public bmw::PluginApp {
             lights_=lights;
         }
         char text[48];
+        const int displayed_rpm=eased_rpm<0 ? -1 : (eased_rpm+5)/10*10;
         if (displayed_rpm!=rpm_ || shift!=shift_) {
             if (displayed_rpm<0) strcpy(text,"--");
-            else snprintf(text,sizeof text,"%d",displayed_rpm>9999 ? 9999 : displayed_rpm);
+            else snprintf(text,sizeof text,"%d",displayed_rpm>9990 ? 9990 : displayed_rpm);
             digits(60u,4u,text,shift ? kDigitWarn : kDigitBase,true);
             rpm_=displayed_rpm;
         }
@@ -125,14 +128,14 @@ class ShiftDeck : public bmw::PluginApp {
     template <unsigned Index> bool setTarget(const bmw::Parcel&) {
         prefs_.gasoline_target=Index;
         prefs_.diesel=false;
-        settingsChanged();
+        settingsChanged(true,true);
         return true;
     }
     template <bool Metric> bool setUnits(const bmw::Parcel&) {
         prefs_.metric=Metric;
         kph_=-2;
-        updateModel(64u,bmw::ImageID(prefs_.metric ? 56660u : 55916u));
-        settingsChanged();
+        updateModel(64u,bmw::ImageID(prefs_.metric ? kSpeedLegendKmh : kSpeedLegendMph));
+        settingsChanged(true,false);
         return true;
     }
     template <bool Diesel> bool setProfile(const bmw::Parcel&) {
@@ -150,8 +153,10 @@ class ShiftDeck : public bmw::PluginApp {
         settingsChanged();
         return true;
     }
-    void settingsChanged() {
-        saved_=prefs_.save(preferences_);
+    void settingsChanged(bool gasoline=false, bool profile=true) {
+        saved_=true;
+        if (gasoline) saved_=prefs_.saveGasoline(preferences_);
+        if (profile) saved_=prefs_.saveProfile(profile_preferences_) && saved_;
         showTarget();
         draw(bd_mono_ms());
     }
@@ -159,6 +164,7 @@ class ShiftDeck : public bmw::PluginApp {
         char text[128];
         snprintf(text,sizeof text,"Shift light at %u RPM",prefs_.targetRpm());
         label(53u,text);
+        label(58u,prefs_.metric ? "Speed: km/h" : "Speed: MPH");
         snprintf(text,sizeof text,"%s profile: target %u RPM, display %u RPM%s",
                  prefs_.diesel ? "Diesel" : "Gasoline",prefs_.targetRpm(),prefs_.scaleRpm(),
                  saved_ ? "" : " (not saved)");
@@ -176,9 +182,11 @@ class ShiftDeck : public bmw::PluginApp {
 public:
     ShiftDeck(bmw::IDispatcher& d,bmw::BasicString<char> name,unsigned maj,unsigned min,
               bmw::RHMIInterfaceVersion version,const bmw::Bundle& cfg,const bmw::Bundle& res,
-              const char* preferences=kPreferences)
+              const char* preferences=kPreferences, const char* legacy=kLegacyPreferences,
+              const char* profile=kProfilePreferences)
         : PluginApp(d,name,maj,min,version,cfg,res),socket_(-1),child_(-1),generation_(0),
-          visible_(false),preferences_(preferences),saved_(true),retry_at_(0),bar_(0),lights_(0),
+          visible_(false),preferences_(preferences),legacy_preferences_(legacy),
+          profile_preferences_(profile),saved_(true),retry_at_(0),bar_(0),lights_(0),
           rpm_(-2),kph_(-2),shift_(false) {
         memset(&frame_,0,sizeof frame_);
         rpm_from_=0;
@@ -211,37 +219,39 @@ public:
         action.m_obj=this;
         action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::visibility>;
         addHandler(100u,11u,action);
-        action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::setTarget<0> >;
-        addHandler(41u,action);
-        action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::setTarget<1> >;
-        addHandler(42u,action);
-        action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::setTarget<2> >;
-        addHandler(43u,action);
-        action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::setTarget<3> >;
-        addHandler(44u,action);
-        action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::setTarget<4> >;
-        addHandler(45u,action);
-        prefs_.load(preferences_);
+        typedef bool (*Handler)(void*,const bmw::Parcel&);
+#define TARGET(i) &Action::execImpl<ShiftDeck,&ShiftDeck::setTarget<i> >
+        const Handler targets[]={
+            TARGET(0),TARGET(1),TARGET(2),TARGET(3),TARGET(4),TARGET(5),TARGET(6),
+            TARGET(7),TARGET(8),TARGET(9),TARGET(10),TARGET(11),TARGET(12),TARGET(13),
+            TARGET(14),TARGET(15),TARGET(16),TARGET(17),TARGET(18),TARGET(19),TARGET(20)
+        };
+#undef TARGET
+        for (unsigned i=0;i<sizeof targets/sizeof targets[0];++i) {
+            action.m_exec=targets[i];
+            addHandler(400u+i,action);
+        }
+        prefs_.load(preferences_,legacy_preferences_,profile_preferences_);
         saved_=true;
         action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::setUnits<false> >;
         addHandler(46u,action);
         action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::setUnits<true> >;
         addHandler(47u,action);
         action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::setProfile<false> >;
-        addHandler(48u,action);
+        addHandler(600u,action);
         action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::setProfile<true> >;
-        addHandler(49u,action);
+        addHandler(601u,action);
         action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::adjustDiesel<false> >;
-        addHandler(50u,action);
+        addHandler(602u,action);
         action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::adjustDiesel<true> >;
-        addHandler(51u,action);
+        addHandler(603u,action);
         action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::setScale<0> >;
-        addHandler(52u,action);
+        addHandler(604u,action);
         action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::setScale<1> >;
-        addHandler(53u,action);
+        addHandler(605u,action);
         action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::setScale<2> >;
-        addHandler(54u,action);
-        updateModel(64u,bmw::ImageID(prefs_.metric ? 56660u : 55916u));
+        addHandler(606u,action);
+        updateModel(64u,bmw::ImageID(prefs_.metric ? kSpeedLegendKmh : kSpeedLegendMph));
         updateModel(57u,bmw::ImageID(kShiftOff));
         showTarget();
         draw(bd_mono_ms());

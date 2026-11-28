@@ -11,6 +11,8 @@ import unittest
 
 from test_transport import exact, frame
 
+from udp_test_socket import telemetry_socket
+
 BUILD = Path(__file__).resolve().parents[1] / "build"
 BUSY = "Diagnostics busy. Wait a moment and try again.\n"
 
@@ -132,8 +134,7 @@ class MhdMostTest(unittest.TestCase):
 
     def test_mhd_presses_while_boostdeck_reads_most(self):
         """A slow tunnel: the gauge worker steps aside, so every map press gets its turn."""
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:
-            udp.bind(("127.0.0.1", 0))
+        with telemetry_socket() as udp:
             boost = subprocess.Popen([BUILD/"boost-deck", "--session", "--transport", "most",
                                       "--udp-port", str(udp.getsockname()[1])],
                                      stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True,

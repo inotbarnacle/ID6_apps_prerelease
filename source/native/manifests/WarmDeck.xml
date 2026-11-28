@@ -8,8 +8,12 @@
     </entryButton>
     <actions>
       <hmiAction id="10" target="100" />
+      <raAction id="5750" />
+      <raAction id="5752" />
     </actions>
     <models>
+      <raDataModel id="55" modelType="Richtext" />
+      <raDataModel id="56" modelType="Richtext" />
       <imageIdModel id="65" imageId="58150" />
       <raDataModel id="50" modelType="Richtext" />
       <raDataModel id="51" modelType="Richtext" />
@@ -17,11 +21,18 @@
       <raDataModel id="53" modelType="Richtext" />
       <raDataModel id="54" modelType="Richtext" />
       <imageIdModel id="60" imageId="58100" />
+      <raDataModel id="70" modelType="Richtext" />
       <imageIdModel id="61" imageId="58100" />
+      <raDataModel id="71" modelType="Richtext" />
       <imageIdModel id="62" imageId="58100" />
+      <raDataModel id="72" modelType="Richtext" />
     </models>
     <hmiStates>
       <hmiState id="100" text="WarmDeck">
+        <optionComponents>
+          <button id="5750" action="5750" model="55" text="DCT temperature" />
+          <button id="5752" action="5752" model="56" text="Temperature units" />
+        </optionComponents>
         <components>
           <image id="200" model="65">
             <properties>
@@ -59,7 +70,7 @@
               <property id="3" value="true" />
             </properties>
           </image>
-          <label id="250" text="Target 85 C">
+          <label id="250" model="70">
             <properties>
               <property id="20" value="54" />
               <property id="21" value="222" />
@@ -93,7 +104,7 @@
               <property id="3" value="true" />
             </properties>
           </image>
-          <label id="251" text="Target 75 C">
+          <label id="251" model="71">
             <properties>
               <property id="20" value="436" />
               <property id="21" value="222" />
@@ -127,7 +138,7 @@
               <property id="3" value="true" />
             </properties>
           </image>
-          <label id="252" text="Target 40 C">
+          <label id="252" model="72">
             <properties>
               <property id="20" value="818" />
               <property id="21" value="222" />

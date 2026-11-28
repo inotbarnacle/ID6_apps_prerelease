@@ -313,7 +313,7 @@ func (r compatibilityFixture) run(cmd string, _ []byte, _ int) ([]byte, error) {
 	return nil, nil
 }
 
-func TestInspectionRequiresMatchingFrameworksAndActivePanel(t *testing.T) {
+func TestInspectionAllowsUnverifiedFrameworksAndChecksActivePanel(t *testing.T) {
 	const version = "NBTevo_N18032I"
 	fixture := compatibilityFixture{
 		identifyOnly: identifyOnly{version, t},
@@ -331,7 +331,7 @@ func TestInspectionRequiresMatchingFrameworksAndActivePanel(t *testing.T) {
 	}
 	mismatch := fixture
 	mismatch.core = []byte("other core")
-	if got := inspect(mismatch, input, reportsHead); got.Ready || !strings.Contains(got.Result, coreFramework) {
+	if got := inspect(mismatch, input, reportsHead); !got.Ready || !strings.Contains(got.Result, "Early beta") {
 		t.Fatal(got)
 	}
 	fixture.display = ""
@@ -342,7 +342,7 @@ func TestInspectionRequiresMatchingFrameworksAndActivePanel(t *testing.T) {
 	if got := inspect(fixture, input, reportsHead); !got.Ready || got.screen != (panel{1280, 480}) || !strings.Contains(got.Display, "manual") {
 		t.Fatal(got)
 	}
-	if got := inspect(mismatch, input, reportsHead); got.Ready {
+	if got := inspect(mismatch, input, reportsHead); got.Ready || !strings.Contains(got.Result, "differs") {
 		t.Fatal(got)
 	}
 	fixture.display = "- resolution: x=1920, y=720\n"
@@ -440,8 +440,50 @@ func TestUninstallBacksUpSelectionAndRollsBackAfterFailure(t *testing.T) {
 	}
 }
 
-func TestInstallLaunchDeckAndHUD(t *testing.T) {
-	selection, err := choose([]string{"LaunchDeck", "HudTest"})
+func TestFullscreenInstallBacksUpReplacedMenus(t *testing.T) {
+	for _, fail := range []bool{false, true} {
+		t.Run(fmt.Sprint(fail), func(t *testing.T) {
+			dir := t.TempDir()
+			for _, app := range []plugin{apps[0], apps[1], {name: "AppUpdates", connector: "121"},
+				{name: "HudTest", connector: "107"}, apps[3]} {
+				folder := filepath.Join(dir, "Plugins", app.name)
+				if err := os.MkdirAll(folder, 0755); err != nil {
+					t.Fatal(err)
+				}
+				data := fmt.Sprintf("<plugin><name>%s</name><config><dependencies><pluginAppConnector><id>%s</id></pluginAppConnector></dependencies></config></plugin>", app.name, app.connector)
+				if err := os.WriteFile(filepath.Join(folder, app.name+".manifest"), []byte(data), 0644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			backup, err := install(shellFixture{dir: dir, failRemoveShiftDeck: fail},
+				"169.254.21.3", panel{1280, 480}, false, fullscreenApps...)
+			if (err != nil) != fail {
+				t.Fatalf("install returned %q, %v", backup, err)
+			}
+			for _, name := range []string{"BoostDeck", "ShiftDeck", "AppUpdates", "HudTest"} {
+				live := filepath.Join(dir, "Plugins", name)
+				_, err := os.Stat(live)
+				if fail && err != nil || !fail && !os.IsNotExist(err) {
+					t.Fatalf("unexpected live state for %s: %v", live, err)
+				}
+				if !fail {
+					if _, err := os.Stat(filepath.Join(dir, filepath.Base(backup), "old-"+name, name+".manifest")); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			if _, err := os.Stat(filepath.Join(dir, "Plugins", "ID6FullBoostDeck")); fail && !os.IsNotExist(err) || !fail && err != nil {
+				t.Fatalf("unexpected full-screen state: %v", err)
+			}
+			if _, err := os.Stat(filepath.Join(dir, "Plugins", "Bootmod3Suite")); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestInstallLaunchDeck(t *testing.T) {
+	selection, err := choose([]string{"LaunchDeck"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -468,10 +510,85 @@ func TestInstallLaunchDeckAndHUD(t *testing.T) {
 	}
 }
 
-func TestCompactInstallStagesHUDMenuAndDashboardArtwork(t *testing.T) {
+func TestDesktopSelectionReplacesManagedSet(t *testing.T) {
+	dir := t.TempDir()
+	for _, app := range []plugin{apps[0], fullscreenApps[0], fullscreenApps[1],
+		{name: "ExternalApp", connector: "99"}, {name: "HudTest", connector: "107"}} {
+		folder := filepath.Join(dir, "Plugins", app.name)
+		if err := os.MkdirAll(folder, 0755); err != nil {
+			t.Fatal(err)
+		}
+		data := fmt.Sprintf("<plugin><name>%s</name><config><dependencies><pluginAppConnector><id>%s</id></pluginAppConnector></dependencies></config></plugin>", app.name, app.connector)
+		if err := os.WriteFile(filepath.Join(folder, app.name+".manifest"), []byte(data), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	backup, err := installReplacing(shellFixture{dir: dir}, "169.254.21.3", panel{1280, 480}, false, true, apps[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"BoostDeck", "ID6LibraryLab", "ID6FullBoostDeck", "HudTest"} {
+		if _, err := os.Stat(filepath.Join(dir, "Plugins", name)); !os.IsNotExist(err) {
+			t.Fatalf("old menu %s remains active: %v", name, err)
+		}
+		if _, err := os.Stat(filepath.Join(dir, filepath.Base(backup), "old-"+name, name+".manifest")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, name := range []string{"ShiftDeck", "ExternalApp"} {
+		if _, err := os.Stat(filepath.Join(dir, "Plugins", name, name+".manifest")); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestDesktopRecoversOnlyEmptyManagedFolders(t *testing.T) {
+	for _, leftover := range []string{"", ".hidden"} {
+		t.Run("leftover="+leftover, func(t *testing.T) {
+			dir := t.TempDir()
+			for _, name := range []string{"ShiftDeck", "BoostDeck", "ExternalApp"} {
+				path := filepath.Join(dir, "Plugins", name)
+				if err := os.MkdirAll(path, 0755); err != nil {
+					t.Fatal(err)
+				}
+				if leftover != "" && name != "ExternalApp" {
+					if err := os.WriteFile(filepath.Join(path, leftover), []byte("keep"), 0644); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			backup, err := installReplacing(shellFixture{dir: dir}, "169.254.21.3", panel{1280, 480}, false, true, apps[1])
+			if leftover != "" {
+				if err == nil {
+					t.Fatal("a nonempty manifest-less folder was accepted")
+				}
+				if _, err := os.Stat(filepath.Join(dir, "Plugins", "BoostDeck", leftover)); err != nil {
+					t.Fatal(err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, name := range []string{"BoostDeck", "ShiftDeck"} {
+				files, err := os.ReadDir(filepath.Join(dir, filepath.Base(backup), "old-"+name))
+				if err != nil || len(files) != 0 {
+					t.Fatalf("expected an empty backup for %s, got %v, %v", name, files, err)
+				}
+			}
+			for _, path := range []string{"Plugins/ExternalApp", "Plugins/ShiftDeck/ShiftDeck.manifest"} {
+				if _, err := os.Stat(filepath.Join(dir, path)); err != nil {
+					t.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func TestCompactInstallStagesDashboardArtwork(t *testing.T) {
 	for _, size := range []panel{{800, 480}, {960, 480}} {
 		t.Run(size.String(), func(t *testing.T) {
-			selection, err := choose([]string{"BoostDeck", "HudTest", "WarmDeck", "HybridDeck", "MgFlasher"})
+			selection, err := choose([]string{"BoostDeck", "WarmDeck", "HybridDeck", "MgFlasher"})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -482,7 +599,7 @@ func TestCompactInstallStagesHUDMenuAndDashboardArtwork(t *testing.T) {
 			}
 			sizeDir := fmt.Sprintf("%dx%d", size.width, size.height)
 			for _, name := range []string{
-				"BoostDeck/BoostDeck.xml", "BoostDeck/BoostDeck_ALL_Images.zip", "HudTest/HudTest.xml",
+				"BoostDeck/BoostDeck.xml", "BoostDeck/BoostDeck_ALL_Images.zip",
 				"WarmDeck/WarmDeck.xml", "WarmDeck/WarmDeck_ALL_Images.zip",
 				"HybridDeck/HybridDeck.xml", "HybridDeck/HybridDeck_ALL_Images.zip",
 				"MgFlasher/MgFlasher.xml", "MgFlasher/MgFlasher_ALL_Images.zip",
@@ -500,20 +617,21 @@ func TestCompactInstallStagesHUDMenuAndDashboardArtwork(t *testing.T) {
 	}
 }
 
-func TestCaptureOnlyProfileMatchesWithoutEnablingInstall(t *testing.T) {
+func TestCaptureOnlyProfileCanInstallAsBeta(t *testing.T) {
 	const version = "NBTevo_J16383I"
 	if !captureOnly[version] || captureOnly["NBTevo_O18184I"] {
 		t.Fatal("unexpected capture-only status")
 	}
 	fixture := compatibilityFixture{
 		identifyOnly: identifyOnly{version, t},
-		app:          []byte("app"), core: []byte("core"),
+		app:          []byte("app"), core: []byte("core"), display: "- resolution: x=1280, y=480\n",
 	}
 	saved := profiles[version]
 	profiles[version] = frameworkPair{digest(fixture.app), digest(fixture.core)}
 	defer func() { profiles[version] = saved }()
-	got := inspect(fixture, vehicleInput{}, checkGateway)
-	if got.Ready || !strings.Contains(got.Result, "matches the submitted framework fingerprints") {
+	got := inspect(fixture, vehicleInput{Head: "169.254.21.10", Gateway: "169.254.21.3"},
+		func(_, _ string) (string, error) { return "169.254.21.10", nil })
+	if !got.Ready || !strings.Contains(got.Result, "Early beta") {
 		t.Fatalf("unexpected capture-only inspection result: %+v", got)
 	}
 	if profiles["NBTevo_W20204I"] != profiles["NBTevo_V20153I"] || captureOnly["NBTevo_W20204I"] {
@@ -570,7 +688,7 @@ func TestInspectUsesApprovedFrameworkPairForFirmwareVariants(t *testing.T) {
 	for _, tc := range []struct {
 		name, version string
 		app, core     []byte
-		ready         bool
+		verified      bool
 	}{
 		{"unlisted exact pair", "NBTevo_Z24000I", app, core, true},
 		{"listed variant exact pair", "NBTevo_W20204I", app, core, true},
@@ -584,7 +702,7 @@ func TestInspectUsesApprovedFrameworkPairForFirmwareVariants(t *testing.T) {
 				app:          tc.app, core: tc.core, display: "- resolution: x=1280, y=480",
 			}
 			got := inspect(fixture, in, gateway)
-			if got.Ready != tc.ready || got.Version != tc.version {
+			if !got.Ready || got.Version != tc.version || strings.Contains(got.Result, "Early beta") == tc.verified {
 				t.Fatalf("unexpected inspection: %+v", got)
 			}
 		})

@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include "diag_link.h"
+#include "dct_temperature.h"
 #include "gauge_coexistence.h"
 #include "gauge_core.h"
 #include "warm_frame.h"
@@ -24,15 +25,19 @@ static int temperature(struct diag_link *link, unsigned signal, double *out) {
 int main(int argc, char **argv) {
     struct diag_link_cfg cfg={0,6801,DIAG_AUTO,DIAG_LOOP,"warmdeck",1};
     struct diag_link link;
-    unsigned cycles=0, count=0, next=0;
+    unsigned cycles=0, count=0, next=0, udp_port=WARM_PORT;
+    int dct=dct_temperature_enabled();
     for (int i=1;i<argc;++i) {
         if (!strcmp(argv[i],"--host") && i+1<argc && !cfg.host) cfg.host=argv[++i];
-        else if ((!strcmp(argv[i],"--port") || !strcmp(argv[i],"--cycles")) && i+1<argc) {
-            const int port=!strcmp(argv[i],"--port");
+        else if (!strcmp(argv[i],"--dct-temp")) dct=1;
+        else if ((!strcmp(argv[i],"--port") || !strcmp(argv[i],"--cycles") ||
+                  !strcmp(argv[i],"--udp-port")) && i+1<argc) {
+            const char *option=argv[i];
             char *end;
             unsigned long value=strtoul(argv[++i],&end,10);
-            if (*end || !value || value>(port ? 65535u : 1000u)) return 2;
-            if (port) cfg.port=(unsigned)value;
+            if (*end || !value || value>(!strcmp(option,"--cycles") ? 1000u : 65535u)) return 2;
+            if (!strcmp(option,"--port")) cfg.port=(unsigned)value;
+            else if (!strcmp(option,"--udp-port")) udp_port=(unsigned)value;
             else cycles=(unsigned)value;
         } else return 2;
     }
@@ -40,7 +45,7 @@ int main(int argc, char **argv) {
     const pid_t parent=getppid();
     const int socket_fd=gauge_bind(WARM_ACTIVE_PORT);
     if (socket_fd<0 || parent<=1) return 1;
-    const struct sockaddr_in peer=gauge_local_address(WARM_PORT);
+    const struct sockaddr_in peer=gauge_local_address(udp_port);
     struct warm_frame frame;
     memset(&frame,0,sizeof frame);
     diag_link_signals();
@@ -55,8 +60,11 @@ int main(int argc, char **argv) {
                     frame.sample[signal]=0;
                     continue;
                 }
-                const int status=temperature(&link,signal,&frame.celsius[signal]);
-                frame.sample[signal]=status==1 ? bd_mono_ms() : 0;
+                const uint64_t started=bd_mono_ms();
+                const int status=signal==WARM_TRANS && dct ?
+                    read_dct_temperature(&link,&frame.celsius[signal]) :
+                    temperature(&link,signal,&frame.celsius[signal]);
+                frame.sample[signal]=status==1 ? started : 0;
                 if (status==-1) {
                     diag_link_drop(&link);
                     if (diag_link_lost(&link)) diag_running=0;

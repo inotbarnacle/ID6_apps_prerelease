@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='utf-8'?>
+<pluginApps>
+  <pluginApp applicationType="VehicleInformation" applicationWeight="249" text="Road Jet">
+    <entryButton id="1" action="10">
+      <properties>
+        <property id="23" value="2" />
+      </properties>
+    </entryButton>
+    <actions>
+      <hmiAction id="10" target="204" />
+    </actions>
+    <models>
+      <raDataModel id="604" modelType="Richtext" />
+    </models>
+    <hmiStates>
+      <hmiState id="204" text="Road Jet">
+        <components>
+          <label id="544" text="Pedal climbs. Steering changes lanes.">
+            <properties>
+              <property id="20" value="37" />
+              <property id="21" value="120" />
+              <property id="9" value="786" />
+              <property id="10" value="54" />
+            </properties>
+          </label>
+          <label id="464" model="604">
+            <properties>
+              <property id="20" value="21" />
+              <property id="21" value="365" />
+              <property id="9" value="793" />
+              <property id="10" value="70" />
+            </properties>
+          </label>
+        </components>
+      </hmiState>
+    </hmiStates>
+  </pluginApp>
+</pluginApps>
