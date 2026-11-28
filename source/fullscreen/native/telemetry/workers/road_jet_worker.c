@@ -7,6 +7,7 @@
 #include "gauge_core.h"
 
 #include <arpa/inet.h>
+#include <poll.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -107,7 +108,7 @@ int main(int argc, char **argv) {
         (void)sendto(fd, &frame, sizeof frame, 0,
                      (const struct sockaddr *)&address, sizeof address);
         if (cycles && ++count == cycles) break;
-        usleep(frame.mode == ROAD_JET_WAITING || frame.mode == ROAD_JET_TOO_FAST ? 350000 : 100000);
+        poll(0, 0, frame.mode == ROAD_JET_WAITING || frame.mode == ROAD_JET_TOO_FAST ? 350 : 100);
     }
     int lost = diag_link_lost(&link);
     diag_link_close(&link);
