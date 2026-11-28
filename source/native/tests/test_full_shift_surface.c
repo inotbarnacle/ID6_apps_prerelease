@@ -65,7 +65,7 @@ int main(void) {
         surface_draw(canvas,&state);
         assert(pixel(canvas,138,53)==frame && pixel(canvas,32,179)==0x1b222d);
         state.shift_target=4000;
-        for (unsigned old=0x49443653;old<=0x49443654;++old) {
+        for (unsigned old=0x49443653;old<=0x49443655;++old) {
             state.magic=old;
             assert(!surface_packet_valid(&state,sizeof state) && !surface_tach(&state));
         }

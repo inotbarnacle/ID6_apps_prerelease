@@ -163,6 +163,10 @@ for i, item in enumerate(catalog):
             model = 1400 + 20*i + j
             element(models, 'raDataModel', id=model, modelType='Richtext')
             geometry(element(components, 'label', id=1020 + 40*i + j, model=model), (x, y+53, 365, 65))
+            if item['id']=='BoostDeck':
+                caption_model=1840+j
+                element(models,'raDataModel',id=caption_model,modelType='Richtext')
+                components.find(f"label[@id='{1000+40*i+j}']").set('model',str(caption_model))
     if item['id'] == 'WarmDeck':
         for j in range(3):
             model = 1400 + 20*i + 3 + j
@@ -216,6 +220,13 @@ element(models,'raDataModel',id=1899,modelType='Richtext')
 element(actions, 'raAction', id=5750)
 element(models, 'raDataModel', id=1880, modelType='Richtext')
 element(prefs, 'button', id=1880, action=5750, model=1880, text='DCT temperature')
+for model in (1830,1831):
+    element(models,'raDataModel',id=model,modelType='Richtext')
+element(prefs,'label',id=1897,model=1830)
+element(layout,'label',id=1898,model=1831)
+for index,(action,text) in enumerate(((5850,'Use detected diesel defaults'),(5851,'Use custom diesel layout'))):
+    element(actions,'raAction',id=action)
+    element(prefs,'button',id=960+index,action=action,text=text)
 
 def return_action(identifier, remote, target):
     group=element(element(actions,'combinedAction',id=identifier),'actions')
@@ -236,7 +247,7 @@ for row,(label,choices) in enumerate(BOOST_SETTINGS):
 
 signals = []
 for line in (root/'native/telemetry/common/boost_signals.def').read_text().splitlines():
-    match=re.match(r'SIGNAL\(([A-Z_]+),\s*"([^"]+)"',line)
+    match=re.match(r'SIGNAL\(([A-Z0-9_]+),\s*"([^"]+)"',line)
     if match:
         signals.append(match.groups())
 

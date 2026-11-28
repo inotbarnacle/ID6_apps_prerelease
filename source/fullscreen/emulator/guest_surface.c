@@ -3,6 +3,7 @@
 #include "emulator_telemetry.h"
 #define ID6_EMULATOR 1
 #include "boost_files.h"
+#include "boost_config.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -13,23 +14,23 @@
 #include <unistd.h>
 
 static const char hex[] = "0123456789abcdef";
-static const char *const preference_paths[] = {ID6_BOOST_PREFS, ID6_BOOST_LAYOUT};
-static const unsigned preference_sizes[] = {11,21};
+static const char *const preference_paths[] = {ID6_BOOST_PREFS, ID6_BOOST_LAYOUT, ID6_BOOST_DEFAULTS};
 
 static void receive_preferences(const char *line)
 {
-    if (strlen(line)<10 || line[8]<'0' || line[8]>'1' || line[9]!=' ') return;
+    if (strlen(line)<10 || line[8]<'0' || line[8]>'2' || line[9]!=' ') return;
     const unsigned kind=(unsigned)(line[8]-'0');
-    const unsigned count=preference_sizes[kind];
-    if (strlen(line+10)!=count*2u) return;
-    unsigned char data[21];
+    const size_t encoded=strlen(line+10);
+    if (encoded%2 || encoded>50) return;
+    const unsigned count=(unsigned)encoded/2;
+    unsigned char data[25];
     for (unsigned i=0;i<count;++i) {
         const char *hi=strchr(hex,line[10+i*2]);
         const char *lo=strchr(hex,line[11+i*2]);
         if (!hi || !lo) return;
         data[i]=(unsigned char)((hi-hex)*16+lo-hex);
     }
-    if (data[0]!=(kind ? 'B' : 'G') || data[1]!=2) return;
+    if (!boost_config_valid(kind,data,count)) return;
     const int fd=open(preference_paths[kind],O_WRONLY|O_CREAT|O_EXCL,0600);
     if (fd<0) return;
     if (write(fd,data,count)!=(ssize_t)count) unlink(preference_paths[kind]);
@@ -38,16 +39,18 @@ static void receive_preferences(const char *line)
 
 static void send_preferences(int port)
 {
-    static unsigned char previous[2][21];
-    for (unsigned kind=0;kind<2;++kind) {
-        unsigned char data[21];
-        const unsigned size=preference_sizes[kind];
+    static unsigned char previous[3][25];
+    static unsigned previous_sizes[3];
+    for (unsigned kind=0;kind<3;++kind) {
+        unsigned char data[26];
         const int fd=open(preference_paths[kind],O_RDONLY);
         if (fd<0) continue;
-        const ssize_t got=read(fd,data,size);
+        const ssize_t got=read(fd,data,sizeof data);
         close(fd);
-        if (got!=(ssize_t)size || !memcmp(data,previous[kind],size)) continue;
-        char line[53];
+        if (got<=0 || !boost_config_valid(kind,data,(size_t)got)) continue;
+        const unsigned size=(unsigned)got;
+        if (size==previous_sizes[kind] && !memcmp(data,previous[kind],size)) continue;
+        char line[64];
         memcpy(line,"ID6CONF 0 ",10);
         line[8]=(char)('0'+kind);
         for (unsigned i=0;i<size;++i) {
@@ -55,8 +58,10 @@ static void send_preferences(int port)
             line[11+i*2]=hex[data[i]&15];
         }
         line[10+2*size]='\n';
-        if (write(port,line,11+2*size)==(ssize_t)(11+2*size))
+        if (write(port,line,11+2*size)==(ssize_t)(11+2*size)) {
             memcpy(previous[kind],data,size);
+            previous_sizes[kind]=size;
+        }
     }
 }
 

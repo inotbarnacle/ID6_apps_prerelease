@@ -2,19 +2,12 @@
 #define ID6_FULL_SHIFT_STATE_H
 
 #include "drive_frame.h"
+#include "fullscreen_preferences.h"
 #include "../../../native/src/plugins/shift_preferences.h"
 #include <string.h>
 
 inline bool saveFullShiftRecord(const char* path,const unsigned char* data,size_t count) {
-#ifdef ID6_EMULATOR
-    // Preserve the existing emulator path: QNX shared memory has no atomic rename.
-    FILE* file=fopen(path,"wb");
-    if (!file) return false;
-    const bool saved=fwrite(data,1,count,file)==count;
-    return fclose(file)==0 && saved;
-#else
-    return savePersistentBytes(path,data,count);
-#endif
+    return saveFullScreenRecord(path,data,count);
 }
 
 struct FullShiftPreferences : ShiftPreferences {

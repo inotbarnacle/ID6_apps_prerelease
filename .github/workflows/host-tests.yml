@@ -27,7 +27,11 @@ jobs:
           REAGENT_MODEL_CAPTURE: /tmp/reagent-models.tsv
         run: make -C source/native test CC=${{ matrix.cc }} CXX=${{ matrix.cxx }}
       - name: Production BoostDeck syntax
-        run: ${{ matrix.cxx }} -std=gnu++98 -Wall -Wextra -Werror -Isource/native/sdk -Isource/native/src/common -Isource/native/src/ipc -fsyntax-only source/native/src/plugins/boost_deck.cpp
+        run: |
+          ${{ matrix.cxx }} -std=gnu++98 -Wall -Wextra -Werror -Isource/native/sdk -Isource/native/src/common -Isource/native/src/ipc -fsyntax-only source/native/src/plugins/boost_deck.cpp
+          for variant in '' '-DID6_EMULATOR'; do
+            ${{ matrix.cxx }} -std=gnu++98 -O2 -Wall -Wextra -Werror -fsyntax-only $variant '-DID6_PLUGIN_NAME="HostBoost"' -DID6_ENTRY_PAGE=0 -Isource/fullscreen/native/sdk -Isource/fullscreen/native/src -Isource/fullscreen/native/generated -Isource/fullscreen/native/telemetry/common -Isource/fullscreen/native/telemetry/ipc source/fullscreen/native/src/library.cpp
+          done
       - name: Capability and plugin static analysis
         if: matrix.cc == 'clang'
         run: |
@@ -35,10 +39,16 @@ jobs:
           clang --analyze -Xanalyzer -analyzer-output=text -std=c99 -Isource/native/src/common source/native/src/common/obd_capabilities_extra.c
           clang --analyze -Xanalyzer -analyzer-output=text -std=c99 -DMOST_HOST -Isource/native/src/common -Isource/native/src/ipc -Isource/native/src/workers source/native/src/workers/boost_deck_worker.c
           clang++ --analyze -Xanalyzer -analyzer-output=text -std=gnu++98 -Isource/native/sdk -Isource/native/src/common -Isource/native/src/ipc source/native/src/plugins/boost_deck.cpp
+          clang++ --analyze -Xanalyzer -analyzer-output=text -std=gnu++98 '-DID6_PLUGIN_NAME="HostBoost"' -DID6_ENTRY_PAGE=0 -Isource/fullscreen/native/sdk -Isource/fullscreen/native/src -Isource/fullscreen/native/generated -Isource/fullscreen/native/telemetry/common -Isource/fullscreen/native/telemetry/ipc source/fullscreen/native/src/library.cpp
       - name: Generated default-mode menu and unchanged dashboard geometry
         run: |
           python3 -m pip install Pillow==13.0.0
           python3 -B source/tools/test_boost_defaults_resources.py
+          python3 -B source/tools/test_full_boost_resources.py
+          python3 -B source/tools/test_full_warm_resources.py
+          python3 -B source/tools/test_full_shift_resources.py
+          make -C source/native build/full-warm-surface.so CC=${{ matrix.cc }}
+          python3 -B source/tools/preview_full_boost.py --renderer source/native/build/full-warm-surface.so --models source/native/build/full-boost-models/detected-defaults.bin --out /tmp/full-boost-host-synthetic.png
           python3 - <<'PY'
           from pathlib import Path
           from zipfile import ZipFile
@@ -51,6 +61,10 @@ jobs:
         run: |
           python3 -B source/tools/test_probe_signals.py
           python3 -B source/tools/test_capture_headunit.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: full-boost-host-preview-${{ matrix.cc }}
+          path: /tmp/full-boost-host-synthetic.png
   memory:
     runs-on: ubuntu-24.04
     steps:
@@ -64,3 +78,4 @@ jobs:
           source/native/build/test-core
           source/native/build/test-obd-capabilities
           make -C source/native test-reagent test-pressure test-egr test-egt test-boost-defaults CC=clang CXX=clang++ CFLAGS='-O1 -g -std=c99 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer' CXXFLAGS='-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'
+          make -C source/native test-full-boost test-full-warm test-full-shift CC=clang CXX=clang++ CFLAGS='-O1 -g -std=c99 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer' CXXFLAGS='-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'

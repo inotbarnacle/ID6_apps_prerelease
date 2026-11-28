@@ -129,13 +129,14 @@ suppresses lights. The physical gear remains unknown; IDEmu's P/R/N/D is simulat
 LaunchDeck's speed-only path uses the same matching frame and source socket.
 The standard app's worker and 16-byte protocol remain unchanged.
 
-The shared renderer protocol is **v3 (`ID6U`), 496 bytes**. It carries explicit
+The shared renderer protocol is **v4 (`ID6V`), 496 bytes**. It carries explicit
 profile, scale and raw RPM fields; rounded display text cannot trigger a light.
-It retains #209's measured Warm states. This PR depends on
+It retains #209's measured Warm states and names the expanded Boost channels.
+The Shift implementation depends on
 [WarmDeck #209](https://github.com/inotbarnacle/iDriveDeck/pull/209). Rebuild the
 complete matching full-screen bundle from fresh outputs: Library, Shift/Launch
 worker, renderer, all dashboard/optional companion plugins and emulator parts.
-Surface v1/v2 and older 16-byte worker frames are rejected. Keep the entire
+Surface v1/v2/v3 and older 16-byte worker frames are rejected. Keep the entire
 previous bundle and settings backups for rollback; do not mix revisions.
 No compatibility profile or packaged native binary is added here.
 
@@ -157,14 +158,14 @@ make -C native build/full-warm-surface.so
 ```
 
 The preview is rendered from captured production Library updates with synthetic
-data. It is not a QNX, ARM emulator or vehicle capture. Full-Library static
-analysis retains the four existing Boost stream diagnostics documented in
-[WarmDeck](WARM-READINESS.md); these are not claimed clean. Licensed QNX builds,
+data. It is not a QNX, ARM emulator or vehicle capture. The current telemetry
+revision guards the earlier Boost stream-read paths and reports no host
+full-Library analysis diagnostics. Licensed QNX builds,
 firmware/RHMI checks and separately authorized parked validation remain required.
 
 ![Full-screen ShiftDeck with synthetic data](images/shift-fullscreen-host-synthetic.png)
 
-The full host suite passes 18 native test programs and 97 Python cases; the
+The prior Shift-only revision passed 18 native test programs and 97 Python cases; the
 Shift/Warm resource checks add 20 cases. Focused Shift/Warm checks pass Clang
 ASan/UBSan. Comparing the previous actual renderer with this renderer preserves
 gasoline pixels above the new advisory footer for all 21 targets on all five

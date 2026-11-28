@@ -7,6 +7,7 @@
 #include "road_jet_frame.h"
 #include "launch_timer.h"
 #include "surface_shift.h"
+#include "gauge_core.h"
 #include "dme_descriptions.h"
 #include <stdbool.h>
 #include <stdio.h>
@@ -361,6 +362,13 @@ static void dial(struct canvas c, int cx, int cy, unsigned level, unsigned color
     }
 }
 
+static int boost_text_size(const char* value,unsigned signal,int size,int width)
+{
+    if (signal<BD_LEGACY_COUNT) return size;
+    while (size>11 && word_width(value,size)>width) --size;
+    return size;
+}
+
 static void draw_boost(struct canvas c, const struct surface_state *s)
 {
     static const unsigned palette[] = {
@@ -375,24 +383,24 @@ static void draw_boost(struct canvas c, const struct surface_state *s)
         unsigned color=palette[s->boost_color<COUNT(palette) ? s->boost_color : i%COUNT(palette)];
         const unsigned signal=s->boost_signal[i];
         const char *label=signal<COUNT(boost_names) ? boost_names[signal][column] : "--";
-        unsigned level=s->boost_level[i]<=1000 ? s->boost_level[i] : 0;
+        unsigned level=signal<COUNT(boost_names) && s->boost_level[i]<=1000 ? s->boost_level[i] : 0;
+        const char* reading=signal<COUNT(boost_names) ? value(s,i) : "--";
         card(c,x,y,w,h,false);
         if (s->boost_style) {
             int center_x=x+w/2, center_y=y+(column ? 75 : 44);
-            center(c,center_x,y+3,label,muted,15);
+            center(c,center_x,y+3,label,muted,boost_text_size(label,signal,15,w-18));
             dial(c,center_x,center_y,level,color);
-            const char *reading=value(s,i);
             center(c,center_x,center_y-8,reading,bright,word_width(reading,18)>55 ? 12 : 18);
         } else {
-            text(c,x+9,y+5,label,muted,17);
+            text(c,x+9,y+5,label,muted,boost_text_size(label,signal,17,w-18));
             if (column) {
                 rounded(c,x+28,y+29,22,95,frame);
                 int height=(int)(95*level/1000);
                 if (height>=6) rounded(c,x+28,y+124-height,22,height,color);
                 else if (height) fill(c,x+28,y+124-height,22,height,color);
-                center(c,x+w/2,y+126,value(s,i),bright,22);
+                center(c,x+w/2,y+126,reading,bright,boost_text_size(reading,signal,22,w-18));
             } else {
-                text(c,x+9,y+25,value(s,i),bright,24);
+                text(c,x+9,y+25,reading,bright,boost_text_size(reading,signal,24,w-18));
                 rounded(c,x+9,y+58,w-18,6,frame);
                 int width=(int)((w-18)*level/1000);
                 if (width>=6) rounded(c,x+9,y+58,width,6,color);

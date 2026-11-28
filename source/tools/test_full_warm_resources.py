@@ -29,7 +29,7 @@ def receive(data):
     instance=overlay.LibraryOverlay.__new__(overlay.LibraryOverlay)
     instance._client=Stream(data)
     instance._size=496
-    instance._magic=0x49443655
+    instance._magic=0x49443656
     instance._hidden_page=14
     instance._animation=ctypes.create_string_buffer(32)
     instance._lock=threading.Lock()
@@ -80,14 +80,14 @@ class FullWarmResources(unittest.TestCase):
                 self.assertEqual(len(ids),len(set(ids)))
 
     def test_emulator_rejects_previous_surface_version(self):
-        for magic in (0x49443653,0x49443654):
+        for magic in (0x49443653,0x49443654,0x49443655):
             old=packet(magic)
             state=receive(b'ID6HUD '+old.hex().encode()+b'\n')
             self.assertIsNone(state._packet)
             self.assertEqual(state._last,0)
 
     def test_emulator_accepts_new_version_ignores_bad_frames(self):
-        current=packet(0x49443655)
+        current=packet(0x49443656)
         data=b'ID6HUD '+current.hex().encode()+b'\nID6HUD not-hex\nID6HUD 00\n'
         data+=b'ID6HUD '+packet(0x49443653).hex().encode()+b'\n'
         state=receive(data)

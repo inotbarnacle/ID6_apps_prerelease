@@ -16,15 +16,17 @@ for pair in libstdc++.so:libstdc++.so.6 libsocket.so:libsocket.so.3 libm.so:libm
     fi
 done
 telemetry=native/telemetry
+shared=../native/src/common
 c() { qcc -V4.4.2,gcc_ntoarmv7le -Wc,-std=c99 -include stddef.h -mno-unaligned-access -Wall -Wextra -Werror "$@"; }
 c -I"$telemetry/common" -fPIC -O2 -c "$telemetry/common/gauge_core.c" -o native/out/gauge_core.o
+c -I"$shared" -fPIC -O2 -c "$shared/boost_defaults.c" -o native/out/boost_defaults.o
 build_plugin() {
     name="$1"
     source="$2"
     shift 2
     mkdir -p "native/out/$name"
     qcc -V4.4.2,gcc_ntoarmv7le_gpp -lang-c++ -Wc,-std=gnu++98 -mno-unaligned-access -Wall -Wextra -Werror \
-        -D_QNX_SOURCE -Inative/sdk -Inative/generated -I"$telemetry/common" -I"$telemetry/ipc" -O2 -fno-exceptions -fPIC -shared \
+        -D_QNX_SOURCE -Inative/sdk -Inative/generated -I"$telemetry/common" -I"$telemetry/ipc" -I"$shared" -O2 -fno-exceptions -fPIC -shared \
         "native/src/$source.cpp" "$@" "$NBTEVO_FRAMEWORKS_DIR/libAppFramework.A.so" \
         "$NBTEVO_FRAMEWORKS_DIR/libCoreFramework.A.so" -Lnative/out/link -lsocket -lm \
         -Wl,--allow-shlib-undefined "-Wl,-soname,lib$name.so" -o "native/out/$name/lib$name.so"
@@ -33,7 +35,7 @@ build_plugin() {
 c -I"$telemetry/common" -fPIC -O2 -c "$telemetry/common/launch_timer.c" -o native/out/launch_timer.o
 while read -r name page; do
     build_plugin "$name" library "-DID6_PLUGIN_NAME=\"$name\"" "-DID6_ENTRY_PAGE=$page" \
-        native/out/gauge_core.o native/out/launch_timer.o
+        native/out/gauge_core.o native/out/boost_defaults.o native/out/launch_timer.o
 done < native/generated/modules.txt
 if test -n "${ID6_STANDARD_NATIVE_DIR:-}"; then
     . native/build-companions.sh
@@ -42,13 +44,13 @@ fi
 worker() {
     output="$1"
     shift
-    c -I"$telemetry/common" -I"$telemetry/ipc" -O2 "$@" native/out/gauge_core.o \
+    c -I"$telemetry/common" -I"$telemetry/ipc" -I"$shared" -O2 "$@" native/out/gauge_core.o \
         "$telemetry/common/diag_link.c" "$telemetry"/common/most/*.c -Lnative/out/link -lm -lsocket \
         -o "native/out/ID6LibraryLab/$output"
 }
-worker boostdeck-collector-qnx "$telemetry/workers/boost_deck_worker.c" "$telemetry/workers/boost_tone.c"
+worker boostdeck-collector-qnx "$telemetry/workers/boost_deck_worker.c" "$telemetry/workers/boost_tone.c" "$shared/obd_capabilities.c" "$shared/obd_capabilities_extra.c" native/out/boost_defaults.o
 worker shift-deck-qnx "$telemetry/workers/shift_deck_worker.c"
-worker warmdeck-collector-qnx "$telemetry/workers/warm_deck_worker.c"
+worker warmdeck-collector-qnx "$telemetry/workers/warm_deck_worker.c" "$shared/obd_capabilities.c"
 worker engine-codes-qnx "$telemetry/workers/engine_codes_worker.c"
 worker mhd-maps-qnx "$telemetry/workers/mhd_maps_worker.c"
 worker exhaust-flap-worker-qnx "$telemetry/workers/exhaust_flap_worker.c"

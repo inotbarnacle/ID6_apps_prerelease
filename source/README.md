@@ -5,6 +5,10 @@ Start with [AgentReadMe.md](../AgentReadMe.md). See [signal definitions](docs/SI
 [Automatic diesel gauges](docs/AUTO-DIESEL-GAUGES.md) uses explicit PID/EGS
 evidence for new defaults while retaining existing custom layouts.
 
+[Full-screen diesel telemetry](docs/FULLSCREEN-DIESEL.md) shares the standard
+capability policy, preserves legacy layouts and documents the matching bundle,
+host previews and pending QNX/vehicle validation.
+
 [Standard exhaust-temperature gauges](docs/STANDARD-EGT.md) use advertised PID
 and sensor-support data, retain explicit bank/sensor labels, and preserve old
 channel IDs and ordinary packets. Exact N57 support still needs vehicle evidence.

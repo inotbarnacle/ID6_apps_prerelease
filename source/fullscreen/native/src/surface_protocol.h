@@ -11,8 +11,8 @@ enum surface_page {
     surface_update_confirm, surface_install_confirm, surface_hidden
 };
 enum { surface_text_size = 36 };
-// Version 3 retains measured Warm states and adds explicit Shift profile/RPM data.
-enum { surface_magic = 0x49443655 };
+// Version 4 retains Warm/Shift states and names all 58 Boost channels/empty slots.
+enum { surface_magic = 0x49443656 };
 enum { surface_warm_unknown, surface_warm_pending, surface_warm_met };
 enum { surface_bm3=40, surface_mg, surface_xdrive, surface_hybrid };
 

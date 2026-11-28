@@ -22,6 +22,12 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+/* The full-screen consumer uses a fixed loopback source. Keep the standard
+ * worker's existing optional activity-marker behavior by default. */
+#ifndef BD_WORKER_BOUND_SOURCE
+#define BD_WORKER_BOUND_SOURCE 0
+#endif
+
 static unsigned number(const char *s, unsigned lo, unsigned hi) {
     char *end; unsigned long n = strtoul(s, &end, 10);
     if (!*s || *end || n < lo || n > hi) { fprintf(stderr, "Invalid number: %s\n", s); exit(2); }
@@ -303,9 +309,9 @@ int main(int argc, char **argv) {
     diag_link_signals();
     if (trace_reads) most_log_level(MOST_LOG_I);
     if (session && (parent <= 1 || demo)) return 2;
-    sock = socket(AF_INET, SOCK_DGRAM, 0);
+    sock = BD_WORKER_BOUND_SOURCE ? gauge_bind(BOOST_ACTIVE_PORT) : socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) { perror("UDP socket"); return 1; }
-    if (!demo) {
+    if (!demo && !BD_WORKER_BOUND_SOURCE) {
         active = gauge_bind(BOOST_ACTIVE_PORT);
         if (active < 0) {
             if (errno != EADDRINUSE) { perror("BoostDeck HUD sharing socket"); close(sock); return 1; }

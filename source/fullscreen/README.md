@@ -34,6 +34,15 @@ BoostDeck preferences as its initial defaults when available and saves its
 own choices separately. IDEmu keeps the Library's files in its test profile
 across cold boots.
 
+## Diesel telemetry
+
+BoostDeck shares the standard capability policy and exposes 58 channels.
+Choose Diesel, then detected defaults or the saved custom layout in Settings.
+Existing layouts remain custom, and unsupported/stale readings stay unavailable.
+WarmDeck checks oil PID support before querying it.
+[Full-screen telemetry, synthetic previews and rollback](../docs/FULLSCREEN-DIESEL.md)
+describes the shared source and pending QNX/vehicle checks.
+
 ## WarmDeck temperature targets
 
 Oil, coolant and transmission show independent unknown/pending/met states.
@@ -43,7 +52,7 @@ Estimates need fresh measurements and rising trends. These targets are app
 choices; follow the vehicle's guidance.
 
 [Behavior, host preview and validation limits](../docs/WARM-READINESS.md#full-screen-warmdeck)
-cover the renderer and RHMI fallback. This revision uses surface protocol v3
+cover the renderer and RHMI fallback. This revision uses surface protocol v4
 with the same 496-byte state size. Rebuild the complete matching bundle,
 including renderer, plugins and optional companions; update the emulator's
 renderer and overlay together. Earlier packets are rejected. Use fresh build
@@ -99,7 +108,7 @@ fault memory and re-reading the result.
 
 Upstream reported tests of the separate apps and overlay transitions on its
 1280 × 480 IDEmu profile. Those results precede the WarmDeck readiness,
-ShiftDeck profiles and surface-v3 changes here. This revision has host tests; its QNX build, ARM
+ShiftDeck profiles and surface-v4 changes here. This revision has host tests; its QNX build, ARM
 emulator and parked vehicle checks remain pending, including transitions to
 OEM camera and projection screens.
 
