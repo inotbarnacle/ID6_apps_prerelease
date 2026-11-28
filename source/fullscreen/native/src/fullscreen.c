@@ -148,7 +148,7 @@ int main(int argc, char **argv)
         uint64_t now = monotonic_ms();
         if (ready) {
             ssize_t count = read(STDIN_FILENO,&incoming,sizeof incoming);
-            if (count != (ssize_t)sizeof incoming || incoming.magic != surface_magic) {
+            if (count<0 || !surface_packet_valid(&incoming,(size_t)count)) {
                 if (count) fprintf(stderr,"State channel yielded %ld bytes (errno %d)\n",(long)count,errno);
                 break;
             }

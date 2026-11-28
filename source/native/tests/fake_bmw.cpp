@@ -81,7 +81,10 @@ void PluginApp::updateModel(unsigned int model, const BasicString<char>& s) { re
 void PluginApp::updateModel(unsigned int model, int value) { record(model, 'n', (unsigned)value, 0); }
 void PluginApp::updateModel(unsigned int model, const ImageID& image) { record(model, 'i', image.id, 0); }
 void PluginApp::updateModel(unsigned int, const TextID&) {}
+#ifndef FAKE_BMW_NO_BOOL_MODEL
+// The separate full-screen public SDK omits this unused overload.
 void PluginApp::updateModel(unsigned int, bool) {}
+#endif
 void PluginApp::addHandler(unsigned int action, const Delegate<bool, const Parcel&>& d) { handlers[action] = d; }
 void PluginApp::addHandler(unsigned int state, unsigned int action, const Delegate<bool, const Parcel&>& d) {
     handlers[(unsigned long long)state << 32 | action] = d;

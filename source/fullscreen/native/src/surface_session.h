@@ -2,6 +2,7 @@
 #define ID6_SURFACE_SESSION_H
 
 #include "surface_protocol.h"
+#include "gauge_core.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -18,9 +19,10 @@ class SurfaceSession {
     surface_state lastState_;
     uint64_t lastSent_;
     bool hasState_;
+    uint64_t nextOpen_;
 
 public:
-    SurfaceSession() : sender_(-1), reader_(-1), process_(-1), lastSent_(0), hasState_(false) {}
+    SurfaceSession() : sender_(-1), reader_(-1), process_(-1), lastSent_(0), hasState_(false), nextOpen_(0) {}
     ~SurfaceSession() { closeChannel(); }
 
     void reap() {
@@ -59,6 +61,10 @@ public:
         reap();
         if (sender_ >= 0) return true;
         if (process_ > 0) return false;
+        const uint64_t now=bd_mono_ms();
+        if (now<nextOpen_) return false;
+        // An incompatible or failing renderer must not become a rapid spawn loop.
+        nextOpen_=now+2000;
         char path[180], settings[180], width[12], height[12];
         snprintf(path, sizeof path, "%s/id6-library-fullscreen-qnx", root);
         snprintf(settings, sizeof settings, "%s/screen-size.txt", root);
