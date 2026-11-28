@@ -85,3 +85,6 @@ cxx -Isrc/common -Isrc/ipc -Isdk -O2 -fno-exceptions -fPIC -shared src/plugins/m
 cxx -Isrc/common -Isrc/ipc -Isdk -O2 -fno-exceptions -fPIC -shared src/plugins/hybrid_deck.cpp out/core.o \
     "$frameworks/libAppFramework.A.so" "$frameworks/libCoreFramework.A.so" -Lout -lsocket \
     -Wl,--allow-shlib-undefined -Wl,-soname,libHybridDeck.so -o out/libHybridDeck.so
+cxx -Isrc/common -Isrc/ipc -Isdk -O2 -fno-exceptions -fPIC -shared src/plugins/speedlock_unlock.cpp \
+    "$frameworks/libAppFramework.A.so" "$frameworks/libCoreFramework.A.so" -Lout \
+    -Wl,--allow-shlib-undefined -Wl,-soname,libSpeedlockUnlock.so -o out/libSpeedlockUnlock.so

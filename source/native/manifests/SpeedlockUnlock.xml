@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<pluginApps>
+  <pluginApp applicationType="VehicleInformation" applicationWeight="250" text="SpeedlockUnlock">
+    <entryButton id="1" action="10">
+      <properties>
+        <property id="3" value="false" />
+      </properties>
+    </entryButton>
+    <actions>
+      <hmiAction id="10" target="100" />
+    </actions>
+    <models />
+    <hmiStates>
+      <hmiState id="100" text="SpeedlockUnlock">
+        <components />
+      </hmiState>
+    </hmiStates>
+  </pluginApp>
+</pluginApps>
