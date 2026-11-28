@@ -106,6 +106,9 @@ def update_xml():
     placed(components, "label", 218, 119, 14, 421, WIDTH - 28, 43)
 
     settings = page(states, 520, 100, "BoostDeck settings")
+    ET.SubElement(actions, "raAction", id="5750")
+    richtext(models, 1880)
+    button(settings, 1880, 5750, model=1880)
     richtext(models, 118)
     ET.SubElement(settings, "label", id="118", model="118")
     for row, (name, count) in enumerate(SETTINGS):

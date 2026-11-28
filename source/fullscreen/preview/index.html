@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ID6 App Library</title>
+<style>
+:root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#171420;color:#f4ecf8}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 80% 0%,#47324b,transparent 65%)}
+main{margin:auto;max-width:1040px;padding:clamp(20px,4vw,54px)}h1{font-size:clamp(32px,5vw,56px);margin:0;letter-spacing:-.05em}
+p{margin:0 0 22px;color:#d1bbd2}#cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+button{font:inherit;color:inherit;border:1px solid #654b69;background:#272134;border-radius:10px;cursor:pointer;padding:12px;text-align:left}
+.card{display:grid;gap:2px;min-height:92px}.card strong{color:#fff1e2}.card span{font-size:.82rem;color:#ddbcd4}
+button:hover,button:focus-visible{border-color:#f6c899;background:#392941;outline:2px solid #f6c899;outline-offset:2px}
+dialog{max-width:none;max-height:none;width:100%;height:100%;margin:0;background:#100e14;color:#fff1e2;border:none;padding:0}
+article{height:100%;display:grid;grid-template-rows:auto minmax(0,1fr);padding:20px;gap:15px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}h2{margin:0;font-size:26px}
+figure{display:grid;place-items:center;min-height:0;margin:0}img{max-width:100%;max-height:100%;object-fit:contain;min-height:0}
+#description{margin:0}.muted{font-size:.82rem;color:#ddbcd4}
+</style></head><body><main><h1>ID6 App Library</h1><p>Mac preview of the in-car catalogue</p><section id="cards" aria-label="Apps"></section></main>
+<dialog id="detail"><article><header><div><h2 id="title"></h2><p id="description" class="muted"></p></div><button id="back">Back to library</button></header><figure id="screen"></figure></article></dialog>
+<script src="catalog.js"></script><script>
+const cards=document.querySelector('#cards'), detail=document.querySelector('#detail');
+function show(app){
+ document.querySelector('#title').textContent=app.name;
+ document.querySelector('#description').textContent=app.path+(app.screen?' · Captured screen':'');
+ const frame=document.querySelector('#screen'); frame.replaceChildren();
+ if(app.screen){
+  const picture=new Image(); picture.src='screens/'+app.screen; picture.alt=app.name+' on iDrive'; frame.append(picture);
+ }else{
+  const text=document.createElement('p'); text.textContent=app.id==='AirPlayLab'?'Wi-Fi reachability test. AirPlay playback is pending.':'Open this app on iDrive to see its live screen.'; frame.append(text);
+ }
+ detail.showModal();
+}
+for(const app of catalog){
+ const card=document.createElement('button'), title=document.createElement('strong'), text=document.createElement('span');
+ card.type='button'; card.className='card'; title.textContent=app.name; text.textContent=app.category;
+ card.append(title,text); card.addEventListener('click',()=>show(app)); cards.append(card);
+}
+document.querySelector('#back').onclick=()=>detail.close();
+</script></body></html>

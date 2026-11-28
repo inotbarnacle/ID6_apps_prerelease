@@ -1,0 +1,231 @@
+<?xml version='1.0' encoding='utf-8'?>
+<pluginApps>
+  <pluginApp applicationType="VehicleInformation" applicationWeight="246" text="ShiftDeck">
+    <entryButton id="1" action="10">
+      <properties>
+        <property id="23" value="2" />
+      </properties>
+    </entryButton>
+    <actions>
+      <hmiAction id="10" target="201" />
+      <hmiAction id="216" target="216" />
+      <raAction id="5751" />
+      <raAction id="6216" />
+      <combinedAction id="4700">
+        <actions>
+          <raAction id="5700" />
+          <hmiAction id="14700" target="201" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4701">
+        <actions>
+          <raAction id="5701" />
+          <hmiAction id="14701" target="201" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4702">
+        <actions>
+          <raAction id="5702" />
+          <hmiAction id="14702" target="201" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4703">
+        <actions>
+          <raAction id="5703" />
+          <hmiAction id="14703" target="201" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4704">
+        <actions>
+          <raAction id="5704" />
+          <hmiAction id="14704" target="201" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4705">
+        <actions>
+          <raAction id="5705" />
+          <hmiAction id="14705" target="201" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4706">
+        <actions>
+          <raAction id="5706" />
+          <hmiAction id="14706" target="201" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4707">
+        <actions>
+          <raAction id="5707" />
+          <hmiAction id="14707" target="201" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4708">
+        <actions>
+          <raAction id="5708" />
+          <hmiAction id="14708" target="201" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4709">
+        <actions>
+          <raAction id="5709" />
+          <hmiAction id="14709" target="201" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4710">
+        <actions>
+          <raAction id="5710" />
+          <hmiAction id="14710" target="201" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4711">
+        <actions>
+          <raAction id="5711" />
+          <hmiAction id="14711" target="201" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4712">
+        <actions>
+          <raAction id="5712" />
+          <hmiAction id="14712" target="201" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4713">
+        <actions>
+          <raAction id="5713" />
+          <hmiAction id="14713" target="201" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4714">
+        <actions>
+          <raAction id="5714" />
+          <hmiAction id="14714" target="201" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4715">
+        <actions>
+          <raAction id="5715" />
+          <hmiAction id="14715" target="201" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4716">
+        <actions>
+          <raAction id="5716" />
+          <hmiAction id="14716" target="201" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4717">
+        <actions>
+          <raAction id="5717" />
+          <hmiAction id="14717" target="201" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4718">
+        <actions>
+          <raAction id="5718" />
+          <hmiAction id="14718" target="201" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4719">
+        <actions>
+          <raAction id="5719" />
+          <hmiAction id="14719" target="201" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4720">
+        <actions>
+          <raAction id="5720" />
+          <hmiAction id="14720" target="201" />
+        </actions>
+      </combinedAction>
+    </actions>
+    <models>
+      <raDataModel id="1881" modelType="Richtext" />
+      <raDataModel id="1420" modelType="Richtext" />
+      <raDataModel id="1421" modelType="Richtext" />
+      <raDataModel id="601" modelType="Richtext" />
+    </models>
+    <hmiStates>
+      <hmiState id="201" text="ShiftDeck">
+        <components>
+          <button id="916" text="Shift light target" action="216" selectAction="6216">
+            <properties>
+              <property id="20" value="547" />
+              <property id="21" value="8" />
+              <property id="9" value="157" />
+              <property id="10" value="48" />
+            </properties>
+          </button>
+          <label id="1040" text="Road speed">
+            <properties>
+              <property id="20" value="16" />
+              <property id="21" value="42" />
+              <property id="9" value="209" />
+              <property id="10" value="52" />
+            </properties>
+          </label>
+          <label id="1060" model="1420">
+            <properties>
+              <property id="20" value="16" />
+              <property id="21" value="95" />
+              <property id="9" value="209" />
+              <property id="10" value="65" />
+            </properties>
+          </label>
+          <label id="1041" text="Engine RPM">
+            <properties>
+              <property id="20" value="246" />
+              <property id="21" value="42" />
+              <property id="9" value="209" />
+              <property id="10" value="52" />
+            </properties>
+          </label>
+          <label id="1061" model="1421">
+            <properties>
+              <property id="20" value="246" />
+              <property id="21" value="95" />
+              <property id="9" value="209" />
+              <property id="10" value="65" />
+            </properties>
+          </label>
+          <label id="461" model="601">
+            <properties>
+              <property id="20" value="17" />
+              <property id="21" value="365" />
+              <property id="9" value="634" />
+              <property id="10" value="70" />
+            </properties>
+          </label>
+        </components>
+        <optionComponents>
+          <button id="917" text="Shift light target" action="216" />
+          <button id="918" text="Speed units" model="1881" action="5751" />
+        </optionComponents>
+      </hmiState>
+      <hmiState id="216" parentId="201" text="Shift light target">
+        <components>
+          <button id="3700" text="6,000 RPM" action="4700" />
+          <button id="3701" text="6,100 RPM" action="4701" />
+          <button id="3702" text="6,200 RPM" action="4702" />
+          <button id="3703" text="6,300 RPM" action="4703" />
+          <button id="3704" text="6,400 RPM" action="4704" />
+          <button id="3705" text="6,500 RPM" action="4705" />
+          <button id="3706" text="6,600 RPM" action="4706" />
+          <button id="3707" text="6,700 RPM" action="4707" />
+          <button id="3708" text="6,800 RPM" action="4708" />
+          <button id="3709" text="6,900 RPM" action="4709" />
+          <button id="3710" text="7,000 RPM" action="4710" />
+          <button id="3711" text="7,100 RPM" action="4711" />
+          <button id="3712" text="7,200 RPM" action="4712" />
+          <button id="3713" text="7,300 RPM" action="4713" />
+          <button id="3714" text="7,400 RPM" action="4714" />
+          <button id="3715" text="7,500 RPM" action="4715" />
+          <button id="3716" text="7,600 RPM" action="4716" />
+          <button id="3717" text="7,700 RPM" action="4717" />
+          <button id="3718" text="7,800 RPM" action="4718" />
+          <button id="3719" text="7,900 RPM" action="4719" />
+          <button id="3720" text="8,000 RPM" action="4720" />
+        </components>
+      </hmiState>
+    </hmiStates>
+  </pluginApp>
+</pluginApps>

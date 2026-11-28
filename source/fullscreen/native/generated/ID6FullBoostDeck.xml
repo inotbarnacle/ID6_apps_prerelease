@@ -1,0 +1,884 @@
+<?xml version='1.0' encoding='utf-8'?>
+<pluginApps>
+  <pluginApp applicationType="VehicleInformation" applicationWeight="245" text="BoostDeck">
+    <entryButton id="1" action="10">
+      <properties>
+        <property id="23" value="2" />
+      </properties>
+    </entryButton>
+    <actions>
+      <hmiAction id="10" target="200" />
+      <raAction id="6214" />
+      <hmiAction id="214" target="214" />
+      <hmiAction id="215" target="215" />
+      <raAction id="5750" />
+      <hmiAction id="2160" target="2160" />
+      <combinedAction id="4000">
+        <actions>
+          <raAction id="5000" />
+          <hmiAction id="14000" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4001">
+        <actions>
+          <raAction id="5001" />
+          <hmiAction id="14001" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4002">
+        <actions>
+          <raAction id="5002" />
+          <hmiAction id="14002" target="214" />
+        </actions>
+      </combinedAction>
+      <hmiAction id="2161" target="2161" />
+      <combinedAction id="4016">
+        <actions>
+          <raAction id="5016" />
+          <hmiAction id="14016" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4017">
+        <actions>
+          <raAction id="5017" />
+          <hmiAction id="14017" target="214" />
+        </actions>
+      </combinedAction>
+      <hmiAction id="2162" target="2162" />
+      <combinedAction id="4032">
+        <actions>
+          <raAction id="5032" />
+          <hmiAction id="14032" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4033">
+        <actions>
+          <raAction id="5033" />
+          <hmiAction id="14033" target="214" />
+        </actions>
+      </combinedAction>
+      <hmiAction id="2163" target="2163" />
+      <combinedAction id="4048">
+        <actions>
+          <raAction id="5048" />
+          <hmiAction id="14048" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4049">
+        <actions>
+          <raAction id="5049" />
+          <hmiAction id="14049" target="214" />
+        </actions>
+      </combinedAction>
+      <hmiAction id="2164" target="2164" />
+      <combinedAction id="4064">
+        <actions>
+          <raAction id="5064" />
+          <hmiAction id="14064" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4065">
+        <actions>
+          <raAction id="5065" />
+          <hmiAction id="14065" target="214" />
+        </actions>
+      </combinedAction>
+      <hmiAction id="2165" target="2165" />
+      <combinedAction id="4080">
+        <actions>
+          <raAction id="5080" />
+          <hmiAction id="14080" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4081">
+        <actions>
+          <raAction id="5081" />
+          <hmiAction id="14081" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4082">
+        <actions>
+          <raAction id="5082" />
+          <hmiAction id="14082" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4083">
+        <actions>
+          <raAction id="5083" />
+          <hmiAction id="14083" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4084">
+        <actions>
+          <raAction id="5084" />
+          <hmiAction id="14084" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4085">
+        <actions>
+          <raAction id="5085" />
+          <hmiAction id="14085" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4086">
+        <actions>
+          <raAction id="5086" />
+          <hmiAction id="14086" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4087">
+        <actions>
+          <raAction id="5087" />
+          <hmiAction id="14087" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4088">
+        <actions>
+          <raAction id="5088" />
+          <hmiAction id="14088" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4089">
+        <actions>
+          <raAction id="5089" />
+          <hmiAction id="14089" target="214" />
+        </actions>
+      </combinedAction>
+      <hmiAction id="2166" target="2166" />
+      <combinedAction id="4096">
+        <actions>
+          <raAction id="5096" />
+          <hmiAction id="14096" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4097">
+        <actions>
+          <raAction id="5097" />
+          <hmiAction id="14097" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4098">
+        <actions>
+          <raAction id="5098" />
+          <hmiAction id="14098" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4099">
+        <actions>
+          <raAction id="5099" />
+          <hmiAction id="14099" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4100">
+        <actions>
+          <raAction id="5100" />
+          <hmiAction id="14100" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4101">
+        <actions>
+          <raAction id="5101" />
+          <hmiAction id="14101" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4102">
+        <actions>
+          <raAction id="5102" />
+          <hmiAction id="14102" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4103">
+        <actions>
+          <raAction id="5103" />
+          <hmiAction id="14103" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4104">
+        <actions>
+          <raAction id="5104" />
+          <hmiAction id="14104" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4105">
+        <actions>
+          <raAction id="5105" />
+          <hmiAction id="14105" target="214" />
+        </actions>
+      </combinedAction>
+      <hmiAction id="2167" target="2167" />
+      <combinedAction id="4112">
+        <actions>
+          <raAction id="5112" />
+          <hmiAction id="14112" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4113">
+        <actions>
+          <raAction id="5113" />
+          <hmiAction id="14113" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4114">
+        <actions>
+          <raAction id="5114" />
+          <hmiAction id="14114" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4115">
+        <actions>
+          <raAction id="5115" />
+          <hmiAction id="14115" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4116">
+        <actions>
+          <raAction id="5116" />
+          <hmiAction id="14116" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4117">
+        <actions>
+          <raAction id="5117" />
+          <hmiAction id="14117" target="214" />
+        </actions>
+      </combinedAction>
+      <hmiAction id="2168" target="2168" />
+      <combinedAction id="4128">
+        <actions>
+          <raAction id="5128" />
+          <hmiAction id="14128" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4129">
+        <actions>
+          <raAction id="5129" />
+          <hmiAction id="14129" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4130">
+        <actions>
+          <raAction id="5130" />
+          <hmiAction id="14130" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4131">
+        <actions>
+          <raAction id="5131" />
+          <hmiAction id="14131" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4132">
+        <actions>
+          <raAction id="5132" />
+          <hmiAction id="14132" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4133">
+        <actions>
+          <raAction id="5133" />
+          <hmiAction id="14133" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4134">
+        <actions>
+          <raAction id="5134" />
+          <hmiAction id="14134" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4135">
+        <actions>
+          <raAction id="5135" />
+          <hmiAction id="14135" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4136">
+        <actions>
+          <raAction id="5136" />
+          <hmiAction id="14136" target="214" />
+        </actions>
+      </combinedAction>
+      <hmiAction id="2169" target="2169" />
+      <combinedAction id="4144">
+        <actions>
+          <raAction id="5144" />
+          <hmiAction id="14144" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4145">
+        <actions>
+          <raAction id="5145" />
+          <hmiAction id="14145" target="214" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4500">
+        <actions>
+          <raAction id="5500" />
+          <hmiAction id="14500" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4501">
+        <actions>
+          <raAction id="5501" />
+          <hmiAction id="14501" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4502">
+        <actions>
+          <raAction id="5502" />
+          <hmiAction id="14502" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4503">
+        <actions>
+          <raAction id="5503" />
+          <hmiAction id="14503" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4504">
+        <actions>
+          <raAction id="5504" />
+          <hmiAction id="14504" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4505">
+        <actions>
+          <raAction id="5505" />
+          <hmiAction id="14505" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4506">
+        <actions>
+          <raAction id="5506" />
+          <hmiAction id="14506" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4507">
+        <actions>
+          <raAction id="5507" />
+          <hmiAction id="14507" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4508">
+        <actions>
+          <raAction id="5508" />
+          <hmiAction id="14508" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4509">
+        <actions>
+          <raAction id="5509" />
+          <hmiAction id="14509" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4510">
+        <actions>
+          <raAction id="5510" />
+          <hmiAction id="14510" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4511">
+        <actions>
+          <raAction id="5511" />
+          <hmiAction id="14511" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4512">
+        <actions>
+          <raAction id="5512" />
+          <hmiAction id="14512" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4513">
+        <actions>
+          <raAction id="5513" />
+          <hmiAction id="14513" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4514">
+        <actions>
+          <raAction id="5514" />
+          <hmiAction id="14514" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4515">
+        <actions>
+          <raAction id="5515" />
+          <hmiAction id="14515" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4516">
+        <actions>
+          <raAction id="5516" />
+          <hmiAction id="14516" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4517">
+        <actions>
+          <raAction id="5517" />
+          <hmiAction id="14517" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4518">
+        <actions>
+          <raAction id="5518" />
+          <hmiAction id="14518" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4519">
+        <actions>
+          <raAction id="5519" />
+          <hmiAction id="14519" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4520">
+        <actions>
+          <raAction id="5520" />
+          <hmiAction id="14520" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4521">
+        <actions>
+          <raAction id="5521" />
+          <hmiAction id="14521" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4522">
+        <actions>
+          <raAction id="5522" />
+          <hmiAction id="14522" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4523">
+        <actions>
+          <raAction id="5523" />
+          <hmiAction id="14523" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4524">
+        <actions>
+          <raAction id="5524" />
+          <hmiAction id="14524" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4525">
+        <actions>
+          <raAction id="5525" />
+          <hmiAction id="14525" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4526">
+        <actions>
+          <raAction id="5526" />
+          <hmiAction id="14526" target="215" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4580">
+        <actions>
+          <raAction id="5580" />
+          <hmiAction id="14580" target="2180" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4581">
+        <actions>
+          <raAction id="5581" />
+          <hmiAction id="14581" target="2180" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4582">
+        <actions>
+          <raAction id="5582" />
+          <hmiAction id="14582" target="2180" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4583">
+        <actions>
+          <raAction id="5583" />
+          <hmiAction id="14583" target="2180" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4584">
+        <actions>
+          <raAction id="5584" />
+          <hmiAction id="14584" target="2180" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4585">
+        <actions>
+          <raAction id="5585" />
+          <hmiAction id="14585" target="2180" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4586">
+        <actions>
+          <raAction id="5586" />
+          <hmiAction id="14586" target="2180" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4587">
+        <actions>
+          <raAction id="5587" />
+          <hmiAction id="14587" target="2180" />
+        </actions>
+      </combinedAction>
+      <combinedAction id="4588">
+        <actions>
+          <raAction id="5588" />
+          <hmiAction id="14588" target="2180" />
+        </actions>
+      </combinedAction>
+    </actions>
+    <models>
+      <raDataModel id="1400" modelType="Richtext" />
+      <raDataModel id="1401" modelType="Richtext" />
+      <raDataModel id="1402" modelType="Richtext" />
+      <raDataModel id="1403" modelType="Richtext" />
+      <raDataModel id="1404" modelType="Richtext" />
+      <raDataModel id="1405" modelType="Richtext" />
+      <raDataModel id="1406" modelType="Richtext" />
+      <raDataModel id="1407" modelType="Richtext" />
+      <raDataModel id="1408" modelType="Richtext" />
+      <raDataModel id="600" modelType="Richtext" />
+      <raDataModel id="1899" modelType="Richtext" />
+      <raDataModel id="1880" modelType="Richtext" />
+      <raDataModel id="1800" modelType="Richtext" />
+      <raDataModel id="1801" modelType="Richtext" />
+      <raDataModel id="1802" modelType="Richtext" />
+      <raDataModel id="1803" modelType="Richtext" />
+      <raDataModel id="1804" modelType="Richtext" />
+      <raDataModel id="1805" modelType="Richtext" />
+      <raDataModel id="1806" modelType="Richtext" />
+      <raDataModel id="1807" modelType="Richtext" />
+      <raDataModel id="1808" modelType="Richtext" />
+      <raDataModel id="1809" modelType="Richtext" />
+      <raDataModel id="1898" modelType="Richtext" />
+      <raDataModel id="1820" modelType="Richtext" />
+      <raDataModel id="1821" modelType="Richtext" />
+      <raDataModel id="1822" modelType="Richtext" />
+      <raDataModel id="1823" modelType="Richtext" />
+      <raDataModel id="1824" modelType="Richtext" />
+      <raDataModel id="1825" modelType="Richtext" />
+      <raDataModel id="1826" modelType="Richtext" />
+      <raDataModel id="1827" modelType="Richtext" />
+      <raDataModel id="1828" modelType="Richtext" />
+    </models>
+    <hmiStates>
+      <hmiState id="200" text="BoostDeck">
+        <components>
+          <button id="910" text="Settings" action="214" selectAction="6214">
+            <properties>
+              <property id="20" value="760" />
+              <property id="21" value="18" />
+              <property id="9" value="150" />
+              <property id="10" value="43" />
+            </properties>
+          </button>
+          <label id="1000" text="Gauge 1">
+            <properties>
+              <property id="20" value="28" />
+              <property id="21" value="42" />
+              <property id="9" value="365" />
+              <property id="10" value="52" />
+            </properties>
+          </label>
+          <label id="1020" model="1400">
+            <properties>
+              <property id="20" value="28" />
+              <property id="21" value="95" />
+              <property id="9" value="365" />
+              <property id="10" value="65" />
+            </properties>
+          </label>
+          <label id="1001" text="Gauge 2">
+            <properties>
+              <property id="20" value="431" />
+              <property id="21" value="42" />
+              <property id="9" value="365" />
+              <property id="10" value="52" />
+            </properties>
+          </label>
+          <label id="1021" model="1401">
+            <properties>
+              <property id="20" value="431" />
+              <property id="21" value="95" />
+              <property id="9" value="365" />
+              <property id="10" value="65" />
+            </properties>
+          </label>
+          <label id="1002" text="Gauge 3">
+            <properties>
+              <property id="20" value="834" />
+              <property id="21" value="42" />
+              <property id="9" value="365" />
+              <property id="10" value="52" />
+            </properties>
+          </label>
+          <label id="1022" model="1402">
+            <properties>
+              <property id="20" value="834" />
+              <property id="21" value="95" />
+              <property id="9" value="365" />
+              <property id="10" value="65" />
+            </properties>
+          </label>
+          <label id="1003" text="Gauge 4">
+            <properties>
+              <property id="20" value="28" />
+              <property id="21" value="180" />
+              <property id="9" value="365" />
+              <property id="10" value="52" />
+            </properties>
+          </label>
+          <label id="1023" model="1403">
+            <properties>
+              <property id="20" value="28" />
+              <property id="21" value="233" />
+              <property id="9" value="365" />
+              <property id="10" value="65" />
+            </properties>
+          </label>
+          <label id="1004" text="Gauge 5">
+            <properties>
+              <property id="20" value="431" />
+              <property id="21" value="180" />
+              <property id="9" value="365" />
+              <property id="10" value="52" />
+            </properties>
+          </label>
+          <label id="1024" model="1404">
+            <properties>
+              <property id="20" value="431" />
+              <property id="21" value="233" />
+              <property id="9" value="365" />
+              <property id="10" value="65" />
+            </properties>
+          </label>
+          <label id="1005" text="Gauge 6">
+            <properties>
+              <property id="20" value="834" />
+              <property id="21" value="180" />
+              <property id="9" value="365" />
+              <property id="10" value="52" />
+            </properties>
+          </label>
+          <label id="1025" model="1405">
+            <properties>
+              <property id="20" value="834" />
+              <property id="21" value="233" />
+              <property id="9" value="365" />
+              <property id="10" value="65" />
+            </properties>
+          </label>
+          <label id="1006" text="Gauge 7">
+            <properties>
+              <property id="20" value="28" />
+              <property id="21" value="318" />
+              <property id="9" value="365" />
+              <property id="10" value="52" />
+            </properties>
+          </label>
+          <label id="1026" model="1406">
+            <properties>
+              <property id="20" value="28" />
+              <property id="21" value="371" />
+              <property id="9" value="365" />
+              <property id="10" value="65" />
+            </properties>
+          </label>
+          <label id="1007" text="Gauge 8">
+            <properties>
+              <property id="20" value="431" />
+              <property id="21" value="318" />
+              <property id="9" value="365" />
+              <property id="10" value="52" />
+            </properties>
+          </label>
+          <label id="1027" model="1407">
+            <properties>
+              <property id="20" value="431" />
+              <property id="21" value="371" />
+              <property id="9" value="365" />
+              <property id="10" value="65" />
+            </properties>
+          </label>
+          <label id="1008" text="Gauge 9">
+            <properties>
+              <property id="20" value="834" />
+              <property id="21" value="318" />
+              <property id="9" value="365" />
+              <property id="10" value="52" />
+            </properties>
+          </label>
+          <label id="1028" model="1408">
+            <properties>
+              <property id="20" value="834" />
+              <property id="21" value="371" />
+              <property id="9" value="365" />
+              <property id="10" value="65" />
+            </properties>
+          </label>
+          <label id="460" model="600">
+            <properties>
+              <property id="20" value="30" />
+              <property id="21" value="365" />
+              <property id="9" value="1110" />
+              <property id="10" value="70" />
+            </properties>
+          </label>
+        </components>
+        <optionComponents>
+          <button id="911" text="BoostDeck settings" action="214" />
+        </optionComponents>
+      </hmiState>
+      <hmiState id="214" parentId="200" text="BoostDeck settings">
+        <components>
+          <label id="923" model="1899" />
+          <button id="920" text="Configure gauges" action="215" />
+          <button id="1880" action="5750" model="1880" text="DCT temperature" />
+          <button id="930" action="2160" text="" model="1800" />
+          <button id="931" action="2161" text="" model="1801" />
+          <button id="932" action="2162" text="" model="1802" />
+          <button id="933" action="2163" text="" model="1803" />
+          <button id="934" action="2164" text="" model="1804" />
+          <button id="935" action="2165" text="" model="1805" />
+          <button id="936" action="2166" text="" model="1806" />
+          <button id="937" action="2167" text="" model="1807" />
+          <button id="938" action="2168" text="" model="1808" />
+          <button id="939" action="2169" text="" model="1809" />
+        </components>
+      </hmiState>
+      <hmiState id="215" parentId="214" text="Configure gauges">
+        <components>
+          <button id="950" action="4580" text="" model="1820" />
+          <button id="951" action="4581" text="" model="1821" />
+          <button id="952" action="4582" text="" model="1822" />
+          <button id="953" action="4583" text="" model="1823" />
+          <button id="954" action="4584" text="" model="1824" />
+          <button id="955" action="4585" text="" model="1825" />
+          <button id="956" action="4586" text="" model="1826" />
+          <button id="957" action="4587" text="" model="1827" />
+          <button id="958" action="4588" text="" model="1828" />
+        </components>
+      </hmiState>
+      <hmiState id="2160" parentId="214" text="Pressure">
+        <components>
+          <button id="3500" action="4000" text="psi" />
+          <button id="3501" action="4001" text="bar" />
+          <button id="3502" action="4002" text="kPa" />
+        </components>
+      </hmiState>
+      <hmiState id="2161" parentId="214" text="Speed">
+        <components>
+          <button id="3516" action="4016" text="mph" />
+          <button id="3517" action="4017" text="km/h" />
+        </components>
+      </hmiState>
+      <hmiState id="2162" parentId="214" text="Temperature">
+        <components>
+          <button id="3532" action="4032" text="Fahrenheit" />
+          <button id="3533" action="4033" text="Celsius" />
+        </components>
+      </hmiState>
+      <hmiState id="2163" parentId="214" text="Gauge style">
+        <components>
+          <button id="3548" action="4048" text="Bars" />
+          <button id="3549" action="4049" text="Circular dials" />
+        </components>
+      </hmiState>
+      <hmiState id="2164" parentId="214" text="Alert mode">
+        <components>
+          <button id="3564" action="4064" text="Screen + soft chime" />
+          <button id="3565" action="4065" text="Screen only" />
+        </components>
+      </hmiState>
+      <hmiState id="2165" parentId="214" text="Coolant high">
+        <components>
+          <button id="3580" action="4080" text="Off" />
+          <button id="3581" action="4081" text="220 °F" />
+          <button id="3582" action="4082" text="225 °F" />
+          <button id="3583" action="4083" text="230 °F" />
+          <button id="3584" action="4084" text="235 °F" />
+          <button id="3585" action="4085" text="240 °F" />
+          <button id="3586" action="4086" text="245 °F" />
+          <button id="3587" action="4087" text="250 °F" />
+          <button id="3588" action="4088" text="255 °F" />
+          <button id="3589" action="4089" text="260 °F" />
+        </components>
+      </hmiState>
+      <hmiState id="2166" parentId="214" text="Oil temp high">
+        <components>
+          <button id="3596" action="4096" text="Off" />
+          <button id="3597" action="4097" text="220 °F" />
+          <button id="3598" action="4098" text="225 °F" />
+          <button id="3599" action="4099" text="230 °F" />
+          <button id="3600" action="4100" text="235 °F" />
+          <button id="3601" action="4101" text="240 °F" />
+          <button id="3602" action="4102" text="245 °F" />
+          <button id="3603" action="4103" text="250 °F" />
+          <button id="3604" action="4104" text="255 °F" />
+          <button id="3605" action="4105" text="260 °F" />
+        </components>
+      </hmiState>
+      <hmiState id="2167" parentId="214" text="Oil pressure low">
+        <components>
+          <button id="3612" action="4112" text="Off" />
+          <button id="3613" action="4113" text="5 psi" />
+          <button id="3614" action="4114" text="10 psi" />
+          <button id="3615" action="4115" text="15 psi" />
+          <button id="3616" action="4116" text="20 psi" />
+          <button id="3617" action="4117" text="25 psi" />
+        </components>
+      </hmiState>
+      <hmiState id="2168" parentId="214" text="Gauge color">
+        <components>
+          <button id="3628" action="4128" text="BMW Orange" />
+          <button id="3629" action="4129" text="Blue" />
+          <button id="3630" action="4130" text="Green" />
+          <button id="3631" action="4131" text="White" />
+          <button id="3632" action="4132" text="Purple" />
+          <button id="3633" action="4133" text="Pink" />
+          <button id="3634" action="4134" text="Cyan" />
+          <button id="3635" action="4135" text="Red" />
+          <button id="3636" action="4136" text="Multicolor" />
+        </components>
+      </hmiState>
+      <hmiState id="2169" parentId="214" text="Engine profile">
+        <components>
+          <button id="3644" action="4144" text="Gasoline" />
+          <button id="3645" action="4145" text="Diesel" />
+        </components>
+      </hmiState>
+      <hmiState id="2180" parentId="215" text="Choose a gauge">
+        <components>
+          <label id="2999" model="1898" />
+          <button id="3000" action="4500" text="Boost" />
+          <button id="3001" action="4501" text="AFR" />
+          <button id="3002" action="4502" text="Timing" />
+          <button id="3003" action="4503" text="Intake air" />
+          <button id="3004" action="4504" text="Trans temp" />
+          <button id="3005" action="4505" text="Rail pressure" />
+          <button id="3006" action="4506" text="Oil pressure" />
+          <button id="3007" action="4507" text="Coolant" />
+          <button id="3008" action="4508" text="Active ethanol" />
+          <button id="3009" action="4509" text="Oil temp" />
+          <button id="3010" action="4510" text="Voltage" />
+          <button id="3011" action="4511" text="Engine RPM" />
+          <button id="3012" action="4512" text="Speed" />
+          <button id="3013" action="4513" text="Engine load" />
+          <button id="3014" action="4514" text="Manifold abs." />
+          <button id="3015" action="4515" text="Air flow" />
+          <button id="3016" action="4516" text="Throttle" />
+          <button id="3017" action="4517" text="Barometric" />
+          <button id="3018" action="4518" text="Outside air" />
+          <button id="3019" action="4519" text="Fuel rate" />
+          <button id="3020" action="4520" text="Fuel level" />
+          <button id="3021" action="4521" text="Accel. pedal" />
+          <button id="3022" action="4522" text="Spark advance" />
+          <button id="3023" action="4523" text="Absolute load" />
+          <button id="3024" action="4524" text="Lambda target" />
+          <button id="3025" action="4525" text="Catalyst temp" />
+          <button id="3026" action="4526" text="Throttle target" />
+        </components>
+      </hmiState>
+    </hmiStates>
+  </pluginApp>
+</pluginApps>

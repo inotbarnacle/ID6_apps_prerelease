@@ -1,0 +1,41 @@
+name: Boost packet numeric locale
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - cc: gcc
+            cxx: g++
+          - cc: clang
+            cxx: clang++
+    steps:
+      - uses: actions/checkout@v4
+      - name: Host regressions
+        run: make -C source/native test CC=${{ matrix.cc }} CXX=${{ matrix.cxx }}
+      - name: Comma-decimal locale without changing system configuration
+        run: sh source/native/tests/run_codec_locale_tests.sh source/native/build/test-core-locale "$RUNNER_TEMP/idrive-locales"
+      - name: Static analysis
+        if: matrix.cc == 'clang'
+        run: clang --analyze -Xanalyzer -analyzer-output=text -std=c99 -Isource/native/src/common source/native/src/common/gauge_core.c
+  memory:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Codec under sanitizers in both numeric locales
+        env:
+          ASAN_OPTIONS: detect_leaks=1
+          UBSAN_OPTIONS: halt_on_error=1
+        run: |
+          make -C source/native build/test-core build/test-core-locale CC=clang CFLAGS='-O1 -g -std=c99 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer'
+          source/native/build/test-core
+          source/native/build/test-core-locale
+          sh source/native/tests/run_codec_locale_tests.sh source/native/build/test-core-locale "$RUNNER_TEMP/idrive-locales"

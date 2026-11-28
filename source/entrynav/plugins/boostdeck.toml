@@ -1,0 +1,14 @@
+# BoostDeck in Flare Drive's plugin catalog (Flare Drive's design/dynamic-plugins.md, Plugin manifest).
+# tools/publish_release.py sends it with every release. The catalog already has this plugin, so name, summary,
+# description and order here only describe it; edit them on the publishing page (publish.darkzone.dev).
+# folder and worker can never change: installs on cars use them.
+id = "boostdeck"
+name = "BoostDeck"
+summary = ""
+description = "Live engine readings under My Vehicle in iDrive: boost, air-fuel ratio, ignition timing, intake air, gearbox, rail pressure, oil pressure and coolant. The readings were worked out on a 340i's B58 engine, so other engines may show fewer of them."
+contract = "entrynav-app/1"
+order = 20
+
+[entrynav-app]
+folder = "BoostDeck"
+worker = "boostdeck-collector"

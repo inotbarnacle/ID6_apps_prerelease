@@ -33,6 +33,8 @@ extern int fake_run_blocks_stops, fake_run_blocks_alarm;   /* the mask of the th
 
 void fake_dsi_reset(void);
 void fake_dsi_set_run_hook(void (*hook)(void *app));
+void fake_dsi_set_stop_hook(void (*hook)(void));
+int fake_dsi_free_count(void);
 /* Called after recording each request, on the sender's thread and with the DSI client's send lock held. */
 void fake_dsi_set_send_hook(void (*hook)(const fake_req_t *r));
 int  fake_dsi_req_count(uint32_t id);   /* recorded requests with this id */

@@ -1,0 +1,89 @@
+<?xml version='1.0' encoding='utf-8'?>
+<pluginApps>
+  <pluginApp applicationType="VehicleInformation" applicationWeight="252" text="WarmDeck">
+    <entryButton id="1" action="10">
+      <properties>
+        <property id="23" value="2" />
+      </properties>
+    </entryButton>
+    <actions>
+      <hmiAction id="10" target="207" />
+      <raAction id="5752" />
+      <raAction id="5750" />
+    </actions>
+    <models>
+      <raDataModel id="1882" modelType="Richtext" />
+      <raDataModel id="1540" modelType="Richtext" />
+      <raDataModel id="1541" modelType="Richtext" />
+      <raDataModel id="1542" modelType="Richtext" />
+      <raDataModel id="607" modelType="Richtext" />
+      <raDataModel id="1880" modelType="Richtext" />
+    </models>
+    <hmiStates>
+      <hmiState id="207" text="WarmDeck">
+        <components>
+          <label id="1280" text="Engine oil">
+            <properties>
+              <property id="20" value="16" />
+              <property id="21" value="42" />
+              <property id="9" value="209" />
+              <property id="10" value="52" />
+            </properties>
+          </label>
+          <label id="1300" model="1540">
+            <properties>
+              <property id="20" value="16" />
+              <property id="21" value="95" />
+              <property id="9" value="209" />
+              <property id="10" value="65" />
+            </properties>
+          </label>
+          <label id="1281" text="Coolant">
+            <properties>
+              <property id="20" value="246" />
+              <property id="21" value="42" />
+              <property id="9" value="209" />
+              <property id="10" value="52" />
+            </properties>
+          </label>
+          <label id="1301" model="1541">
+            <properties>
+              <property id="20" value="246" />
+              <property id="21" value="95" />
+              <property id="9" value="209" />
+              <property id="10" value="65" />
+            </properties>
+          </label>
+          <label id="1282" text="Transmission">
+            <properties>
+              <property id="20" value="477" />
+              <property id="21" value="42" />
+              <property id="9" value="209" />
+              <property id="10" value="52" />
+            </properties>
+          </label>
+          <label id="1302" model="1542">
+            <properties>
+              <property id="20" value="477" />
+              <property id="21" value="95" />
+              <property id="9" value="209" />
+              <property id="10" value="65" />
+            </properties>
+          </label>
+          <label id="467" model="607">
+            <properties>
+              <property id="20" value="17" />
+              <property id="21" value="365" />
+              <property id="9" value="634" />
+              <property id="10" value="70" />
+            </properties>
+          </label>
+        </components>
+        <optionComponents>
+          <button id="1880" action="5750" model="1880" text="DCT temperature" />
+          <button id="1882" action="5752" model="1882" text="Temperature units" />
+        </optionComponents>
+      </hmiState>
+    </hmiStates>
+  </pluginApp>
+</pluginApps>

@@ -1,0 +1,4 @@
+ID6FullBootmod3Suite Bootmod3Suite 40
+ID6FullMgFlasher MgFlasher 41
+ID6FullXDriveControl XDriveControl 42
+ID6FullHybridDeck HybridDeck 43

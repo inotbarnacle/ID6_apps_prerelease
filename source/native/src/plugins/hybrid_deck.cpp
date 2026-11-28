@@ -1,4 +1,9 @@
 #include "plugin_factory.h"
+#ifdef ID6_COMPANION
+#include "companion_surface.h"
+#else
+#define ID6_MENU_NAME "HybridDeck"
+#endif
 #include "diagnostic_gateway.h"
 #include "diagnostic_worker.h"
 #include "gauge_coexistence.h"
@@ -8,13 +13,16 @@
 #include <sys/wait.h>
 
 namespace {
-const char base[]="/var/opt/hmi/data/ID5/Plugins/HybridDeck/";
+const char base[]="/var/opt/hmi/data/ID5/Plugins/" ID6_MENU_NAME "/";
 const unsigned pollKey=0x4859444cu;
 const unsigned pauseAfter=10u*60u*1000u;
 const unsigned powerSlot=HYBRID_COUNT, statusSlot=powerSlot+1;
 }
 
 class HybridDeck : public bmw::PluginApp {
+#ifdef ID6_COMPANION
+    CompanionSurface companion_;
+#endif
     int socket_;
     pid_t child_;
     unsigned generation_;
@@ -52,6 +60,9 @@ class HybridDeck : public bmw::PluginApp {
         if (strcmp(displayed_[slot],value)) {
             snprintf(displayed_[slot],sizeof displayed_[slot],"%s",value);
             updateModel(50u+slot,bmw::BasicString<char>(value));
+#ifdef ID6_COMPANION
+        companion_.update(50u+slot,value);
+#endif
         }
     }
 
@@ -138,8 +149,17 @@ public:
         : PluginApp(d,name,maj,min,version,cfg,res),socket_(-1),child_(-1),generation_(0),
           visible_(false),stopping_(false),opened_(0),retry_(0) {}
     virtual ~HybridDeck() { shutdown(); }
-    virtual bool onFinalize() { shutdown(); return true; }
+    virtual bool onFinalize() {
+#ifdef ID6_COMPANION
+        companion_.close();
+#endif
+        shutdown();
+        return true;
+    }
     virtual bool onInit() {
+#ifdef ID6_COMPANION
+        companion_.bind(*this);
+#endif
         shutdown();
         memset(displayed_,0,sizeof displayed_);
         memset(&frame_,0,sizeof frame_);
@@ -157,6 +177,9 @@ public:
         return true;
     }
     virtual bool invokeDataUpdate(unsigned key,const bmw::Parcel& data) {
+#ifdef ID6_COMPANION
+        if (companion_.poll(key)) return true;
+#endif
         if (key!=pollKey) return PluginApp::invokeDataUpdate(key,data);
         unsigned generation;
         if (!data.readUInt32(generation)) return false;
@@ -169,6 +192,6 @@ public:
 };
 
 extern "C" {
-PluginAppInfo pluginAppInfo={1,"HybridDeck","owner-development",1,
+PluginAppInfo pluginAppInfo={1,ID6_MENU_NAME,"owner-development",1,
                             create_app<HybridDeck>,destroy_app};
 }

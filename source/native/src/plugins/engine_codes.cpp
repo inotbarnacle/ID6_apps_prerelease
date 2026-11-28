@@ -19,15 +19,8 @@ void format_code_line(char* text, size_t size, const char* line, int length, cha
         snprintf(text,size,"%.*s",length,line);
         return;
     }
-    const char* description="Description unavailable";
-    for (unsigned i=0;i<sizeof kDmeDescriptions/sizeof kDmeDescriptions[0];++i) {
-        if (kDmeDescriptions[i].code==code) {
-            description=kDmeDescriptions[i].text;
-            break;
-        }
-    }
     snprintf(text,size,"%06X   %s",code,(status & 1u) ? "Active" : (status & 4u) ? "Pending" : "Stored");
-    snprintf(detail,detail_size,"%s",description);
+    snprintf(detail,detail_size,"%s",dme_code_description(code));
 }
 }
 

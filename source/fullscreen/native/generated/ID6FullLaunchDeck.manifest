@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin><name>ID6FullLaunchDeck</name><type>App</type><file>{pluginDir}/ID6FullLaunchDeck</file>
+<config><autoStart>yes</autoStart><dependencies><pluginAppConnector><type>Etch</type>
+<id>237</id><asyncCallbacks>yes</asyncCallbacks></pluginAppConnector></dependencies>
+<parameters><DescFile>{pluginDir}/ID6FullLaunchDeck.xml</DescFile></parameters></config></plugin>

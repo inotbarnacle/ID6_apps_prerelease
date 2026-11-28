@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='utf-8'?>
+<plugin>
+  <name>ID6FullXDriveControl</name>
+  <type>App</type>
+  <file>{pluginDir}/ID6FullXDriveControl</file>
+  <config>
+    <autoStart>yes</autoStart>
+    <dependencies>
+      <pluginAppConnector>
+        <type>Etch</type>
+        <id>241</id>
+        <asyncCallbacks>yes</asyncCallbacks>
+      </pluginAppConnector>
+    </dependencies>
+    <parameters>
+      <DescFile>{pluginDir}/ID6FullXDriveControl.xml</DescFile>
+    </parameters>
+  </config>
+</plugin>

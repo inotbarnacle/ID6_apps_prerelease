@@ -18,8 +18,8 @@ for pair in libm.so:libm.so.2 libsocket.so:libsocket.so.3 libstdc++.so:libstdc++
 done
 ntoarm-gcc -dumpversion
 ntoarm-gcc -dumpmachine
-c() { qcc -V4.4.2,gcc_ntoarmv7le -Wc,-std=c99 -Wall -Wextra -Werror "$@"; }
-cxx() { qcc -V4.4.2,gcc_ntoarmv7le_gpp -lang-c++ -Wc,-std=gnu++98 -Wall -Wextra -Werror "$@"; }
+c() { qcc -V4.4.2,gcc_ntoarmv7le -Wc,-std=c99 -include stddef.h -mno-unaligned-access -Wall -Wextra -Werror "$@"; }
+cxx() { qcc -V4.4.2,gcc_ntoarmv7le_gpp -lang-c++ -Wc,-std=gnu++98 -D_QNX_SOURCE -mno-unaligned-access -Wall -Wextra -Werror "$@"; }
 c -Isrc/common -O2 -fPIC -c src/common/gauge_core.c -o out/core.o
 
 # Every worker carries the HSFZ-then-MOST link. dlopen and pthreads are in QNX libc; the DSI library is
@@ -85,18 +85,3 @@ cxx -Isrc/common -Isrc/ipc -Isdk -O2 -fno-exceptions -fPIC -shared src/plugins/m
 cxx -Isrc/common -Isrc/ipc -Isdk -O2 -fno-exceptions -fPIC -shared src/plugins/hybrid_deck.cpp out/core.o \
     "$frameworks/libAppFramework.A.so" "$frameworks/libCoreFramework.A.so" -Lout -lsocket \
     -Wl,--allow-shlib-undefined -Wl,-soname,libHybridDeck.so -o out/libHybridDeck.so
-
-# Optional HUD build against the licensed NBT-AAD milestone-7 source.
-if test -n "${NBTAAD_SOURCE:-}"; then
-    aad="$NBTAAD_SOURCE"
-    c -D_QNX_SOURCE -Isrc/common -Isrc/ipc -O2 -c src/workers/parked_check.c -o out/hud-sample.o
-    for file in src/common/diag_link.c src/common/most/*.c; do
-        c -Isrc/common -O2 -c "$file" -o "out/hud-$(basename "$file" .c).o"
-    done
-    qcc -V4.4.2,gcc_ntoarmv7le_gpp -lang-c++ -Wc,-std=gnu++0x -O2 -D_QNX_SOURCE \
-        -Isrc/common -Isrc/ipc -Isrc/workers -I"$aad" src/workers/hud_shape.cpp "$aad/cluster/hud_terminal.cpp" "$aad/most/client.cpp" "$aad/dsi_client.cpp" \
-        out/hud-*.o out/core.o -Lout -lsocket -lm -o out/hud-shape-qnx
-    cxx -Isrc/common -Isdk -O2 -fno-exceptions -fPIC -shared src/plugins/hud_menu.cpp \
-        "$frameworks/libAppFramework.A.so" "$frameworks/libCoreFramework.A.so" -Lout -lsocket \
-        -Wl,--allow-shlib-undefined -Wl,-soname,libHudTest.so -o out/libHudTest.so
-fi
