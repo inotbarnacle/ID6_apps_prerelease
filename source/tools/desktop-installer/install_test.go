@@ -708,3 +708,27 @@ func TestInspectUsesApprovedFrameworkPairForFirmwareVariants(t *testing.T) {
 		})
 	}
 }
+
+func TestSpeedlockUnlockSelection(t *testing.T) {
+	selection, err := choose([]string{"SpeedlockUnlock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(selection) != 1 || selection[0].name != "SpeedlockUnlock" || selection[0].connector != "119" {
+		t.Fatalf("unexpected SpeedlockUnlock selection: %+v", selection)
+	}
+	if selection[0].usesImages() {
+		t.Fatal("SpeedlockUnlock should not require an image archive")
+	}
+	if len(selection[0].executables()) != 0 {
+		t.Fatalf("SpeedlockUnlock should not require a worker executable: %v", selection[0].executables())
+	}
+	script := string(publicationScript("/var/opt/hmi/data/ID5/GaugeDeck-0123456789abcdef", selection...))
+	if !strings.Contains(script, "apps='SpeedlockUnlock:-'") {
+		t.Fatalf("unexpected publication script for SpeedlockUnlock:\n%s", script)
+	}
+	removal, err := selectMenus([]string{"SpeedlockUnlock"}, true)
+	if err != nil || len(removal) != 1 || removal[0].name != "SpeedlockUnlock" {
+		t.Fatalf("unexpected SpeedlockUnlock uninstall selection: %+v %v", removal, err)
+	}
+}

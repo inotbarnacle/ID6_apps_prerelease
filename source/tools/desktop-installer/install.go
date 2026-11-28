@@ -280,6 +280,7 @@ var apps = []plugin{
 	{"LaunchDeck", "shift-deck-qnx", "120"},
 	{"WarmDeck", "warmdeck-collector-qnx", "115"},
 	{"HybridDeck", "hybriddeck-collector-qnx", "117"},
+	{"SpeedlockUnlock", "", "119"},
 }
 
 var fullscreenApps = []plugin{
@@ -350,7 +351,7 @@ func checkAppLayouts(screen panel, selection []plugin) error {
 }
 
 func (p plugin) usesImages() bool {
-	return !p.fullscreen()
+	return !p.fullscreen() && p.name != "SpeedlockUnlock"
 }
 
 func (p plugin) executables() []string {
@@ -523,7 +524,7 @@ func installReplacing(r remoteRunner, gateway string, screen panel, recoverLock,
 			if err != nil {
 				return tx, err
 			}
-			if screen.compact() && (name == app.name+".xml" || name == app.name+"_ALL_Images.zip") {
+			if screen.compact() && app.name != "SpeedlockUnlock" && (name == app.name+".xml" || name == app.name+"_ALL_Images.zip") {
 				data, err = bundled.ReadFile(fmt.Sprintf("payload/layouts/%dx%d/%s", screen.width, screen.height, name))
 				if err != nil {
 					return tx, fmt.Errorf("missing bundled layout for %s: %w", app.name, err)

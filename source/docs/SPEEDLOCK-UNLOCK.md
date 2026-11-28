@@ -29,11 +29,11 @@ While no `HmiMain3D` code addresses are hardcoded, three ABI assumptions were ve
 - `CPluginInstanceCacheTLS::m_instance` at `+0x08`.
 - `IRhmiSpeedlockService::vtable[4]` (`+0x10`) = `setSpeedlockDisabled(bool)`.
 
-## Build
+## Build & Desktop Installer
 
-`source/native/build.sh` builds `out/libSpeedlockUnlock.so` alongside the other plugins using the QNX SDP 6.5 ARM toolchain.
-
-To package it manually, place these three files in `/var/opt/hmi/data/ID5/Plugins/SpeedlockUnlock/`:
+- **Native build:** `source/native/build.sh` builds `out/libSpeedlockUnlock.so` alongside the other plugins using the QNX SDP 6.5 ARM toolchain.
+- **Desktop installer:** `SpeedlockUnlock` is wired into `source/tools/desktop-installer/` as an unchecked opt-in option under both standard NBT Evo and full-screen NBT Evo install/uninstall, staged from `packages/speedlock-unlock.zip` by `stage-payload.py`.
+- **Manual install:** Place these three files in `/var/opt/hmi/data/ID5/Plugins/SpeedlockUnlock/`:
 
 - `SpeedlockUnlock.manifest` (`0644`)
 - `SpeedlockUnlock.xml` (`0644`)
