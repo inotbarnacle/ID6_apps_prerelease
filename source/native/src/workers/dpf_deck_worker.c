@@ -59,8 +59,8 @@ int main(int argc,char **argv) {
         } else return 2;
     }
     if (!token || parent<=1) return 2;
-    /* Match the existing projection ownership policy conservatively. */
-    if (projection_hud_installed()) cfg.transport=DIAG_HSFZ;
+    /* Match the existing native Android Auto ownership policy. */
+    if (native_android_auto_installed()) cfg.transport=DIAG_HSFZ;
     if (cfg.transport==DIAG_HSFZ && !cfg.host) return 2;
     sock=gauge_bind(DPF_ACTIVE_PORT);
     if (sock<0) return 1;

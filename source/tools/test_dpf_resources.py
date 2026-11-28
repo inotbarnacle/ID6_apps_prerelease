@@ -7,6 +7,7 @@ from pathlib import Path
 import shutil
 import struct
 import sys
+import tarfile
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -40,8 +41,57 @@ def fixture_build(directory):
     return binaries,resources
 
 
+def fixture_platforms(repo, directory):
+    """Non-executable inputs for upstream's full-screen/EntryNav2 installer tests."""
+    generated = repo/'source/fullscreen/native/generated'
+    if not generated.is_dir():
+        return None,None
+    fullscreen,entrynav = directory/'fullscreen',directory/'entrynav'
+    fullscreen.mkdir();entrynav.mkdir()
+    placeholder = b'TEST ONLY: not an executable or native library\n'
+    workers = {
+        'ID6LibraryLab': ('id6-library-fullscreen-qnx','beamer-qnx','boostdeck-collector-qnx',
+                         'engine-codes-qnx','exhaust-flap-worker-qnx','library-usb-update-qnx',
+                         'mhd-maps-qnx','road-jet-qnx','shift-deck-qnx','warmdeck-collector-qnx'),
+        'ID6FullBootmod3Suite': ('bootmod3-qnx',),
+        'ID6FullMgFlasher': ('mgflasher-qnx',),
+        'ID6FullXDriveControl': ('xdrive-control-qnx',),
+        'ID6FullHybridDeck': ('hybriddeck-collector-qnx',),
+    }
+    for manifest in sorted(generated.glob('ID6*.manifest')):
+        app = manifest.stem
+        target = fullscreen/app;target.mkdir()
+        for suffix in ('.manifest','.xml'):
+            shutil.copyfile(generated/(app+suffix),target/(app+suffix))
+        for name in ('lib'+app+'.so',*workers.get(app,())):
+            (target/name).write_bytes(placeholder)
+    library = fullscreen/'ID6LibraryLab'
+    for name,data in {'update-key.der':placeholder,'screen-size.txt':b'1280 480\n',
+                      'panel.txt':b'1280x480\n'}.items():
+        (library/name).write_bytes(data)
+    # These two menus exercise both EntryNav2 check and install sequencing.
+    release = '0.1.3-test.1'
+    digests = {}
+    for app,identifier in (('BoostDeck','boostdeck'),('ShiftDeck','shiftdeck')):
+        prefix = identifier+'-'+release
+        files = {'setup.sh':b'#!/bin/sh\nexit 1 # host fixture must never install\n',
+                 'TEST-ONLY-DPF-FIXTURE':placeholder}
+        for suffix in ('.manifest','.xml'):
+            files['Plugins/'+app+'/'+app+suffix] = (repo/'source/entrynav/plugin'/(app+suffix)).read_bytes()
+        files['MD5SUMS'] = ''.join(stage.md5(data).hexdigest()+'  '+name+'\n'
+                                   for name,data in files.items()).encode()
+        filename = prefix+'-armhf.tar'
+        with tarfile.open(entrynav/filename,'w',format=tarfile.USTAR_FORMAT) as archive:
+            for name,data in files.items():
+                member = tarfile.TarInfo(prefix+'/'+name);member.size=len(data)
+                archive.addfile(member,BytesIO(data))
+        digests[filename] = sha256((entrynav/filename).read_bytes()).hexdigest()
+    (entrynav/'SHA256.json').write_text(json.dumps(digests))
+    return fullscreen,entrynav
+
+
 def stage_installer_fixture(repo):
-    """Stage public baseline packages plus synthetic DPF data for Go tests only."""
+    """Stage public baseline packages and non-deployable inputs for Go tests only."""
     installer = repo/'source/tools/desktop-installer'
     with tempfile.TemporaryDirectory(prefix='dpf-installer-test-') as temp:
         root = Path(temp)
@@ -59,7 +109,8 @@ def stage_installer_fixture(repo):
             path.symlink_to((repo/name).resolve())
         fileops = root/'test-fileops'
         fileops.write_bytes(b'TEST-ONLY placeholder; Go fixtures use their own host-built helper')
-        stage.stage(candidate,fileops,installer,test_fixture=True)
+        fullscreen,entrynav = fixture_platforms(repo,root)
+        stage.stage(candidate,fileops,installer,fullscreen,entrynav,test_fixture=True)
     print('Staged synthetic DPF installer fixture. Do not distribute or install this payload.')
 
 

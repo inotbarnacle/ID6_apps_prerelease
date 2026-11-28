@@ -27,8 +27,10 @@ void fake_dsi_set_cb(void *app, unsigned off, void *fn);
 static uint32_t g_app_mem[(DSI_APP_BYTES + 3) / 4] __attribute__((aligned(8)));
 static void *const g_app = g_app_mem;
 
-static pthread_mutex_t g_mu, g_send_mu;
-static int g_init;
+static pthread_mutex_t g_mu = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t g_send_mu = PTHREAD_MUTEX_INITIALIZER;
+/* A stop may outlive ClientRun. Keep the app alive until that call returns. */
+static pthread_mutex_t g_lifecycle_mu = PTHREAD_MUTEX_INITIALIZER;
 static int g_running;                 /* g_app is initialized and not yet freed */
 static dsi_handlers_t g_h;
 static void *g_u;
@@ -65,18 +67,8 @@ static void most_log(int level, const char *tag, const char *fmt, ...)
 }
 
 
-static void state_init_once(void)
-{
-    if (!g_init) {
-        pthread_mutex_init(&g_mu, NULL);
-        pthread_mutex_init(&g_send_mu, NULL);
-        g_init = 1;
-    }
-}
-
 void dsi_client_set_target(uint16_t key, uint8_t fblock, uint8_t inst)
 {
-    state_init_once();
     pthread_mutex_lock(&g_mu);
     g_key = key;
     g_fb = fblock;
@@ -411,7 +403,6 @@ static void on_response(void *app, void *stream, const void *event)
 int dsi_client_run(const char *role, const dsi_handlers_t *h, void *u)
 {
     int rc;
-    state_init_once();
     pthread_mutex_lock(&g_mu);
     g_h = *h;
     g_u = u;
@@ -440,20 +431,22 @@ int dsi_client_run(const char *role, const dsi_handlers_t *h, void *u)
     g_running = 0;
     g_have_client = g_term_up = 0;
     pthread_mutex_unlock(&g_mu);
+    pthread_mutex_lock(&g_lifecycle_mu);
     pthread_mutex_lock(&g_send_mu);        /* wait out any send still using the stream */
     most_dsi.ClientFree(g_app);
     pthread_mutex_unlock(&g_send_mu);
+    pthread_mutex_unlock(&g_lifecycle_mu);
     return rc;
 }
 
 void dsi_client_stop(void)
 {
     int running;
-    if (!g_init)
-        return;
+    pthread_mutex_lock(&g_lifecycle_mu);
     pthread_mutex_lock(&g_mu);
     running = g_running;
     pthread_mutex_unlock(&g_mu);
     if (running)
         most_dsi.ClientStop(g_app, 0);
+    pthread_mutex_unlock(&g_lifecycle_mu);
 }

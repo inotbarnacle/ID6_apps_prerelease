@@ -226,16 +226,6 @@ static int open_most(struct diag_link *l) {
     if (gauge_port) {
         l->gauge_most_lock = gauge_bind(gauge_port);
         if (l->gauge_most_lock < 0) return -1;
-        // Mark this dashboard before checking HUD ownership. A new HUD worker
-        // will see the mark even after we release the arbitration port.
-        int arbitration = gauge_bind(GAUGE_MOST_PORT);
-        if (arbitration < 0) {
-            if (errno == EADDRINUSE) gauge_request_most();
-            close(l->gauge_most_lock);
-            l->gauge_most_lock = -1;
-            return -1;
-        }
-        close(arbitration);
     }
     most_armed = 1;
     alarm(LOOP_WATCHDOG_S);

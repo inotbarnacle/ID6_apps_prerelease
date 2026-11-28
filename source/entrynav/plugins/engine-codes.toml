@@ -1,0 +1,14 @@
+# Engine Fault Codes in Flare Drive's plugin catalog (Flare Drive's design/dynamic-plugins.md, Plugin manifest).
+# tools/publish_release.py sends it with every release. The catalog already has this plugin, so name, summary,
+# description and order here only describe it; edit them on the publishing page (publish.darkzone.dev).
+# folder and worker can never change: installs on cars use them.
+id = "engine-codes"
+name = "Engine Fault Codes"
+summary = ""
+description = "Reads the engine computer's fault codes under My Vehicle in iDrive, marks each as active, pending or stored, and clears them. Its descriptions of the codes come from a 340i's engine, so other engines show some codes without one."
+contract = "entrynav-app/1"
+order = 50
+
+[entrynav-app]
+folder = "EngineCodes"
+worker = "engine-codes"

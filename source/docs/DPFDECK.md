@@ -115,13 +115,13 @@ every reply. Samples expire independently after 4.5 seconds, including time
 spent receiving, publishing and queuing a reply.
 
 HSFZ and the existing DME MOST tunnel share the project's lease and shutdown
-paths. Projection-hook installation disables this worker's MOST fallback. The
+paths. Native Android Auto installation disables this worker's MOST fallback. The
 existing HSFZ-after-connect policy is preserved. Neither cable-free operation
 nor CarPlay/HUD coexistence on the owner's firmware is established.
 
 Loopback roles are data 42867, activity/source 42868 and MOST ownership 42869,
-within #213's excluded host receiver range. The HUD checks the new marker; the
-tunnel retains it through teardown. Existing markers prevent another client;
+within #213's excluded host receiver range. The tunnel retains the MOST marker
+through teardown. Existing markers prevent another client;
 activity socket ownership prevents duplicate DPF workers. OS process exit
 releases sockets. A project lease cannot exclude an external diagnostic device.
 
@@ -190,6 +190,8 @@ available without the payload. This contribution includes no DPF archive.
 Only 1280×480, 1440×540 and 1920×720 wide layout geometries are supplied. The
 installer rejects DPFDeck on compact/unknown panels before a transaction. Layout
 checks do not approve firmware; no installer firmware profile is added.
+This is the standard NBT Evo app; full-screen and EntryNav2 DPFDeck ports are
+not supplied. Their existing installer staging paths remain available.
 
 ## Parked validation and rollback
 
@@ -233,7 +235,7 @@ make -C source/native test
 python3 source/tools/test_dpf_resources.py
 ```
 
-The full suite runs eleven native programs and 108 Python cases. Tests use loopback
+The full suite runs thirteen native programs and 119 Python cases. Tests use loopback
 HSFZ and fake DSI/MOST, with #213's private receiver allocator. They cover full
 16-bit decoder domains, flags, units, framing, negative/truncated replies,
 backoff/rate bounds, reconnects, duplicate ownership and MOST teardown.
@@ -268,7 +270,9 @@ cd source/tools/desktop-installer
 go test -count=1 ./...
 ```
 
-The explicit fixture contains synthetic ELF-shaped data, not QNX programs. A
+The explicit fixture contains synthetic DPF ELF-shaped data, plus non-executable
+full-screen and EntryNav2 inputs for the existing installer checks. It contains
+no newly built QNX programs. A
 marker disables DPF installation and blocks release builds until real inputs
 stage successfully. The marker precedes the first synthetic payload file and
 survives interrupted staging. Never distribute or install it.

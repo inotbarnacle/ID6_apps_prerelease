@@ -10,7 +10,19 @@ MOST_HEADERS = src/common/most/most_link.h src/common/most/dsi_client.h src/comm
 FAKE_DSI = tests/fake_dsi.c tests/fake_dme.c tests/fake_dsi.h tests/fake_dme.h
 WORKER_COMMON = $(CORE_LINK) $(MOST) tests/fake_most_env.c $(FAKE_DSI) $(HEADERS) $(MOST_HEADERS)
 HOST_LINK = $(CC) $(CFLAGS) -pthread -DMOST_HOST -Isrc/common -Isrc/ipc -Isrc/workers -Itests
-.PHONY: assets launch-assets dpf-assets test test-dpf
+.PHONY: assets launch-assets dpf-assets test test-dpf test-launch-records
+
+assets: dpf-assets | build
+	unzip -p ../../packages/dashboard.zip BoostDeck/BoostDeck_ALL_Images.zip > build/boostdeck-base-images.zip
+	$(PYTHON) ../tools/make_boostdeck_extended.py --images build/boostdeck-base-images.zip --images-out build/BoostDeck_ALL_Images.zip
+	mv build/BoostDeck_ALL_Images.zip manifests/
+	@set -e; for app in MhdMaps ShiftDeck; do \
+		name=$${app}_ALL_Images.zip; \
+		unzip -p ../../packages/dashboard.zip "$$app/$$name" > "build/$$name"; \
+		mv "build/$$name" manifests/; \
+	done
+	$(PYTHON) ../tools/make_warmdeck.py
+	$(PYTHON) ../tools/make_hybrid_and_mg.py
 
 dpf-assets:
 	$(PYTHON) ../tools/make_dpfdeck.py
@@ -31,7 +43,7 @@ build/dpf-core.o: src/common/dpf_core.c src/common/dpf_core.h | build
 	$(CC) $(CFLAGS) -fPIC -Isrc/common -c $< -o $@
 
 build/test-dpf-plugin: tests/test_dpf_plugin.cpp tests/fake_bmw.cpp tests/fake_bmw.h src/plugins/dpf_deck.cpp src/common/diagnostic_worker.h src/common/diagnostic_gateway.h src/common/gauge_preferences.h $(HEADERS) build/dpf-core.o | build
-	$(CXX) -O2 -std=gnu++98 -Wall -Wextra -Werror -fno-strict-aliasing -fno-access-control -isystem sdk -Isrc/common -Isrc/plugins -Itests $< tests/fake_bmw.cpp build/dpf-core.o -lm -o $@
+	$(CXX) -O2 $(CXXFLAGS) -std=gnu++98 -Wall -Wextra -Werror -fno-strict-aliasing -fno-access-control -isystem sdk -Isrc/common -Isrc/plugins -Itests $< tests/fake_bmw.cpp build/dpf-core.o -lm -o $@
 
 build/dpf-parent-exit: tests/dpf_parent_exit.c | build
 	$(CC) $(CFLAGS) $< -o $@
@@ -44,22 +56,10 @@ test-dpf: build/test-dpf build/test-dpf-capabilities build/test-dpf-regen-capabi
 	$(PYTHON) -B tests/test_dpf_transport.py
 	$(PYTHON) -B tests/test_dpf_coexistence.py
 
-assets: | build
-	unzip -p ../../packages/dashboard.zip BoostDeck/BoostDeck_ALL_Images.zip > build/boostdeck-base-images.zip
-	$(PYTHON) ../tools/make_boostdeck_extended.py --images build/boostdeck-base-images.zip --images-out build/BoostDeck_ALL_Images.zip
-	mv build/BoostDeck_ALL_Images.zip manifests/
-	@set -e; for app in MhdMaps ShiftDeck; do \
-		name=$${app}_ALL_Images.zip; \
-		unzip -p ../../packages/dashboard.zip "$$app/$$name" > "build/$$name"; \
-		mv "build/$$name" manifests/; \
-	done
-	$(PYTHON) ../tools/make_warmdeck.py
-	$(PYTHON) ../tools/make_hybrid_and_mg.py
-
 build:
 	mkdir -p build
 
-build/boost-deck: src/workers/boost_deck_worker.c $(WORKER_COMMON) | build
+build/boost-deck: src/workers/boost_deck_worker.c src/common/dct_temperature.h $(WORKER_COMMON) | build
 	$(HOST_LINK) $(filter %.c,$^) -lm -o $@
 
 build/shift-deck: src/workers/shift_deck_worker.c $(WORKER_COMMON) | build
@@ -86,7 +86,16 @@ build/xdrive-control: src/workers/xdrive_control_worker.c $(WORKER_COMMON) | bui
 build/exhaust-flap: src/workers/exhaust_flap_worker.c $(WORKER_COMMON) | build
 	$(HOST_LINK) $(filter %.c,$^) -lm -o $@
 
+build/beamer: src/workers/beamer_worker.c $(WORKER_COMMON) | build
+	$(HOST_LINK) $(filter %.c,$^) -lm -o $@
+
+build/road-jet: src/workers/road_jet_worker.c src/ipc/road_jet_frame.h $(WORKER_COMMON) | build
+	$(HOST_LINK) $(filter %.c,$^) -lm -o $@
+
 build/test-core: tests/test_core.c $(CORE) $(HEADERS) | build
+	$(CC) $(CFLAGS) -Isrc/common $(filter %.c,$^) -lm -o $@
+
+build/test-core-locale: tests/test_core_locale.c tests/fixtures/boost_locale_frame.h $(CORE) $(HEADERS) | build
 	$(CC) $(CFLAGS) -Isrc/common $(filter %.c,$^) -lm -o $@
 
 build/test-most: tests/test_most.c $(MOST) $(FAKE_DSI) $(MOST_HEADERS) | build
@@ -102,13 +111,20 @@ build/launch_timer.o: src/common/launch_timer.c src/common/launch_timer.h | buil
 	$(CC) $(CFLAGS) -Isrc/common -c $< -o $@
 
 build/test-launch-records: tests/test_launch_records.cpp build/launch_timer.o src/common/launch_records.h | build
-	$(CXX) -O2 -std=gnu++98 -Wall -Wextra -Werror -Isrc/common $(filter %.cpp %.o,$^) -o $@
+	$(CXX) $(CXXFLAGS) -std=gnu++98 -Wall -Wextra -Werror -Isrc/common $(filter %.cpp %.o,$^) -o $@
 
-build/warmdeck-collector: src/workers/warm_deck_worker.c src/ipc/warm_frame.h $(WORKER_COMMON) | build
+build/test-launch-record-io: tests/test_launch_record_io.cpp build/launch_timer.o src/common/launch_records.h | build
+	$(CXX) $(CXXFLAGS) -std=gnu++98 -Wall -Wextra -Werror -Isrc/common $(filter %.cpp %.o,$^) -o $@
+
+test-launch-records: build/test-launch-records build/test-launch-record-io
+	./build/test-launch-records
+	./build/test-launch-record-io
+
+build/warmdeck-collector: src/workers/warm_deck_worker.c src/common/dct_temperature.h src/ipc/warm_frame.h $(WORKER_COMMON) | build
 	$(HOST_LINK) $(filter %.c,$^) -lm -o $@
 
-build/test-warm-progress: tests/test_warm_progress.cpp src/plugins/warm_progress.h src/ipc/warm_frame.h | build
-	$(CXX) -O2 -std=gnu++98 -Wall -Wextra -Werror -Isrc/plugins -Isrc/ipc $< -o $@
+build/test-warm-progress: tests/test_warm_progress.cpp src/plugins/warm_progress.h src/common/warm_units.h src/common/gauge_preferences.h src/ipc/warm_frame.h | build
+	$(CXX) -O2 -std=gnu++98 -Wall -Wextra -Werror -Isrc/plugins -Isrc/common -Isrc/ipc $< -o $@
 
 build/boost-test-core.o: $(CORE) $(HEADERS) | build
 	$(CC) $(CFLAGS) -Isrc/common -c $< -o $@
@@ -119,14 +135,16 @@ build/test-boost-preferences: tests/test_boost_preferences.cpp build/boost-test-
 launch-assets:
 	$(PYTHON) ../tools/launch_art.py
 
-test: test-dpf build/xdrive-control build/boost-deck build/shift-deck build/mhd-maps build/engine-codes build/test-core build/test-most build/test-diag-link build/bootmod3 build/exhaust-flap build/test-launch-timer build/test-launch-records build/test-boost-preferences build/test-warm-progress build/warmdeck-collector build/mgflasher build/hybriddeck-collector
+test: test-dpf build/xdrive-control build/boost-deck build/shift-deck build/mhd-maps build/engine-codes build/test-core build/test-most build/test-diag-link build/bootmod3 build/exhaust-flap build/test-launch-timer build/test-boost-preferences build/test-warm-progress build/warmdeck-collector build/mgflasher build/hybriddeck-collector build/test-core-locale build/beamer build/road-jet test-launch-records
 	./build/test-warm-progress
 	./build/test-boost-preferences
 	./build/test-launch-timer
-	./build/test-launch-records
 	./build/test-core
+	./build/test-core-locale
 	./build/test-most
 	./build/test-diag-link
+	$(PYTHON) -B tests/test_udp_ports.py
 	$(PYTHON) -B tests/test_drive_apps.py
+	$(PYTHON) -B tests/test_warm_freshness.py
 	$(PYTHON) -B tests/test_oneshot_most.py
 	$(PYTHON) -B tests/test_transport.py

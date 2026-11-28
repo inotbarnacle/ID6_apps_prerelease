@@ -1,0 +1,126 @@
+<?xml version='1.0' encoding='utf-8'?>
+<pluginApps>
+  <pluginApp applicationType="VehicleInformation" applicationWeight="244" text="ID6 App Updates">
+    <entryButton id="1" action="10">
+      <properties>
+        <property id="23" value="2" />
+      </properties>
+    </entryButton>
+    <actions>
+      <hmiAction id="10" target="210" />
+      <hmiAction id="210" target="210" />
+      <raAction id="6011" />
+      <hmiAction id="212" target="212" />
+      <raAction id="6260" />
+      <raAction id="260" />
+      <hmiAction id="213" target="213" />
+      <raAction id="6261" />
+      <raAction id="261" />
+      <hmiAction id="211" target="211" />
+      <raAction id="6010" />
+    </actions>
+    <models>
+      <raDataModel id="612" modelType="Richtext" />
+      <raDataModel id="613" modelType="Richtext" />
+      <raDataModel id="610" modelType="Richtext" />
+    </models>
+    <hmiStates>
+      <hmiState id="210" text="Updates">
+        <components>
+          <button id="534" text="System" action="211" selectAction="6011">
+            <properties>
+              <property id="20" value="12" />
+              <property id="21" value="170" />
+              <property id="9" value="172" />
+              <property id="10" value="82" />
+            </properties>
+          </button>
+          <button id="860" text="Update installed apps" action="212" selectAction="6260">
+            <properties>
+              <property id="20" value="242" />
+              <property id="21" value="106" />
+              <property id="9" value="474" />
+              <property id="10" value="128" />
+            </properties>
+          </button>
+          <button id="861" text="Install new apps" action="213" selectAction="6261">
+            <properties>
+              <property id="20" value="740" />
+              <property id="21" value="106" />
+              <property id="9" value="492" />
+              <property id="10" value="128" />
+            </properties>
+          </button>
+          <label id="552" model="610">
+            <properties>
+              <property id="20" value="236" />
+              <property id="21" value="300" />
+              <property id="9" value="940" />
+              <property id="10" value="82" />
+            </properties>
+          </label>
+        </components>
+      </hmiState>
+      <hmiState id="212" parentId="210" text="Update installed apps">
+        <components>
+          <button id="875" action="260" text="Confirm">
+            <properties>
+              <property id="20" value="242" />
+              <property id="21" value="208" />
+              <property id="9" value="450" />
+              <property id="10" value="68" />
+            </properties>
+          </button>
+          <label id="560" model="612">
+            <properties>
+              <property id="20" value="242" />
+              <property id="21" value="312" />
+              <property id="9" value="960" />
+              <property id="10" value="78" />
+            </properties>
+          </label>
+        </components>
+      </hmiState>
+      <hmiState id="213" parentId="210" text="Install new apps">
+        <components>
+          <button id="876" action="261" text="Confirm">
+            <properties>
+              <property id="20" value="242" />
+              <property id="21" value="208" />
+              <property id="9" value="450" />
+              <property id="10" value="68" />
+            </properties>
+          </button>
+          <label id="561" model="613">
+            <properties>
+              <property id="20" value="242" />
+              <property id="21" value="312" />
+              <property id="9" value="960" />
+              <property id="10" value="78" />
+            </properties>
+          </label>
+        </components>
+      </hmiState>
+      <hmiState id="211" text="System" parentId="210">
+        <components>
+          <button id="535" text="Updates" action="210" selectAction="6010">
+            <properties>
+              <property id="20" value="12" />
+              <property id="21" value="70" />
+              <property id="9" value="172" />
+              <property id="10" value="82" />
+            </properties>
+          </button>
+          <label id="553" text="Vehicle data starts when its app is open.">
+            <properties>
+              <property id="20" value="236" />
+              <property id="21" value="105" />
+              <property id="9" value="940" />
+              <property id="10" value="82" />
+            </properties>
+          </label>
+        </components>
+      </hmiState>
+    </hmiStates>
+  </pluginApp>
+</pluginApps>

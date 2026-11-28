@@ -11,7 +11,8 @@ import threading
 import time
 import unittest
 
-from test_transport import exact, frame
+from test_transport import DCT_WARM_STATUS, exact, frame
+from udp_test_socket import telemetry_socket
 
 BUILD = Path(__file__).resolve().parents[1] / "build"
 BM3_CLEAR = ("2c03f301", ["6c03f301"])
@@ -120,9 +121,19 @@ class DriveAppsTest(unittest.TestCase):
             self.assertGreaterEqual(trans,oil)
             self.assertEqual((oil_c,trans_c),(85.0,40.0))
 
+    def test_fullscreen_warmdeck_uses_selected_dct_source_and_udp_port(self):
+        with telemetry_socket() as listener:
+            listener.settimeout(2)
+            self.run_worker("warmdeck-collector",
+                ["--cycles","1","--dct-temp","--udp-port",str(listener.getsockname()[1])],
+                [("015c",["415c7d"]),("0105",["410573"]),("22de31",["62de31"+DCT_WARM_STATUS])],
+                targets=["12","12","18"])
+            _, _, trans, _, _, trans_c=struct.unpack("=QQQddd",listener.recv(64))
+            self.assertGreater(trans,0)
+            self.assertEqual(trans_c,73.0)
+
     def test_shift_worker_decodes_live_rpm_and_speed(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as listener:
-            listener.bind(("127.0.0.1", 0))
+        with telemetry_socket() as listener:
             listener.settimeout(2)
             self.run_worker("shift-deck", ["--cycles", "1", "--udp-port", str(listener.getsockname()[1])],
                             [("010c", ["410c61a8"]), ("010d", ["410d64"])])
@@ -131,42 +142,10 @@ class DriveAppsTest(unittest.TestCase):
             self.assertEqual((rpm,kph), (6250,100))
 
 
-    def test_shift_worker_shares_rpm_with_hud(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as hud, \
-                socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as display:
-            hud.bind(("127.0.0.1", 42870))
-            hud.settimeout(2)
-            display.bind(("127.0.0.1", 0))
-            self.run_worker("shift-deck", ["--cycles", "1", "--udp-port", str(display.getsockname()[1])],
-                            [("010c", ["410c61a8"]), ("010d", ["410d64"])])
-            data, peer = hud.recvfrom(64)
-            timestamp, source, flags, rpm, boost = struct.unpack("=QIIIi", data)
-            self.assertGreater(timestamp, 0)
-            self.assertEqual(peer, ("127.0.0.1", 42872))
-            self.assertEqual((source, flags, rpm, boost), (42872, 1, 6250, 0))
 
-    def test_dashboard_requests_most_from_hud_before_fallback(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as hud, \
-                socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as display:
-            hud.bind(("127.0.0.1", 42874))
-            hud.settimeout(2)
-            display.bind(("127.0.0.1", 0))
-            display.settimeout(0.25)
-            proc = self.start_most("shift-deck", display.getsockname()[1])
-            try:
-                self.assertEqual(hud.recv(8), b"\x01")
-                with self.assertRaises(socket.timeout):
-                    display.recv(64)
-                hud.close()
-                display.settimeout(6)
-                self.assertEqual(struct.unpack("=Qii", display.recv(64))[1], 1726)
-            finally:
-                codes, errors = self.stop_all([proc])
-            self.assertEqual(codes, [0], errors)
 
     def test_launch_worker_samples_speed_without_an_rpm_query(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as listener:
-            listener.bind(("127.0.0.1", 0))
+        with telemetry_socket() as listener:
             listener.settimeout(2)
             self.run_worker("shift-deck",
                 ["--speed-only", "--cycles", "1", "--udp-port", str(listener.getsockname()[1])],
@@ -241,6 +220,54 @@ class DriveAppsTest(unittest.TestCase):
             result=self.run_worker("bootmod3",[mode,value],[(request,[reply])])
             self.assertIn("accepted by DME",result)
 
+    def test_s55_flap_uses_worker_specific_retry_after_explicit_rejection(self):
+        for worker, value, short, retry, refusals in (
+            ("bootmod3", "1", "2f60fd0314fe", "2f60fd03147afaff", ("13", "31")),
+            ("bootmod3", "2", "2f60fd032328", "2f60fd03eb85faff", ("13", "31")),
+            ("exhaust-flap", "1", "2f60fd0314fe", "2f60fd0319990aff", ("13",)),
+            ("exhaust-flap", "2", "2f60fd032328", "2f60fd03e6660aff", ("13",)),
+        ):
+            for nrc in refusals:
+                with self.subTest(worker=worker, value=value, nrc=nrc):
+                    result = self.run_worker(worker, ["--flap", value], [
+                        (short, ["7f2f" + nrc]), (retry, ["6f60fd03"]),
+                    ])
+                    self.assertRegex(result, r"accepted by DME|Confirmed:")
+
+    def test_flap_rejection_for_conditions_or_missing_reply_is_never_retried(self):
+        for worker in ("bootmod3", "exhaust-flap"):
+            for replies in (["7f2f22"], []):
+                with self.subTest(worker=worker, replies=replies):
+                    self.run_worker(worker, ["--flap", "1"], [("2f60fd0314fe", replies)])
+
+    def test_beamer_stops_above_limit_without_requesting_gear(self):
+        result = self.run_worker("beamer", ["0"], [
+            ("22f150", ["62f1500f16b0"]), ("22d542", ["62d54201"]),
+            ("010d", ["410d08"]), ("1003", ["5003"]),
+            ("010d", ["410d08"]), ("2ed54200080010", ["6ed542"]),
+            ("010d", ["410d09"]), ("1001", ["5001"]),
+        ], targets=["40", "40", "12", "40", "12", "40", "12", "40"])
+        self.assertEqual(result, "S\x01\x00M")
+
+    def test_beamer_without_vehicle_speed_does_not_start_lighting(self):
+        result = self.run_worker("beamer", ["0"], [
+            ("22f150", ["62f1500f16b0"]), ("22d542", ["62d54201"]),
+            ("010d", ["7f0131"]),
+        ], targets=["40", "40", "12"])
+        self.assertEqual(result, "V")
+
+    def test_road_jet_uses_speed_instead_of_gear_and_pauses_on_loss(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as receiver:
+            receiver.bind(("127.0.0.1", 56311))
+            receiver.settimeout(1)
+            self.run_worker("road-jet", ["--cycles", "3"], [
+                ("010d", ["410d08"]), ("22480b", ["62480b1000"]),
+                ("22db57", ["62db5700000000000003"]),
+                ("010d", ["410d09"]), ("010d", ["7f0131"]),
+            ], targets=["12", "12", "30", "12", "12"])
+            frames = [struct.unpack("=Qiii4x", receiver.recv(32)) for _ in range(3)]
+            self.assertEqual([packet[1:] for packet in frames], [(1, 500, 0), (4, 0, 0), (0, 0, 0)])
+
     def test_bm3_burble_preset_uses_automatically_identified_rom(self):
         marker=b"BM3_R #011000".ljust(255,b"\x00")
         timing="f0"*24
@@ -255,41 +282,51 @@ class DriveAppsTest(unittest.TestCase):
         ])
         self.assertEqual(result,"Burble preset 8 verified by DME readback.\n")
 
-    def test_mgflasher_sends_all_three_commands_without_tune_or_profile_check(self):
+    def test_mgflasher_requires_supported_profile_and_gen2_radiator(self):
         with tempfile.TemporaryDirectory() as directory:
-            missing=Path(directory)/"no-profile.txt"
-            for mode, value, did, frame, display in (
-                ("--map","2","6945","02b0","Map slot 2"),
-                ("--burbles","5","6946","05b4","Burble slot 5"),
-                ("--cooling","1","6947","01b1","Max Cooling On"),
-            ):
-                with self.subTest(mode=mode):
-                    result=self.run_worker("mgflasher",["--profile",str(missing),mode,value],[
-                        ("2e"+did+frame,["6e"+did]),
-                    ])
-                    self.assertEqual(result,"Acknowledged by DME: "+display+"\n")
-            result=self.run_worker("mgflasher",["--profile",str(missing),"--map","2"],[
-                ("2e694502b0",["7f2e31"]),
-            ])
-            self.assertIn("refused (NRC 31)",result)
+            profile=Path(directory)/"mg.txt"
+            base=[BUILD/"mgflasher","--host","127.0.0.1","--profile",str(profile)]
+            for contents in ("MGF2 2 LE\n","MGF73 GEN1\nextra\n"):
+                profile.write_text(contents)
+                result=subprocess.run([*base,"--map","2"],capture_output=True,text=True,check=True)
+                self.assertIn("Select the DME generation",result.stdout)
+            profile.write_text("MGF73 GEN1\n")
+            result=subprocess.run([*base,"--radiator","2"],capture_output=True,text=True,check=True)
+            self.assertIn("Gen 2 only",result.stdout)
 
-    def test_mgflasher_optional_locators_verify_echo_and_active_slot(self):
+    def test_mgflasher_retries_busy_and_verifies_gen2_antilag(self):
         with tempfile.TemporaryDirectory() as directory:
-            profile=Path(directory)/"readback.txt"
-            for config in (
-                "MGF1 2 LE 1000 aabbccdd\n1010 1 1012 1f\n0 0 0 0\n0 0 0 0\n",
-                "MGF2 2 LE\n1010 1 1012\n0 0 0\n0 0 0\n",
-            ):
-                profile.write_text(config)
-                args=["--profile",str(profile),"--map","2"]
-                write=("2e694502b0",["6e6945"])
-                echo=("2324000010120002",["634569"])
-                active=("2324000010100001",["6302"])
-                self.assertEqual(self.run_worker("mgflasher",args,[write,echo,active]),
-                                 "Verified: Map slot 2\n")
-                self.assertIn("unconfirmed",self.run_worker("mgflasher",args,[
-                    write,echo,("2324000010100001",["6301"]),
-                ]))
+            profile=Path(directory)/"mg.txt"
+            profile.write_text("MGF73 GEN2\n")
+            args=["--profile",str(profile),"--antilag","30"]
+            result=self.run_worker("mgflasher",args,[
+                ("231460107f1a02",["63b80b"]),
+                ("2e69481ecf",["7f2e21"]),
+                ("2e69481ecf",["7f2e69"]),
+                ("231460107f1402",["634869"]),
+                ("231460107f1a02",["637017"]),
+            ])
+            self.assertEqual(result,"Verified: Antilag RPM: 3000 RPM\n")
+
+    def test_mgflasher_gen1_ethanol_readback_and_mismatch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            profile=Path(directory)/"mg.txt"
+            profile.write_text("MGF73 GEN1\n")
+            args=["--profile",str(profile),"--ethanol-value","60"]
+            current="23145180f5fc02"
+            prefix=[(current,["631388"]),("2e694c3cf1",["7f2e69"])]
+            self.assertEqual(self.run_worker("mgflasher",args,prefix+[
+                ("23145180f5d402",["63694c"]),(current,["632ee0"]),
+            ]),"Verified: Ethanol override value: 60.00%\n")
+            self.assertIn("checksum",self.run_worker("mgflasher",args,prefix+[
+                ("23145180f5d402",["639696"]),
+            ]))
+            self.assertIn("did not verify",self.run_worker("mgflasher",args,prefix+[
+                ("23145180f5d402",["63694c"]),(current,["631388"]),
+            ]))
+            self.assertIn("No command sent",self.run_worker("mgflasher",args,[
+                (current,["7f2331"]),
+            ]))
 
     def test_hybriddeck_sme_obd_and_battery_health_values(self):
         for health, expected_health in (
@@ -385,8 +422,7 @@ class DriveAppsTest(unittest.TestCase):
         return dict(os.environ, ID6_FAKE_MOST="up")
 
     def test_shiftdeck_most_fallback(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:
-            udp.bind(("127.0.0.1", 0))
+        with telemetry_socket() as udp:
             udp.settimeout(5)
             r = subprocess.run(
                 [BUILD/"shift-deck", "--host", "127.0.0.1", "--port", str(self.closed_port()),
@@ -398,8 +434,7 @@ class DriveAppsTest(unittest.TestCase):
         self.assertIn("transport: MOST", r.stderr)
 
     def test_shiftdeck_hsfz_never_binds(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as listener:
-            listener.bind(("127.0.0.1", 0))
+        with telemetry_socket() as listener:
             listener.settimeout(2)
             err = self.run_worker("shift-deck", ["--cycles", "1", "--udp-port", str(listener.getsockname()[1])],
                                   [("010c", ["410c61a8"]), ("010d", ["410d64"])], env=self.most_env(), stream="stderr")
@@ -441,10 +476,9 @@ class DriveAppsTest(unittest.TestCase):
 
     def test_shiftdeck_keeps_a_fair_share_of_a_slow_tunnel(self):
         env = dict(self.most_env(), ID6_FAKE_MOST_DELAY_MS="80")
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as us, \
-                socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as ub:
+        with telemetry_socket() as us, \
+                telemetry_socket() as ub:
             for u in (us, ub):
-                u.bind(("127.0.0.1", 0))
                 u.settimeout(0.2)
             shift = self.start_most("shift-deck", us.getsockname()[1], env=env)
             procs = [shift]
@@ -462,8 +496,7 @@ class DriveAppsTest(unittest.TestCase):
         self.assertGreaterEqual(shared, 0.4*alone, (alone, shared))
 
     def test_shiftdeck_sigterm_on_most(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:
-            udp.bind(("127.0.0.1", 0))
+        with telemetry_socket() as udp:
             udp.settimeout(3)
             proc = self.start_most("shift-deck", udp.getsockname()[1])
             try:
@@ -491,10 +524,9 @@ class DriveAppsTest(unittest.TestCase):
                         busy.append(1)
                 time.sleep(0.001)
 
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as us, \
-                socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as ub:
+        with telemetry_socket() as us, \
+                telemetry_socket() as ub:
             for u in (us, ub):
-                u.bind(("127.0.0.1", 0))
                 u.settimeout(0.5)
             shift = self.start_most("shift-deck", us.getsockname()[1])
             boost = self.start_most("boost-deck", ub.getsockname()[1], ["--session"])

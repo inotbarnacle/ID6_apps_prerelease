@@ -352,24 +352,6 @@ class DpfTransportTest(unittest.TestCase):
             self.assertNotIn('FAKE-MOST bind',errors)
 
 
-    def test_hud_arbitration_is_requested_and_released_before_most_opens(self):
-        released = []
-        with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as owner:
-            owner.bind(('127.0.0.1',42874))
-            owner.settimeout(2)
-            def observe(packet,process):
-                if released:
-                    return
-                self.assertEqual(packet['known'],0)
-                self.assertEqual(owner.recvfrom(1)[0],b'\1')
-                owner.close()
-                released.append(True)
-            packets,_,errors = self.run_worker(cycles=14,most=True,observe=observe)
-        self.assertTrue(released)
-        self.assertEqual(packets[-1]['valid'],ALL ^ (1 << 4))
-        self.assertIn('transport: MOST',errors)
-        self.assertIn('unregister_target=1 unregister_client=1 free=1',errors)
-
     def test_sigterm_releases_hsfz_and_most_resources(self):
         for most in (False,True):
             packets,_,errors = self.run_worker(cycles=100,most=most,

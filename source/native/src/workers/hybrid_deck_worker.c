@@ -104,9 +104,9 @@ int main(int argc, char **argv) {
     diag_link_init(&link,&cfg);
     while (diag_running && getppid()==parent && (!cycles || count<cycles)) {
         if (diag_link_up(&link)) {
-            if (next==HYBRID_HEALTH && bd_mono_ms()<next_health) next=0;
+            if (next>=HYBRID_COUNT || (next==HYBRID_HEALTH && bd_mono_ms()<next_health)) next=0;
             const unsigned signal=next;
-            next=(next+1)%HYBRID_COUNT;
+            ++next;
             const int status=read_signal(&link,signal,&voltage_did,&frame.value[signal]);
             frame.sample[signal]=status==1 ? bd_mono_ms() : 0;
             if (signal==HYBRID_HEALTH) next_health=bd_mono_ms()+HYBRID_HEALTH_POLL_MS;

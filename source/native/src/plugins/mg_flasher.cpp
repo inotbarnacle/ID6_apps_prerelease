@@ -1,26 +1,39 @@
 #include "plugin_factory.h"
+#ifdef ID6_COMPANION
+#include "companion_surface.h"
+#else
+#define ID6_MENU_NAME "MgFlasher"
+#endif
 #include "diagnostic_gateway.h"
 #include "diagnostic_worker.h"
+#include "gauge_preferences.h"
 #include <stdio.h>
 #include <sys/wait.h>
 
 namespace {
-const char worker[]="/var/opt/hmi/data/ID5/Plugins/MgFlasher/mgflasher-qnx";
-const char gatewayFile[]="/var/opt/hmi/data/ID5/Plugins/MgFlasher/gateway-ip.txt";
+const char worker[]="/var/opt/hmi/data/ID5/Plugins/" ID6_MENU_NAME "/mgflasher-qnx";
+const char gatewayFile[]="/var/opt/hmi/data/ID5/Plugins/" ID6_MENU_NAME "/gateway-ip.txt";
 const char profile[]="/var/opt/hmi/data/rw/mgflasher-live-profile.txt";
-const char *const modes[]={"--status","--map","--burbles","--cooling"};
+const char *const modes[]={"--status","--map","--burbles","--cooling","--antilag","--exhaust",
+                          "--valet","--ethanol-enable","--ethanol-value","--radiator"};
 const unsigned pollKey=0x4d47464cu;
 }
 
 class MgFlasher : public bmw::PluginApp {
+#ifdef ID6_COMPANION
+    CompanionSurface companion_;
+#endif
     pid_t child_;
     int pipe_;
     unsigned generation_, model_;
-    char result_[192];
+    char result_[512];
     size_t used_;
 
     void status(const char *value) {
         updateModel(model_,bmw::BasicString<char>(value));
+#ifdef ID6_COMPANION
+        companion_.update(model_,value);
+#endif
     }
 
     void reap() {
@@ -50,7 +63,8 @@ class MgFlasher : public bmw::PluginApp {
         int channel[2];
         if (pipe(channel)<0) { status("Could not start diagnostics"); return true; }
         ++generation_;
-        const char value[]={static_cast<char>('0'+Choice),0};
+        char value[4];
+        snprintf(value,sizeof value,"%u",Choice);
         const DiagnosticGateway gateway(gatewayFile);
         const char *args[]={worker,"--host",gateway.host(),"--profile",profile,modes[Group],value,0};
         if (fcntl(channel[0],F_SETFL,O_NONBLOCK)>=0 &&
@@ -69,38 +83,68 @@ class MgFlasher : public bmw::PluginApp {
         return true;
     }
 
+    template<unsigned Generation> bool setProfile(const bmw::Parcel&) {
+        reap();
+        if (child_>0 || pipe_>=0) return true;
+        const char *const choices[]={"MGF73 GEN1\n","MGF73 GEN2\n","disabled\n"};
+        const char *option=choices[Generation];
+        const bool saved=savePersistentBytes(profile,reinterpret_cast<const unsigned char*>(option),
+                                             strlen(option));
+        const char *const labels[]={"Gen 1 selected.","Gen 2 selected.","Live controls disabled."};
+        updateModel(69u,bmw::BasicString<char>(saved ? labels[Generation] : "Could not save the DME profile."));
+#ifdef ID6_COMPANION
+        companion_.update(69u,saved ? labels[Generation] : "Could not save the DME profile.");
+#endif
+        return true;
+    }
+
 public:
     MgFlasher(bmw::IDispatcher& d,bmw::BasicString<char> name,unsigned maj,unsigned min,
               bmw::RHMIInterfaceVersion version,const bmw::Bundle& cfg,const bmw::Bundle& res)
         : PluginApp(d,name,maj,min,version,cfg,res),child_(-1),pipe_(-1),
           generation_(0),model_(50u),used_(0) {}
     virtual ~MgFlasher() { shutdown(); }
-    virtual bool onFinalize() { shutdown(); return true; }
+    virtual bool onFinalize() {
+#ifdef ID6_COMPANION
+        companion_.close();
+#endif
+        shutdown();
+        return true;
+    }
     virtual bool onInit() {
+#ifdef ID6_COMPANION
+        companion_.bind(*this);
+#endif
         shutdown();
         typedef bmw::Delegate<bool,const bmw::Parcel&> Action;
         Action action;
         action.m_obj=this;
         typedef bool (*Handler)(void*,const bmw::Parcel&);
         static const struct { unsigned id; Handler function; } routes[]={
-#define SET(id,group,choice) {id,&Action::execImpl<MgFlasher,&MgFlasher::request<group,choice> >}
-            SET(20,0,0), SET(21,1,0), SET(22,1,1), SET(23,1,2), SET(24,1,3), SET(25,1,4),
-            SET(30,2,0), SET(31,2,1), SET(32,2,2), SET(33,2,3), SET(34,2,4), SET(35,2,5),
-            SET(40,3,0), SET(41,3,1),
-#undef SET
+#define MG_ACTION(id,group,choice) {id,&Action::execImpl<MgFlasher,&MgFlasher::request<group,choice> >},
+#include "mg_menu_routes.inc"
+#undef MG_ACTION
+            {91,&Action::execImpl<MgFlasher,&MgFlasher::setProfile<0> >},
+            {92,&Action::execImpl<MgFlasher,&MgFlasher::setProfile<1> >},
+            {93,&Action::execImpl<MgFlasher,&MgFlasher::setProfile<2> >},
+
         };
         for (unsigned i=0;i<sizeof routes/sizeof routes[0];++i) {
             action.m_exec=routes[i].function;
             addHandler(routes[i].id,action);
         }
-        for (model_=50u;model_<54u;++model_) status("");
+        for (model_=50u;model_<60u;++model_) status("");
         model_=50u;
-        status("Select a live control. Refresh is available with readback locators.");
+        status("Select the matching DME profile, then refresh current settings.");
+        updateModel(69u,bmw::BasicString<char>("Select only if the DME runs MG Custom Code 7.3–7.3.4."));
         if (child_>0) postPoll();
         return true;
     }
 
     virtual bool invokeDataUpdate(unsigned key,const bmw::Parcel& data) {
+#ifdef ID6_COMPANION
+        if (companion_.poll(key)) return true;
+#endif
         if (key!=pollKey) return PluginApp::invokeDataUpdate(key,data);
         unsigned generation;
         if (!data.readUInt32(generation)) return false;
@@ -123,6 +167,6 @@ public:
 };
 
 extern "C" {
-PluginAppInfo pluginAppInfo={1,"MgFlasher","owner-development",1,
+PluginAppInfo pluginAppInfo={1,ID6_MENU_NAME,"owner-development",1,
                             create_app<MgFlasher>,destroy_app};
 }

@@ -1,0 +1,261 @@
+<?xml version='1.0' encoding='utf-8'?>
+<pluginApps>
+  <pluginApp applicationType="VehicleInformation" applicationWeight="207" text="ShiftDeck">
+    <entryButton id="1" action="10">
+      <properties>
+        <property id="23" value="2" />
+      </properties>
+    </entryButton>
+    <actions>
+      <hmiAction id="10" target="100" />
+      <hmiAction id="40" target="101" />
+      <raAction id="400" />
+      <raAction id="401" />
+      <raAction id="402" />
+      <raAction id="403" />
+      <raAction id="404" />
+      <raAction id="405" />
+      <raAction id="406" />
+      <raAction id="407" />
+      <raAction id="408" />
+      <raAction id="409" />
+      <raAction id="410" />
+      <raAction id="411" />
+      <raAction id="412" />
+      <raAction id="413" />
+      <raAction id="414" />
+      <raAction id="415" />
+      <raAction id="416" />
+      <raAction id="417" />
+      <raAction id="418" />
+      <raAction id="419" />
+      <raAction id="420" />
+      <hmiAction id="48" target="102" />
+      <raAction id="46" />
+      <raAction id="47" />
+    </actions>
+    <models>
+      <raDataModel id="53" modelType="Richtext" />
+      <raDataModel id="58" modelType="Richtext" />
+      <imageIdModel id="54" imageId="56400" />
+      <imageIdModel id="55" imageId="55866" />
+      <imageIdModel id="56" imageId="57005" />
+      <imageIdModel id="57" imageId="55914" />
+      <imageIdModel id="60" imageId="55901" />
+      <imageIdModel id="61" imageId="55900" />
+      <imageIdModel id="62" imageId="55900" />
+      <imageIdModel id="63" imageId="55901" />
+      <imageIdModel id="64" imageId="55916" />
+      <imageIdModel id="65" imageId="55917" />
+      <imageIdModel id="66" imageId="55918" />
+      <imageIdModel id="67" imageId="55919" />
+      <imageIdModel id="68" imageId="57035" />
+      <imageIdModel id="70" imageId="55901" />
+      <imageIdModel id="71" imageId="55901" />
+      <imageIdModel id="72" imageId="55900" />
+    </models>
+    <hmiStates>
+      <hmiState id="100" text="ShiftDeck">
+        <optionComponents>
+          <button id="30" action="40" text="Shift light setting" />
+          <button id="31" action="48" text="Speed" />
+        </optionComponents>
+        <components>
+          <image id="200" model="54">
+            <properties>
+              <property id="20" value="52" />
+              <property id="21" value="287" />
+              <property id="9" value="1104" />
+              <property id="10" value="90" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="201" model="55">
+            <properties>
+              <property id="20" value="52" />
+              <property id="21" value="10" />
+              <property id="9" value="1104" />
+              <property id="10" value="76" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="202" model="56">
+            <properties>
+              <property id="20" value="1003" />
+              <property id="21" value="113" />
+              <property id="9" value="153" />
+              <property id="10" value="135" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="203" model="57">
+            <properties>
+              <property id="20" value="454" />
+              <property id="21" value="215" />
+              <property id="9" value="350" />
+              <property id="10" value="42" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="206" model="60">
+            <properties>
+              <property id="20" value="501" />
+              <property id="21" value="108" />
+              <property id="9" value="64" />
+              <property id="10" value="100" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="207" model="61">
+            <properties>
+              <property id="20" value="565" />
+              <property id="21" value="108" />
+              <property id="9" value="64" />
+              <property id="10" value="100" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="208" model="62">
+            <properties>
+              <property id="20" value="629" />
+              <property id="21" value="108" />
+              <property id="9" value="64" />
+              <property id="10" value="100" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="209" model="63">
+            <properties>
+              <property id="20" value="693" />
+              <property id="21" value="108" />
+              <property id="9" value="64" />
+              <property id="10" value="100" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="210" model="64">
+            <properties>
+              <property id="20" value="53" />
+              <property id="21" value="108" />
+              <property id="9" value="200" />
+              <property id="10" value="179" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="211" model="65">
+            <properties>
+              <property id="20" value="764" />
+              <property id="21" value="169" />
+              <property id="9" value="68" />
+              <property id="10" value="35" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="212" model="66">
+            <properties>
+              <property id="20" value="52" />
+              <property id="21" value="377" />
+              <property id="9" value="1104" />
+              <property id="10" value="42" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="213" model="67">
+            <properties>
+              <property id="20" value="52" />
+              <property id="21" value="420" />
+              <property id="9" value="1104" />
+              <property id="10" value="10" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="214" model="68">
+            <properties>
+              <property id="20" value="52" />
+              <property id="21" value="278" />
+              <property id="9" value="1104" />
+              <property id="10" value="9" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="216" model="70">
+            <properties>
+              <property id="20" value="53" />
+              <property id="21" value="139" />
+              <property id="9" value="67" />
+              <property id="10" value="109" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="217" model="71">
+            <properties>
+              <property id="20" value="120" />
+              <property id="21" value="139" />
+              <property id="9" value="67" />
+              <property id="10" value="109" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="218" model="72">
+            <properties>
+              <property id="20" value="187" />
+              <property id="21" value="139" />
+              <property id="9" value="67" />
+              <property id="10" value="109" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+        </components>
+      </hmiState>
+      <hmiState id="101" parentId="100" text="Shift light setting">
+        <components>
+          <label id="300" model="53" />
+          <button id="301" action="400" text="6,000 RPM" />
+          <button id="302" action="401" text="6,100 RPM" />
+          <button id="303" action="402" text="6,200 RPM" />
+          <button id="304" action="403" text="6,300 RPM" />
+          <button id="305" action="404" text="6,400 RPM" />
+          <button id="306" action="405" text="6,500 RPM" />
+          <button id="307" action="406" text="6,600 RPM" />
+          <button id="308" action="407" text="6,700 RPM" />
+          <button id="309" action="408" text="6,800 RPM" />
+          <button id="310" action="409" text="6,900 RPM" />
+          <button id="311" action="410" text="7,000 RPM" />
+          <button id="312" action="411" text="7,100 RPM" />
+          <button id="313" action="412" text="7,200 RPM" />
+          <button id="314" action="413" text="7,300 RPM" />
+          <button id="315" action="414" text="7,400 RPM" />
+          <button id="316" action="415" text="7,500 RPM" />
+          <button id="317" action="416" text="7,600 RPM" />
+          <button id="318" action="417" text="7,700 RPM" />
+          <button id="319" action="418" text="7,800 RPM" />
+          <button id="320" action="419" text="7,900 RPM" />
+          <button id="321" action="420" text="8,000 RPM" />
+        </components>
+      </hmiState>
+      <hmiState id="102" parentId="100" text="Speed">
+        <components>
+          <label id="310" model="58" />
+          <button id="311" action="46" text="MPH" />
+          <button id="312" action="47" text="km/h" />
+        </components>
+      </hmiState>
+    </hmiStates>
+  </pluginApp>
+</pluginApps>
