@@ -8,6 +8,7 @@
 #include "boost_preferences.h"
 #include "boost_defaults.h"
 #include "boost_defaults_mode.h"
+#include "dct_settings.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -139,6 +140,13 @@ public:
     virtual bool onFinalize() { shutdown(); return true; }
     virtual bool invokeDataUpdate(unsigned key, const bmw::Parcel& data);
     bool gaugeVisibility(const bmw::Parcel&);
+    bool changeDctTemperature(const bmw::Parcel&) {
+        const bool saved=toggleDctTemperature();
+        if (saved) restartCollector();
+        updateSettings();
+        updateModel(118u,bmw::BasicString<char>(saved ? "" : "Could not save DCT setting"));
+        return true;
+    }
     template <unsigned Color> bool changeColor(const bmw::Parcel&) {
         BoostPreferences changed=preferences_;
         changed.color=Color;
@@ -267,6 +275,8 @@ bool BoostDeck::onInit() {
     action.m_exec=&bmw::Delegate<bool,const bmw::Parcel&>::execImpl<BoostDeck,&BoostDeck::gaugeVisibility>;
     addHandler(100u,11u,action);
     typedef bmw::Delegate<bool,const bmw::Parcel&> Action;
+    action.m_exec=&Action::execImpl<BoostDeck,&BoostDeck::changeDctTemperature>;
+    addHandler(5750u,action);
     typedef bool (*Handler)(void*,const bmw::Parcel&);
     static const Handler colorHandlers[] = {
         &Action::execImpl<BoostDeck,&BoostDeck::changeColor<0> >,
@@ -347,6 +357,7 @@ bool BoostDeck::gaugeVisibility(const bmw::Parcel& event) {
     bool visible;
     if (!event.readBool(visible) || gauges_visible_==visible) return true;
     gauges_visible_=visible;
+    if (visible) updateModel(1880u,bmw::BasicString<char>(dctTemperatureLabel()));
     if (visible) {
         retry_at_=0;
         startVisibleCollector();
@@ -395,6 +406,7 @@ void BoostDeck::updateSettings() {
     char label[80];
     snprintf(label,sizeof label,"Gauge color: %s",kColorNames[preferences_.color]);
     updateModel(110u,bmw::BasicString<char>(label));
+    updateModel(1880u,bmw::BasicString<char>(dctTemperatureLabel()));
     for (unsigned color=0;color<sizeof kColorNames / sizeof kColorNames[0];++color)
         updateModel(5200u+color,preferences_.color==color);
     for (unsigned row=0;row<BOOST_SETTING_COUNT;++row) {
@@ -506,7 +518,7 @@ bool BoostDeck::acceptPacket(const char* data, size_t length) {
             ((capability_supported_ ^ report.supported) & capability_known_)) return false;
     } else if (!bd_parse(data,length,&next)) return false;
     const uint64_t now=bd_mono_ms();
-    if (!next.sent_ms || next.sent_ms>now || (received_ && next.sent_ms<received_) ||
+    if (next.demo || !next.sent_ms || next.sent_ms>now || (received_ && next.sent_ms<received_) ||
         (automaticDiesel() && now-next.sent_ms>=BD_STALE_MS)) return false;
     frame_=next; received_=next.sent_ms;
     if (automaticDiesel() && (capability_known_!=report.known || capability_supported_!=report.supported)) {

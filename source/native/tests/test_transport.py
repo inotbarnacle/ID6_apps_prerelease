@@ -21,6 +21,7 @@ CAR_VALUES = {0x4201: bytes.fromhex("6589"), 0x4205: bytes.fromhex("32dd"),
               0x5889: bytes.fromhex("1015"), 0x4A49: bytes.fromhex("ffff"),
               0x580F: bytes.fromhex("8c"), 0xDA12: bytes.fromhex("005a")}
 CAR_VALUES.update({did: VALUES[did] for did in (0x56D7, 0x586F, 0x4300)})
+DCT_WARM_STATUS = "0054676c2823284e282c3c200b640000000003290049004900fb00a20125010101ff02080101"
 
 
 def frame(ctrl, body):
@@ -66,6 +67,17 @@ class TransportTest(unittest.TestCase):
                         req = exact(conn, length)
                         requests.append(req)
                         self.assertEqual(req[0], 0xF4)
+                        if req == bytes.fromhex("f41822de31"):
+                            reply = {"dct_legacy": "18f47f2231", "dct_refused": "18f47f2231",
+                                     "dct_malformed": "18f462de310049",
+                                     "dct": "18f462de31" + DCT_WARM_STATUS}[mode]
+                            conn.sendall(frame(1, bytes.fromhex(reply)))
+                            continue
+                        if req == bytes.fromhex("f418210a"):
+                            self.assertIn(mode, ("dct_legacy", "dct_refused"))
+                            reply = "18f4610a5f" if mode == "dct_legacy" else "18f47f2131"
+                            conn.sendall(frame(1, bytes.fromhex(reply)))
+                            continue
                         if req == bytes.fromhex("f4120105"):
                             self.assertEqual(mode, "s55_coolant")
                             conn.sendall(frame(1, bytes.fromhex("12f441057a")))
@@ -193,6 +205,17 @@ class TransportTest(unittest.TestCase):
         p, _, _ = self.run_collector("no_trans")
         self.assertEqual(int(p[3]), 239)
 
+    def test_selected_dct_source_uses_status_block_with_legacy_fallback(self):
+        for mode, value in (("dct", 73.0), ("dct_legacy", 40.0), ("dct_refused", None), ("dct_malformed", None)):
+            with self.subTest(mode=mode):
+                packet, requests, _ = self.run_collector(mode, ("--dct-temp",))
+                self.assertIn(bytes.fromhex("f41822de31"), requests)
+                self.assertEqual(bytes.fromhex("f418210a") in requests, mode in ("dct_legacy", "dct_refused"))
+                self.assertNotIn(bytes.fromhex("f41822da12"), requests)
+                self.assertEqual(int(packet[3]), 255 if value is not None else 239)
+                if value is not None:
+                    self.assertAlmostEqual(float(packet[13]), value)
+
     def test_refused_fast_read_backs_off_without_holding_up_other_gauges(self):
         packet, requests, _ = self.run_collector("no_afr", cycles=4)
         self.assertEqual(int(packet[3]), 253)
@@ -234,12 +257,6 @@ class TransportTest(unittest.TestCase):
                 self.assertEqual(len(requests), 9)
                 self.assertEqual(int(p[3]), expected_mask)
 
-    def test_boostdeck_collects_when_hud_sharing_port_is_occupied(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as holder:
-            holder.bind(("127.0.0.1", 42871))
-            packet, _, trace = self.run_collector()
-            self.assertEqual(int(packet[3]), 255)
-            self.assertIn("without HUD sharing", trace)
 
     def test_timeout_is_bounded(self):
         start = time.monotonic()

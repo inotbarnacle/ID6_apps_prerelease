@@ -8,6 +8,22 @@
 - BoostDeck adds standard EGT bank/sensor gauges with PID and sensor-support gating, independent freshness and bounded polling. Detected defaults choose at most one EGT. No exhaust-location or regeneration inference is added.
 - Existing signal IDs, ordinary NBG7 packets and B1/B2 settings retain their original meaning. EGT readings use 64-bit masks, NBG8/NBC2 frames and B3 assignments; matching plugin and worker builds are required. These changes are host-tested source, not N57 or QNX runtime approval.
 
+## v0.7.20
+
+- BEAMer and Road Jet use a speed cutoff of 8 km/h (about 5 mph). Either app pauses or stops if speed exceeds the cutoff or the reading is lost.
+- Bootmod3 and the standalone exhaust flap worker use their respective captured S55 fallback requests after a matching format rejection.
+- WarmDeck counts the time spent waiting for a diagnostic reply against sample freshness.
+- MOST diagnostics keep the DSI client alive until an in-progress stop call returns.
+
+## v0.7.19
+
+- Recovers from empty managed plugin folders left behind after a reset.
+- Adds an 800 × 480 EntryNav2 layout for 6.5-inch displays.
+- Adds the captured GS7D36SG transmission temperature source to BoostDeck and WarmDeck.
+- Fixes LaunchDeck record reads after I/O errors and BoostDeck telemetry parsing across numeric locales.
+- Accepts explicitly addressed, on-link EntryNav2 and NBT Evo SSH peers at the edge of the ENET subnet. Updates the Trio Collector to accept explicitly addressed private on-link subnets.
+- Publishes the standard, full-screen and EntryNav2 source together.
+
 ## v0.7.18
 
 - Renames the project to **iDriveDeck**.

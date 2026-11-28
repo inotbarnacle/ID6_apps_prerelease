@@ -1,0 +1,16 @@
+#ifndef ID6_HYBRID_FRAME_H
+#define ID6_HYBRID_FRAME_H
+
+#include <stdint.h>
+
+enum { HYBRID_PORT=42865, HYBRID_SOURCE_PORT=42866, HYBRID_STALE_MS=7000,
+       HYBRID_HEALTH_POLL_MS=60000, HYBRID_HEALTH_STALE_MS=120000 };
+enum hybrid_signal { HYBRID_SOC, HYBRID_VOLTS, HYBRID_AMPS, HYBRID_COOLANT,
+                     HYBRID_ENGINE_COOLANT, HYBRID_MODULE_VOLTS, HYBRID_HEALTH, HYBRID_COUNT };
+
+struct hybrid_frame {
+    uint64_t sample[HYBRID_COUNT];
+    double value[HYBRID_COUNT];
+};
+
+#endif

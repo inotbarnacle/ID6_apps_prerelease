@@ -2,6 +2,7 @@
 #include "gauge_core.h"
 #include <ctype.h>
 #include <errno.h>
+#include <locale.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -97,11 +98,44 @@ int bd_decode_obd(unsigned pid, const unsigned char *p, size_t n, double *out) {
     return 1;
 }
 
+enum { NUMERIC_RADIX_SIZE = 32 };
+
+/* Use libc's conversion/rounding without changing the HMI's global locale.
+   A bounded snapshot also supports multibyte decimal separators. */
+static int numeric_radix(char radix[NUMERIC_RADIX_SIZE]) {
+    const struct lconv *locale=localeconv();
+    const char *point=locale ? locale->decimal_point : NULL;
+    size_t n=0;
+    if (!point) return 0;
+    while (point[n] && n+1<NUMERIC_RADIX_SIZE) { radix[n]=point[n]; ++n; }
+    if (!n || point[n]) return 0;
+    radix[n]=0;
+    return 1;
+}
+
+static int fixed_decimal(double value, const char *radix, char *out, size_t size) {
+    char *p;
+    const size_t width=strlen(radix);
+    int n=snprintf(out,size,"%.6f",value);
+    if (n<0 || (size_t)n>=size) return 0;
+    p=out;
+    if (*p=='-') ++p;
+    if (*p<'0' || *p>'9') return 0; /* includes nonfinite input */
+    while (*p>='0' && *p<='9') ++p;
+    if (strncmp(p,radix,width) || strlen(p+width)!=6) return 0;
+    for (unsigned i=0;i<6;++i)
+        if (p[width+i]<'0' || p[width+i]>'9') return 0;
+    memmove(p+1,p+width,7); /* six fractional digits and terminator */
+    *p='.';
+    return 1;
+}
+
 int bd_encode(const bd_frame *f, char *out, size_t len) {
     int n;
     size_t used;
     unsigned i;
-    if (!f || !out || !len || (f->valid & ~BD_ALL_MASK)) return -1;
+    char radix[NUMERIC_RADIX_SIZE], number[BD_MAX_PACKET];
+    if (!f || !out || !len || (f->valid & ~BD_ALL_MASK) || !numeric_radix(radix)) return -1;
     const unsigned fields=(f->valid & ~BD_WIRE10_MASK) ? BD_WIRE11_COUNT :
                           (f->valid & ~BD_WIRE9_MASK) ? BD_WIRE10_COUNT :
                           (f->valid & ~BD_WIRE8_MASK) ? BD_WIRE9_COUNT :
@@ -119,7 +153,8 @@ int bd_encode(const bd_frame *f, char *out, size_t len) {
     if (n < 0 || (size_t)n >= len) return -1;
     used = (size_t)n;
     for (i = 0; i < fields; ++i) {
-        n = snprintf(out+used, len-used, " %.6f %u", f->value[i], f->age_ms[i]);
+        if (!fixed_decimal(f->value[i],radix,number,sizeof number)) return -1;
+        n = snprintf(out+used, len-used, " %s %u", number, f->age_ms[i]);
         if (n < 0 || (size_t)n >= len-used) return -1;
         used += (size_t)n;
     }
@@ -139,23 +174,42 @@ static int unsigned_field(char **cursor, uint64_t max, uint64_t *out) {
     if (errno==ERANGE || end==p || (*end && !isspace((unsigned char)*end)) || value>max) return 0;
     *cursor=end; *out=(uint64_t)value; return 1;
 }
-static int double_field(char **cursor, double *out, double limit) {
+static int double_field(char **cursor, double *out, double limit, const char *radix) {
+    char number[BD_MAX_PACKET+NUMERIC_RADIX_SIZE];
     char *p=*cursor, *end;
+    size_t used=0, width=strlen(radix);
+    unsigned points=0;
     double value;
     while (isspace((unsigned char)*p)) ++p;
-    errno=0; value=strtod(p,&end);
-    if (errno==ERANGE || end==p || (*end && !isspace((unsigned char)*end)) ||
+    while (*p && !isspace((unsigned char)*p)) {
+        /* Preserve decimal/exponent/hex grammar, but never accept a localized
+           separator or grouping in the ASCII wire format. */
+        if (!strchr("0123456789abcdefABCDEFxXpP+-.",*p)) return 0;
+        if (*p=='.') {
+            if (++points>1 || used+width>=sizeof number) return 0;
+            memcpy(number+used,radix,width); used+=width;
+        } else {
+            if (used+1>=sizeof number) return 0;
+            number[used++]=*p;
+        }
+        ++p;
+    }
+    number[used]=0;
+    errno=0; value=strtod(number,&end);
+    if (errno==ERANGE || end==number || *end ||
         !isfinite(value) || fabs(value)>limit) return 0;
-    *cursor=end; *out=value; return 1;
+    *cursor=p; *out=value; return 1;
 }
 
 int bd_parse(const char *data, size_t len, bd_frame *out) {
     char b[BD_MAX_PACKET];
+    char radix[NUMERIC_RADIX_SIZE];
     char *cursor;
     bd_frame f;
     uint64_t integer;
     unsigned i, fields, tag_length=4;
-    if (!data || !out || len == 0 || len >= sizeof b || memchr(data, 0, len)) return 0;
+    if (!data || !out || len == 0 || len >= sizeof b || memchr(data, 0, len) ||
+        !numeric_radix(radix)) return 0;
     memcpy(b, data, len); b[len] = 0;
     memset(&f, 0, sizeof f);
     if (len>=6 && (!memcmp(b,"NBG10",5) || !memcmp(b,"NBG11",5)) && isspace((unsigned char)b[5])) {
@@ -189,7 +243,7 @@ int bd_parse(const char *data, size_t len, bd_frame *out) {
     for (i = 0; i < fields; ++i) {
         double limit=20000;
         if (i==BD_ABS_LOAD) limit=25700;
-        if (!double_field(&cursor,&f.value[i],limit) || !unsigned_field(&cursor,999999,&integer)) return 0;
+        if (!double_field(&cursor,&f.value[i],limit,radix) || !unsigned_field(&cursor,999999,&integer)) return 0;
         if (i>=BD_EGR_REQUEST && i<=BD_EGR_B_ERROR && (f.valid & BD_BIT(i))) {
             const int error=i==BD_EGR_ERROR || i==BD_EGR_A_ERROR || i==BD_EGR_B_ERROR;
             if (f.value[i]<(error ? -100 : 0) || f.value[i]>(error ? 99.21875 : 100)) return 0;

@@ -9,6 +9,7 @@
     <actions>
       <hmiAction id="10" target="100" />
       <hmiAction id="520" target="520" />
+      <raAction id="5750" />
       <hmiAction id="521" target="521" />
       <combinedAction id="2000">
         <actions>
@@ -683,6 +684,7 @@
       <imageIdModel id="69" imageId="56300" />
       <imageIdModel id="68" imageId="57000" />
       <raDataModel id="119" modelType="Richtext" />
+      <raDataModel id="1880" modelType="Richtext" />
       <raDataModel id="118" modelType="Richtext" />
       <raDataModel id="120" modelType="Richtext" />
       <raDataModel id="700" modelType="Richtext" />
@@ -1249,6 +1251,7 @@
       </hmiState>
       <hmiState id="520" parentId="100" text="BoostDeck settings">
         <components>
+          <button id="1880" action="5750" text="" model="1880" />
           <label id="118" model="118" />
           <button id="120" action="521" text="" model="120" />
           <button id="121" action="522" text="" model="121" />

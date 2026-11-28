@@ -1,0 +1,14 @@
+# Bootmod3 Suite in Flare Drive's plugin catalog (Flare Drive's design/dynamic-plugins.md, Plugin manifest).
+# tools/publish_release.py sends it with every release. The catalog already has this plugin, so name, summary,
+# description and order here only describe it; edit them on the publishing page (publish.darkzone.dev).
+# folder and worker can never change: installs on cars use them.
+id = "bm3-maps"
+name = "Bootmod3 Suite"
+summary = ""
+description = "Switches between the four map slots of a bootmod3 multi-map tune from My Vehicle in iDrive, and shows which one is active. Its options turn Active Sound on or off and set the burbles. It changes nothing unless the engine computer runs a bootmod3 CustomROM it knows. Pick only maps made for the fuel in the tank. bootmod3 doesn't make or support this app."
+contract = "entrynav-app/1"
+order = 40
+
+[entrynav-app]
+folder = "Bm3Maps"
+worker = "bm3-maps"

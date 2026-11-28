@@ -97,7 +97,8 @@ if os.environ.get("BUILD_INPUTS_FAIL") and os.path.basename(sys.argv[0]) == "qcc
                 for index, arg in enumerate(args):
                     if index in (output_index, output_index + 1):
                         continue
-                    if arg.startswith(("-V", "-Wc,")) or arg in ("-lsocket", "-Lout"):
+                    if arg.startswith(("-V", "-Wc,")) or arg in (
+                            "-lsocket", "-Lout", "-mno-unaligned-access"):
                         continue
                     host_args.append(objects.get(arg, arg))
                 host_args += ["-std=c99", "-DMOST_HOST", "-Itests", "-pthread",

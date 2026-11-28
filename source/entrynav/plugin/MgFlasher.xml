@@ -1,0 +1,349 @@
+<?xml version='1.0' encoding='utf-8'?>
+<pluginApps>
+  <pluginApp applicationType="VehicleInformation" applicationWeight="216" text="MG Flasher">
+    <entryButton id="1" action="10">
+      <properties>
+        <property id="23" value="2" />
+      </properties>
+    </entryButton>
+    <actions>
+      <hmiAction id="10" target="100" />
+      <raAction id="20" />
+      <hmiAction id="90" target="190" />
+      <raAction id="91" />
+      <raAction id="92" />
+      <raAction id="93" />
+      <hmiAction id="11" target="101" />
+      <raAction id="21" />
+      <raAction id="22" />
+      <raAction id="23" />
+      <raAction id="24" />
+      <raAction id="25" />
+      <hmiAction id="12" target="102" />
+      <raAction id="30" />
+      <raAction id="31" />
+      <raAction id="32" />
+      <raAction id="33" />
+      <raAction id="34" />
+      <raAction id="35" />
+      <hmiAction id="13" target="103" />
+      <raAction id="40" />
+      <raAction id="41" />
+      <hmiAction id="14" target="104" />
+      <raAction id="1000" />
+      <raAction id="1001" />
+      <raAction id="1002" />
+      <raAction id="1003" />
+      <raAction id="1004" />
+      <raAction id="1005" />
+      <raAction id="1006" />
+      <raAction id="1007" />
+      <raAction id="1008" />
+      <raAction id="1009" />
+      <raAction id="1010" />
+      <raAction id="1011" />
+      <raAction id="1012" />
+      <raAction id="1013" />
+      <raAction id="1014" />
+      <raAction id="1015" />
+      <raAction id="1016" />
+      <raAction id="1017" />
+      <raAction id="1018" />
+      <raAction id="1019" />
+      <raAction id="1020" />
+      <raAction id="1021" />
+      <raAction id="1022" />
+      <raAction id="1023" />
+      <raAction id="1024" />
+      <raAction id="1025" />
+      <raAction id="1026" />
+      <raAction id="1027" />
+      <raAction id="1028" />
+      <raAction id="1029" />
+      <raAction id="1030" />
+      <raAction id="1031" />
+      <raAction id="1032" />
+      <raAction id="1033" />
+      <raAction id="1034" />
+      <raAction id="1035" />
+      <raAction id="1036" />
+      <raAction id="1037" />
+      <raAction id="1038" />
+      <raAction id="1039" />
+      <raAction id="1040" />
+      <raAction id="1041" />
+      <raAction id="1042" />
+      <raAction id="1043" />
+      <raAction id="1044" />
+      <raAction id="1045" />
+      <hmiAction id="15" target="105" />
+      <raAction id="1100" />
+      <raAction id="1101" />
+      <raAction id="1102" />
+      <hmiAction id="16" target="106" />
+      <raAction id="1200" />
+      <raAction id="1201" />
+      <hmiAction id="17" target="107" />
+      <raAction id="1300" />
+      <raAction id="1301" />
+      <hmiAction id="18" target="108" />
+      <raAction id="1400" />
+      <raAction id="1401" />
+      <raAction id="1402" />
+      <raAction id="1403" />
+      <raAction id="1404" />
+      <raAction id="1405" />
+      <raAction id="1406" />
+      <raAction id="1407" />
+      <raAction id="1408" />
+      <raAction id="1409" />
+      <raAction id="1410" />
+      <raAction id="1411" />
+      <raAction id="1412" />
+      <raAction id="1413" />
+      <raAction id="1414" />
+      <raAction id="1415" />
+      <raAction id="1416" />
+      <raAction id="1417" />
+      <raAction id="1418" />
+      <raAction id="1419" />
+      <raAction id="1420" />
+      <hmiAction id="19" target="109" />
+      <raAction id="1500" />
+      <raAction id="1501" />
+      <raAction id="1502" />
+    </actions>
+    <models>
+      <raDataModel id="50" modelType="Richtext" />
+      <raDataModel id="69" modelType="Richtext" />
+      <imageIdModel id="65" imageId="59105" />
+      <raDataModel id="51" modelType="Richtext" />
+      <imageIdModel id="60" imageId="59100" />
+      <imageIdModel id="61" imageId="59101" />
+      <imageIdModel id="62" imageId="59102" />
+      <imageIdModel id="63" imageId="59103" />
+      <imageIdModel id="64" imageId="59104" />
+      <raDataModel id="52" modelType="Richtext" />
+      <raDataModel id="53" modelType="Richtext" />
+      <raDataModel id="54" modelType="Richtext" />
+      <raDataModel id="55" modelType="Richtext" />
+      <raDataModel id="56" modelType="Richtext" />
+      <raDataModel id="57" modelType="Richtext" />
+      <raDataModel id="58" modelType="Richtext" />
+      <raDataModel id="59" modelType="Richtext" />
+    </models>
+    <hmiStates>
+      <hmiState id="100" text="MG Flasher">
+        <components>
+          <button id="20" action="20" text="Refresh current settings" />
+          <label id="50" model="50" />
+          <button id="90" action="90" text="DME profile for Custom Code 7.3–7.3.4" />
+          <button id="11" action="11" text="Switchable maps" />
+          <button id="12" action="12" text="Burbles" />
+          <button id="13" action="13" text="Max Cooling" />
+          <button id="14" action="14" text="Antilag RPM" />
+          <button id="15" action="15" text="Exhaust flap" />
+          <button id="16" action="16" text="Valet mode" />
+          <button id="17" action="17" text="Ethanol override" />
+          <button id="18" action="18" text="Ethanol override value" />
+          <button id="19" action="19" text="Radiator flap (Gen 2)" />
+        </components>
+      </hmiState>
+      <hmiState id="190" text="DME profile" parentId="100">
+        <components>
+          <label id="169" model="69" />
+          <button id="91" action="91" text="Gen 1 (A2L starts with R0 or R1)" />
+          <button id="92" action="92" text="Gen 2 (A2L starts with R4 or F4)" />
+          <button id="93" action="93" text="Disable live controls" />
+        </components>
+      </hmiState>
+      <hmiState id="101" text="Switchable maps" parentId="100">
+        <components>
+          <label id="51" model="51">
+            <properties>
+              <property id="20" value="90" />
+              <property id="21" value="346" />
+              <property id="9" value="1050" />
+              <property id="10" value="64" />
+            </properties>
+          </label>
+          <image id="201" model="65">
+            <properties>
+              <property id="20" value="491" />
+              <property id="21" value="18" />
+              <property id="9" value="263" />
+              <property id="10" value="80" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <button id="21" action="21" imageModel="60">
+            <properties>
+              <property id="20" value="90" />
+              <property id="21" value="112" />
+              <property id="9" value="200" />
+              <property id="10" value="208" />
+            </properties>
+          </button>
+          <button id="22" action="22" imageModel="61">
+            <properties>
+              <property id="20" value="306" />
+              <property id="21" value="112" />
+              <property id="9" value="200" />
+              <property id="10" value="208" />
+            </properties>
+          </button>
+          <button id="23" action="23" imageModel="62">
+            <properties>
+              <property id="20" value="522" />
+              <property id="21" value="112" />
+              <property id="9" value="200" />
+              <property id="10" value="208" />
+            </properties>
+          </button>
+          <button id="24" action="24" imageModel="63">
+            <properties>
+              <property id="20" value="738" />
+              <property id="21" value="112" />
+              <property id="9" value="200" />
+              <property id="10" value="208" />
+            </properties>
+          </button>
+          <button id="25" action="25" imageModel="64">
+            <properties>
+              <property id="20" value="954" />
+              <property id="21" value="112" />
+              <property id="9" value="200" />
+              <property id="10" value="208" />
+            </properties>
+          </button>
+        </components>
+      </hmiState>
+      <hmiState id="102" text="Burbles" parentId="100">
+        <components>
+          <label id="52" model="52" />
+          <button id="30" action="30" text="OEM" />
+          <button id="31" action="31" text="App Slider" />
+          <button id="32" action="32" text="Level 1" />
+          <button id="33" action="33" text="Level 2" />
+          <button id="34" action="34" text="Level 3" />
+          <button id="35" action="35" text="Off" />
+        </components>
+      </hmiState>
+      <hmiState id="103" text="Max Cooling" parentId="100">
+        <components>
+          <label id="53" model="53" />
+          <button id="40" action="40" text="Off" />
+          <button id="41" action="41" text="On" />
+        </components>
+      </hmiState>
+      <hmiState id="104" text="Antilag RPM" parentId="100">
+        <components>
+          <label id="54" model="54" />
+          <button id="1000" action="1000" text="1,500 RPM" />
+          <button id="1001" action="1001" text="1,600 RPM" />
+          <button id="1002" action="1002" text="1,700 RPM" />
+          <button id="1003" action="1003" text="1,800 RPM" />
+          <button id="1004" action="1004" text="1,900 RPM" />
+          <button id="1005" action="1005" text="2,000 RPM" />
+          <button id="1006" action="1006" text="2,100 RPM" />
+          <button id="1007" action="1007" text="2,200 RPM" />
+          <button id="1008" action="1008" text="2,300 RPM" />
+          <button id="1009" action="1009" text="2,400 RPM" />
+          <button id="1010" action="1010" text="2,500 RPM" />
+          <button id="1011" action="1011" text="2,600 RPM" />
+          <button id="1012" action="1012" text="2,700 RPM" />
+          <button id="1013" action="1013" text="2,800 RPM" />
+          <button id="1014" action="1014" text="2,900 RPM" />
+          <button id="1015" action="1015" text="3,000 RPM" />
+          <button id="1016" action="1016" text="3,100 RPM" />
+          <button id="1017" action="1017" text="3,200 RPM" />
+          <button id="1018" action="1018" text="3,300 RPM" />
+          <button id="1019" action="1019" text="3,400 RPM" />
+          <button id="1020" action="1020" text="3,500 RPM" />
+          <button id="1021" action="1021" text="3,600 RPM" />
+          <button id="1022" action="1022" text="3,700 RPM" />
+          <button id="1023" action="1023" text="3,800 RPM" />
+          <button id="1024" action="1024" text="3,900 RPM" />
+          <button id="1025" action="1025" text="4,000 RPM" />
+          <button id="1026" action="1026" text="4,100 RPM" />
+          <button id="1027" action="1027" text="4,200 RPM" />
+          <button id="1028" action="1028" text="4,300 RPM" />
+          <button id="1029" action="1029" text="4,400 RPM" />
+          <button id="1030" action="1030" text="4,500 RPM" />
+          <button id="1031" action="1031" text="4,600 RPM" />
+          <button id="1032" action="1032" text="4,700 RPM" />
+          <button id="1033" action="1033" text="4,800 RPM" />
+          <button id="1034" action="1034" text="4,900 RPM" />
+          <button id="1035" action="1035" text="5,000 RPM" />
+          <button id="1036" action="1036" text="5,100 RPM" />
+          <button id="1037" action="1037" text="5,200 RPM" />
+          <button id="1038" action="1038" text="5,300 RPM" />
+          <button id="1039" action="1039" text="5,400 RPM" />
+          <button id="1040" action="1040" text="5,500 RPM" />
+          <button id="1041" action="1041" text="5,600 RPM" />
+          <button id="1042" action="1042" text="5,700 RPM" />
+          <button id="1043" action="1043" text="5,800 RPM" />
+          <button id="1044" action="1044" text="5,900 RPM" />
+          <button id="1045" action="1045" text="6,000 RPM" />
+        </components>
+      </hmiState>
+      <hmiState id="105" text="Exhaust flap" parentId="100">
+        <components>
+          <label id="55" model="55" />
+          <button id="1100" action="1100" text="OEM" />
+          <button id="1101" action="1101" text="Closed" />
+          <button id="1102" action="1102" text="Open" />
+        </components>
+      </hmiState>
+      <hmiState id="106" text="Valet mode" parentId="100">
+        <components>
+          <label id="56" model="56" />
+          <button id="1200" action="1200" text="Off" />
+          <button id="1201" action="1201" text="On" />
+        </components>
+      </hmiState>
+      <hmiState id="107" text="Ethanol override" parentId="100">
+        <components>
+          <label id="57" model="57" />
+          <button id="1300" action="1300" text="Off" />
+          <button id="1301" action="1301" text="On" />
+        </components>
+      </hmiState>
+      <hmiState id="108" text="Ethanol override value" parentId="100">
+        <components>
+          <label id="58" model="58" />
+          <button id="1400" action="1400" text="0%" />
+          <button id="1401" action="1401" text="5%" />
+          <button id="1402" action="1402" text="10%" />
+          <button id="1403" action="1403" text="15%" />
+          <button id="1404" action="1404" text="20%" />
+          <button id="1405" action="1405" text="25%" />
+          <button id="1406" action="1406" text="30%" />
+          <button id="1407" action="1407" text="35%" />
+          <button id="1408" action="1408" text="40%" />
+          <button id="1409" action="1409" text="45%" />
+          <button id="1410" action="1410" text="50%" />
+          <button id="1411" action="1411" text="55%" />
+          <button id="1412" action="1412" text="60%" />
+          <button id="1413" action="1413" text="65%" />
+          <button id="1414" action="1414" text="70%" />
+          <button id="1415" action="1415" text="75%" />
+          <button id="1416" action="1416" text="80%" />
+          <button id="1417" action="1417" text="85%" />
+          <button id="1418" action="1418" text="90%" />
+          <button id="1419" action="1419" text="95%" />
+          <button id="1420" action="1420" text="100%" />
+        </components>
+      </hmiState>
+      <hmiState id="109" text="Radiator flap (Gen 2)" parentId="100">
+        <components>
+          <label id="59" model="59" />
+          <button id="1500" action="1500" text="OEM" />
+          <button id="1501" action="1501" text="Closed" />
+          <button id="1502" action="1502" text="Open" />
+        </components>
+      </hmiState>
+    </hmiStates>
+  </pluginApp>
+</pluginApps>

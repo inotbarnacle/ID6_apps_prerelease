@@ -1,0 +1,143 @@
+"""Bitmap assets for ShiftDeck's native iDrive 6 image components."""
+from functools import lru_cache
+from io import BytesIO
+from pathlib import Path
+from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
+
+from PIL import Image, ImageDraw, ImageFont
+
+# The rev bar: SWEEP_STEPS + 1 frames from 0 to 8,000 RPM, then the same in red past the shift point. Upstream's IDs.
+SWEEP_STEPS = 128
+SWEEP_BASE, SWEEP_ALERT = 56400, 56400 + SWEEP_STEPS + 1
+LIGHT_BASE, TARGET_BASE = 55866, 57000
+DIGIT_BASE, DIGIT_WARN = 55890, 55902
+SHIFT_OFF, SHIFT_ON = 55914, 55915
+SPEED_LEGEND, RPM_LEGEND, SCALE, LOWER = range(55916, 55920)
+SPEED_LEGEND_KMH = 56660
+MARK_BASE = 57030
+TARGETS = tuple(range(6000, 8001, 100))
+DEFAULT_INDEX = TARGETS.index(6500)
+WHITE, DIM, BLUE, RED = "#f0f4fb", "#90a4ba", "#7bd2ff", "#ff4548"
+LINE = "#42556a"
+BAR_WIDTH = 1104
+BAR_START, BAR_PITCH, BAR_SLANT = 4, (BAR_WIDTH - 28) / 16, 20
+
+
+@lru_cache
+def font(size):
+    local = Path("/System/Library/Fonts/Supplemental/DIN Condensed Bold.ttf")
+    return ImageFont.truetype(str(local) if local.is_file() else "DejaVuSansCondensed-Bold.ttf", size)
+
+
+def art(size):
+    image = Image.new("RGBA", size)
+    return image, ImageDraw.Draw(image)
+
+
+def text(draw, xy, value, size, color=WHITE, anchor="mt"):
+    draw.text(xy, value, font=font(size), fill=color, anchor=anchor)
+
+
+def bitmaps():
+    for alert in (False, True):
+        for step in range(SWEEP_STEPS + 1):
+            image, d = art((BAR_WIDTH, 80))
+            x0, pitch, slant = BAR_START, BAR_PITCH, BAR_SLANT
+            left, right = x0, x0 + 16*pitch
+            level = left + step*16*pitch/SWEEP_STEPS
+            def band(a, b, color):
+                d.polygon([(a+slant,4),(b+slant,4),(b,75),(a,75)], fill=color)
+            ramp = ("#2373e7", "#3287f0", "#409af6", "#55acfd", "#70c4ff",
+                    "#ffc050", "#ff944d", "#ff7054")
+            for seg in range(16):
+                a = left + seg*pitch
+                b = a + pitch - 3
+                band(a, b, "#40191e" if seg >= 14 else "#222d3b")
+                fill_to = min(level, b)
+                if fill_to > a:
+                    band(a, fill_to, RED if alert else ramp[seg//2])
+            if step:
+                x = min(right-2, level)
+                d.line([(x+slant,2),(x,77)], fill=WHITE, width=4)
+            yield (SWEEP_ALERT if alert else SWEEP_BASE)+step, image
+
+    for step in range(14):
+        image, d = art((1104,76))
+        d.line([(0,43),(209,43),(253,73),(851,73),(895,43),(1103,43)], fill=LINE, width=2)
+        d.line([(254,73),(850,73)], fill="#7093b5" if step!=13 else RED, width=3)
+        for i in range(12):
+            x = 257+i*50
+            bright = "#36d790" if i<5 else "#ffc34d" if i<9 else RED
+            dark = "#102c27" if i<5 else "#352a17" if i<9 else "#391a23"
+            d.rounded_rectangle((x,4,x+40,31),radius=6,
+                                fill=RED if step==13 else bright if i<step else dark)
+        yield LIGHT_BASE+step,image
+
+    for i,rpm in enumerate(TARGETS):
+        image,d=art((180,135))
+        text(d,(173,4),"SHIFT AT",25,DIM,"rt")
+        text(d,(173,32),str(rpm),68,BLUE,"rt")
+        text(d,(173,101),"RPM",22,DIM,"rt")
+        d.line((5,133,173,133),fill=LINE,width=2)
+        yield TARGET_BASE+i,image
+        image,d=art((BAR_WIDTH,9))
+        x=BAR_START+BAR_SLANT+round(16*BAR_PITCH*rpm/8000)
+        d.line((x,1,x,8),fill="#ffc34d",width=3)
+        yield MARK_BASE+i,image
+
+    for color,base in ((WHITE,DIGIT_BASE),(RED,DIGIT_WARN)):
+        for i,c in enumerate("0123456789- "):
+            image,d=art((58,92))
+            text(d,(29,4),c,91,color)
+            yield base+i,image
+
+    for identifier,phrase in ((SHIFT_OFF,""),(SHIFT_ON,"S H I F T")):
+        image,d=art((350,84))
+        if phrase:
+            d.rounded_rectangle((3,4,346,79),radius=8,fill="#3c1420",outline=RED,width=2)
+            text(d,(175,18),phrase,52,RED)
+        yield identifier,image
+
+    for identifier,unit in ((SPEED_LEGEND,"MPH"),(SPEED_LEGEND_KMH,"KM/H")):
+        image,d=art((200,179))
+        text(d,(2,3),"SPEED",25,DIM,"lt")
+        text(d,(2,143),unit,22,DIM,"lt")
+        d.line((2,177,143,177),fill=LINE,width=2)
+        yield identifier,image
+
+    image,d=art((68,35))
+    text(d,(2,3),"RPM",25,DIM,"lt")
+    yield RPM_LEGEND,image
+
+    image,d=art((BAR_WIDTH,51))
+    for i in range(17):
+        x=BAR_START+round(i*BAR_PITCH)
+        color=RED if i>=14 else WHITE if i%2==0 else LINE
+        d.line((x,3,x,17 if i%2==0 else 11),fill=color,width=2)
+        if i%2==0:
+            text(d,(max(9,x),22),str(i//2),26,color)
+    yield SCALE,image
+
+    image,d=art((1104,33))
+    d.line([(0,29),(209,29),(253,3),(851,3),(895,29),(1103,29)],fill=LINE,width=2)
+    yield LOWER,image
+
+
+def save_assets(out, constants):
+    with ZipFile(out,"w",ZIP_DEFLATED) as archive:
+        for identifier,image in bitmaps():
+            data=BytesIO()
+            image.save(data,format="PNG",optimize=True)
+            archive.writestr(ZipInfo(f"{identifier}.png"),data.getvalue(),ZIP_DEFLATED)
+    constants.write_text(
+        "// Generated by tools/make_drive_apps.py.\n"
+        + "".join(f"static const unsigned {key} = {value}u;\n" for key,value in (
+            ("kSweepSteps",SWEEP_STEPS),("kSweepBase",SWEEP_BASE),("kSweepAlert",SWEEP_ALERT),
+            ("kSpeedLegendMph",SPEED_LEGEND),("kSpeedLegendKmh",SPEED_LEGEND_KMH),("kLightBase",LIGHT_BASE),
+            ("kTargetBase",TARGET_BASE),("kDigitBase",DIGIT_BASE),("kDigitWarn",DIGIT_WARN),
+            ("kMarkBase",MARK_BASE),
+            ("kShiftOff",SHIFT_OFF),("kShiftOn",SHIFT_ON),("kDefaultTarget",DEFAULT_INDEX)))
+        + "static const unsigned kShiftTargets[] = {"
+        + ", ".join(map(str,TARGETS)) + "};\n",
+        newline="\n",
+    )

@@ -36,7 +36,8 @@ inline LaunchRecords loadLaunchRecords(const char* path) {
     if (!file) return none;
     unsigned char data[kLaunchRecordBytes]={0};
     size_t length=fread(data,1,sizeof data,file);
-    bool read=fgetc(file)==EOF && !ferror(file);
+    bool read=!ferror(file);
+    if (read && !feof(file)) read=fgetc(file)==EOF && !ferror(file);
     fclose(file);
     if (!read || data[0]!='L' ||
         !((length==10 && data[1]==1) || (length==sizeof data && data[1]==2))) return none;

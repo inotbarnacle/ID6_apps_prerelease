@@ -2,7 +2,7 @@
 
 Vehicle gauges, tuning controls, diagnostics, and more under **My Vehicle** on BMW NBT Evo ID6 and EntryNav2.
 
-[Download v0.7.18 for macOS or Windows](https://github.com/inotbarnacle/iDriveDeck/releases/tag/installer-v0.7.18) · [Installation guide](Installer.md) · [Change notes](CHANGELOG.md)
+[Download v0.7.19 for macOS or Windows](https://github.com/inotbarnacle/iDriveDeck/releases/tag/installer-v0.7.19) · [Installation guide](Installer.md) · [Change notes](CHANGELOG.md)
 
 ## NBT Evo ID6
 
@@ -16,7 +16,7 @@ Full-screen mode detects 800 × 480, 960 × 480, 1280 × 480, 1440 × 540 or 192
 
 ## EntryNav2 (early beta)
 
-The same macOS and Windows installer now includes 12 native EntryNav2 menus. Choose **EntryNav2 (early beta)** and enter the head unit IP and its existing SSH password over wired ENET. The installer selects matching builds for W2408C1R, Q2051B1R and C1643D1R, with a beta fallback for unrecognized framework pairs. EntryNav2 uses the native iDrive view under **My Vehicle** on 1280 × 480 displays.
+The same macOS and Windows installer now includes 12 native EntryNav2 menus. Choose **EntryNav2 (early beta)** and enter the head unit IP and its existing SSH password over wired ENET. The installer selects matching builds for W2408C1R, Q2051B1R and C1643D1R, with a beta fallback for unrecognized framework pairs. EntryNav2 uses the native iDrive view under **My Vehicle** on 1280 × 480 or 6.5-inch 800 × 480 displays. Select the panel size in the installer.
 
 The available apps include BoostDeck, ShiftDeck, WarmDeck, LaunchDeck, HybridDeck, Engine Fault Codes, Road Jet, BEAMer, MHD+ Suite, Bootmod3 Suite, MG Flasher, and experimental xDrive Control. Vehicle data and tuning functions depend on the corresponding ECU and tune.
 
@@ -25,6 +25,8 @@ The available apps include BoostDeck, ShiftDeck, WarmDeck, LaunchDeck, HybridDec
 The new installer backs up and removes the previous iDriveDeck or ID6Apps menus that it manages, then installs your selected set. Select every app you want to keep. Record the backup location and restart iDrive after installation. HUD Gauges is retired from the installer.
 
 Full-screen ID6 adds **My Vehicle → ID6 App Updates**. That menu will be used for future signed USB app updates. Use the desktop installer for this release.
+
+[Build and release source](source/docs/RELEASE-BUILD.md) covers the standard NBT Evo apps, full-screen apps, and EntryNav2 ports.
 
 ## Features
 
@@ -40,8 +42,8 @@ Full-screen ID6 adds **My Vehicle → ID6 App Updates**. That menu will be used 
 - **Bootmod3 Suite** is a control menu for compatible CustomROM tunes. It offers four map slots, exhaust flap control, Active Sound, and burble presets.
 - **xDrive Control (experimental)** temporarily selects rear-wheel drive on supported DSC versions. Mode changes require confirmed Park and zero speed. The F-series DSC_25 (0F1860) with LMV 0F1480 requires the engine running. The supported G-series DSCs require the engine off. See the [compatibility notes](source/docs/COMPATIBILITY.md#xdrive-control-experimental).
 - **Engine Fault Codes** reads engine/DME fault codes and shows descriptions when available. After a confirmed clear, it rereads the fault memory and reports codes that remain. Park with ignition on and the engine off before confirming a clear.
-- **Road Jet**. A simple game that makes a jet move based on throttle input and steering angle. [Road Jet package](packages/road-jet.zip)
-- **BEAMer** offers Front, Rear, Both, and Insane lighting patterns in Park at zero speed. Tested on an F3x car. Other Fxx cars may work if they have the supported lighting module. Gxx has not been tested. [BEAMer package](packages/beamer.zip)
+- **Road Jet** uses throttle and steering to control the jet. It plays at up to 8 km/h (about 5 mph) and pauses when speed data is unavailable.
+- **BEAMer** offers Front, Rear, Both, and Insane patterns on supported lighting modules. It checks for a valid speed of 8 km/h (about 5 mph) or less before each lighting step.
 
 ## Contributors and credits
 

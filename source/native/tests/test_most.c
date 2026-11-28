@@ -574,6 +574,28 @@ static void test_most_request_unchanged(void)
     alarm(0);
 }
 
+static void observe_stop_before_free(void)
+{
+    struct timespec start;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    /* Let the fake run loop exit while ClientStop is still on the stack. */
+    while (!fake_dsi_free_count() && ms_since(&start) < 250) sleep_us(1000);
+    CHECK(fake_dsi_free_count() == 0);
+}
+
+static void test_stop_finishes_before_free(void)
+{
+    alarm(5);
+    fake_dsi_reset();
+    fake_dme_start(FAKE_UP);
+    fake_dsi_set_stop_hook(observe_stop_before_free);
+    CHECK(most_open(1000) == MOST_UP);
+    CHECK(most_close() == 0);
+    CHECK(fake_dsi_free_count() == 1);
+    fake_dme_stop();
+    alarm(0);
+}
+
 int main(void)
 {
     signal(SIGALRM, on_alarm);
@@ -593,6 +615,7 @@ int main(void)
     test_no_target();
     test_open_variants();
     test_close_order_and_twice();
+    test_stop_finishes_before_free();
     test_pending();
     test_close_during_wait();
     test_refusal_does_not_stick();

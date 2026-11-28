@@ -91,11 +91,6 @@ int main(int argc, char **argv) {
                 f.sampled_ms=bd_mono_ms();
                 f.rpm=rpm;
                 f.kph=kph;
-                if (!speed_only) {
-                    struct hud_telemetry sample = { f.sampled_ms, source,
-                        rpm >= 0 ? HUD_SAMPLE_RPM : 0, rpm >= 0 ? (unsigned)rpm : 0, 0 };
-                    gauge_publish(active, &sample);
-                }
                 if (sendto(sock,&f,sizeof f,0,(struct sockaddr *)&dest,sizeof dest)!=(ssize_t)sizeof f) break;
             }
             (void)diag_link_should_yield(&link,bd_mono_ms());
