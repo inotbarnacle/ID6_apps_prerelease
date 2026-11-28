@@ -6,6 +6,18 @@ CI workflow was present at that baseline. Follow `source/AGENTS.md` and the host
 checks in [BUILD.md](BUILD.md). Changes below are source contributions; published
 application ZIPs are separate maintainer build artifacts.
 
+Upstream update, 28 November: the maintainer incorporated #208, #210, #213,
+#217 and #218 into release v0.7.19 and closed those PRs as included. Current
+upstream is `9ded391`, with standard NBT Evo, full-screen and EntryNav2 source.
+All seven remaining feature branches had merge conflicts with this release.
+Discovery #201 is reconciled at signed `8755619`; its 121 host cases pass,
+including upstream's EGS-only legacy temperature probe and both heartbeat
+deadline regressions. Collector code, earlier plans and fixtures are unchanged.
+The updated branch is pushed; new CI is pending. The configured signer is
+working again. Remaining native branches need reconciliation with upstream's
+DCT option, units and source-layout changes before their older results can
+support an updated revision. No vehicle, firmware or QNX validation is inferred.
+
 Publication update, 27 November: the configured SSH signer is working and the
 focused source commits are signed and published. Earlier references below to
 waiting for the signer describe historical checkpoints. Detailed entries below
@@ -72,9 +84,13 @@ public-report allowlist still omits optional storage, preserving prior report
 contracts. The combined
 [storage workflow](https://github.com/voioo/iDriveDeck/actions/runs/46072090629)
 and [discovery workflow](https://github.com/voioo/iDriveDeck/actions/runs/46072090434)
-pass at that source. The other automatic app jobs are running against unchanged
-native code. No native regression run is repeated locally for this metadata-only
-change. Stage C now links the exact
+pass at that source. All twelve automatic workflows now pass at the published
+combined `f9d5555`, including the full GCC/Clang
+[diagnostic regressions and sanitizers](https://github.com/voioo/iDriveDeck/actions/runs/46072393323).
+That log confirms 47 native test programs and 190 native-suite Python cases;
+its later resource/probe/capture steps add 25 cases in that job. These results
+precede the staged build-script follow-up below. No native regression run was
+repeated locally for this metadata-only change. Stage C now links the exact
 optional read. The snapshot neither reserves capacity nor assesses whether an
 installation fits, and no storage value or `df` availability on this X5 is
 claimed.
@@ -98,6 +114,36 @@ and [production ownership/baseline checks](https://github.com/voioo/iDriveDeck/a
 No production lease change was needed. Keep PR descriptions/comments concise
 and readable. Documentation commits after this checkpoint preserve all native,
 tool and workflow bytes tested here.
+
+## Native build dependency follow-up
+
+The combined telemetry/DPFDeck build supplied `obd_capabilities.c` twice to the
+DPF worker: once explicitly and once through the common worker wrapper. Host
+Makefile prerequisites were deduplicated, so the prior native tests did not
+exercise this production build-script error. The old expanded inputs fail a
+real host link with a duplicate `obd_pid_advertised` definition.
+
+The telemetry build now lists capability dependencies on BoostDeck and
+WarmDeck directly, leaving the shared transport wrapper independent of them.
+DPFDeck's existing explicit dependency then appears once when combined.
+Three new build-driver cases pass with GCC and Clang: command/input validation,
+real host linking of emitted worker inputs, and stopping at a compiler failure.
+The old combined script fails both the duplicate-input check and the real DPF
+host link; its failure-stop control passes. The test records compiler arguments
+in a temporary directory with empty private-library placeholders, then uses
+only public source and the existing fake MOST implementation for host links.
+It never runs a worker or produces a QNX binary. The exact staged build-script
+edits also pass all three cases against the combined WarmDeck/DPFDeck sources
+with both host compilers, without changing that published checkout.
+
+Actual QNX SDP 6.5/ARM GCC 4.4.2 and private framework inputs remain unavailable
+here. The first publication attempt was refused by the configured 1Password
+signer; the tested patch and tree were preserved until signing became
+available. No signing settings were changed and no unsigned commit was made.
+This follow-up retains the signed contribution workflow. Its native inputs
+were tested against the earlier baseline; compatibility with the new upstream
+QNX flags will be checked during that merge. The prior runtime validation
+remains separately recorded above.
 
 ## Current gaps and overlapping work
 
