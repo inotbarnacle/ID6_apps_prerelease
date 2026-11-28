@@ -24,7 +24,7 @@ GROUPS = {
     "road-jet": ("RoadJet",),
     "launchdeck": ("LaunchDeck",),
     "warmdeck": ("WarmDeck",),
-    "speedlock-unlock": ("SpeedlockUnlock",),
+    "speedlock-bypass": ("SpeedlockBypass",),
 }
 COMPACT = {"BoostDeck", "ShiftDeck", "EngineCodes", "MhdMaps", "Bootmod3Suite", "MgFlasher",
            "LaunchDeck", "WarmDeck", "HybridDeck", "XDriveControl"}

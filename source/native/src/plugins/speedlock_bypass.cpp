@@ -1,5 +1,5 @@
-// speedlock_unlock.cpp — Optional standalone in-process NBT EVO HMI plugin
-// that disables CRhmiSpeedlockServer (RHMI / custom ID6 app speedlock) once
+// speedlock_bypass.cpp — Optional standalone in-process NBT EVO HMI plugin
+// that bypasses CRhmiSpeedlockServer (RHMI / custom ID6 app speedlock) once
 // at boot via IRhmiSpeedlockService::vtable[4] (setSpeedlockDisabled(true)).
 //
 // Runs on the HMI UI/dispatcher thread via bmw::Runnable; never blocks boot,
@@ -25,7 +25,7 @@ struct CacheBucketNode {
     CacheBucketNode* next;
 };
 
-const char kLogPath[] = "/tmp/speedlock_unlock.log";
+const char kLogPath[] = "/tmp/speedlock_bypass.log";
 const unsigned kInitialDelayMs = 1000u;
 const unsigned kRetryDelayMs = 2000u;
 const unsigned kMaxAttempts = 30u;
@@ -119,16 +119,16 @@ public:
     }
 };
 
-class SpeedlockUnlockApp : public bmw::PluginApp {
+class SpeedlockBypassApp : public bmw::PluginApp {
 public:
-    SpeedlockUnlockApp(bmw::IDispatcher& disp, bmw::BasicString<char> name,
+    SpeedlockBypassApp(bmw::IDispatcher& disp, bmw::BasicString<char> name,
                        unsigned int major, unsigned int minor,
                        bmw::RHMIInterfaceVersion rhmi,
                        const bmw::Bundle& cfg, const bmw::Bundle& res)
         : bmw::PluginApp(disp, name, major, minor, rhmi, cfg, res) {}
 
     virtual bool onInit() {
-        logLine("SpeedlockUnlock::onInit", 0u, this);
+        logLine("SpeedlockBypass::onInit", 0u, this);
         post(new UnlockRunnable(this), kInitialDelayMs);
         return true;
     }
@@ -139,10 +139,10 @@ public:
 extern "C" {
 PluginAppInfo pluginAppInfo = {
     1u,
-    "SpeedlockUnlock",
+    "SpeedlockBypass",
     "owner-development",
     1u,
-    create_app<SpeedlockUnlockApp>,
+    create_app<SpeedlockBypassApp>,
     destroy_app
 };
 }

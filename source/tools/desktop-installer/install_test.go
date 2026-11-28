@@ -709,26 +709,26 @@ func TestInspectUsesApprovedFrameworkPairForFirmwareVariants(t *testing.T) {
 	}
 }
 
-func TestSpeedlockUnlockSelection(t *testing.T) {
-	selection, err := choose([]string{"SpeedlockUnlock"})
+func TestSpeedlockBypassSelection(t *testing.T) {
+	selection, err := choose([]string{"SpeedlockBypass"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(selection) != 1 || selection[0].name != "SpeedlockUnlock" || selection[0].connector != "119" {
-		t.Fatalf("unexpected SpeedlockUnlock selection: %+v", selection)
+	if len(selection) != 1 || selection[0].name != "SpeedlockBypass" || selection[0].connector != "119" {
+		t.Fatalf("unexpected SpeedlockBypass selection: %+v", selection)
 	}
 	if selection[0].usesImages() {
-		t.Fatal("SpeedlockUnlock should not require an image archive")
+		t.Fatal("SpeedlockBypass should not require an image archive")
 	}
 	if len(selection[0].executables()) != 0 {
-		t.Fatalf("SpeedlockUnlock should not require a worker executable: %v", selection[0].executables())
+		t.Fatalf("SpeedlockBypass should not require a worker executable: %v", selection[0].executables())
 	}
 	script := string(publicationScript("/var/opt/hmi/data/ID5/GaugeDeck-0123456789abcdef", selection...))
-	if !strings.Contains(script, "apps='SpeedlockUnlock:-'") {
-		t.Fatalf("unexpected publication script for SpeedlockUnlock:\n%s", script)
+	if !strings.Contains(script, "apps='SpeedlockBypass:-'") {
+		t.Fatalf("unexpected publication script for SpeedlockBypass:\n%s", script)
 	}
-	removal, err := selectMenus([]string{"SpeedlockUnlock"}, true)
-	if err != nil || len(removal) != 1 || removal[0].name != "SpeedlockUnlock" {
-		t.Fatalf("unexpected SpeedlockUnlock uninstall selection: %+v %v", removal, err)
+	removal, err := selectMenus([]string{"SpeedlockBypass"}, true)
+	if err != nil || len(removal) != 1 || removal[0].name != "SpeedlockBypass" {
+		t.Fatalf("unexpected SpeedlockBypass uninstall selection: %+v %v", removal, err)
 	}
 }

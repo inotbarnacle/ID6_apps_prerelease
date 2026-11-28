@@ -81,7 +81,7 @@ func perform(in request) outcome {
 		selection = fullscreenApps
 		if in.Uninstall {
 			selection = append(append([]plugin{}, fullscreenApps...), fullscreenCompanions...)
-			selection = append(selection, plugin{name: "SpeedlockUnlock", connector: "119"})
+			selection = append(selection, plugin{name: "SpeedlockBypass", connector: "119"})
 		}
 		if len(in.Apps) != 0 {
 			var companions []plugin
@@ -94,7 +94,7 @@ func perform(in request) outcome {
 				switch app.name {
 				case "Bootmod3Suite", "MgFlasher":
 					alternateTuning = true
-				case "XDriveControl", "HybridDeck", "SpeedlockUnlock":
+				case "XDriveControl", "HybridDeck", "SpeedlockBypass":
 				default:
 					return fail(errors.New("That menu is already available in the full-screen bundle."))
 				}
@@ -106,7 +106,7 @@ func perform(in request) outcome {
 				}
 			}
 			for _, app := range companions {
-				if app.name == "SpeedlockUnlock" {
+				if app.name == "SpeedlockBypass" {
 					selection = append(selection, app)
 					continue
 				}
