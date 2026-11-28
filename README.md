@@ -8,7 +8,7 @@ Vehicle gauges, tuning controls, diagnostics, and more under **My Vehicle** on B
 
 Choose **NBT Evo** in the desktop installer. **Install** gives you the standard iDrive menus. **Install full-screen apps** gives each app its own entry under **My Vehicle**. Open an entry to go directly to its full-screen dashboard. Turn the iDrive knob to highlight a control and press it to select.
 
-Full-screen mode detects 800 × 480, 960 × 480, 1280 × 480, 1440 × 540 or 1920 × 720 and uses the matching layout. The bundle includes BoostDeck, ShiftDeck, WarmDeck, LaunchDeck, Engine Fault Codes, Road Jet, BEAMer and your choice of MHD+ Suite, Bootmod3 Suite, or MG Flasher. HybridDeck and experimental xDrive Control are optional.
+Full-screen mode detects 800 × 480, 960 × 480, 1280 × 480, 1440 × 540 or 1920 × 720 and uses the matching layout. The bundle includes BoostDeck, ShiftDeck, WarmDeck, LaunchDeck, Engine Fault Codes, Road Jet, BEAMer and your choice of MHD+ Suite, Bootmod3 Suite, or MG Flasher. HybridDeck, experimental xDrive Control, and App Speedlock Bypass are also selectable.
 
 | Bootmod3 Suite | MG Flasher |
 | --- | --- |
@@ -44,6 +44,7 @@ Full-screen ID6 adds **My Vehicle → ID6 App Updates**. That menu will be used 
 - **Engine Fault Codes** reads engine/DME fault codes and shows descriptions when available. After a confirmed clear, it rereads the fault memory and reports codes that remain. Park with ignition on and the engine off before confirming a clear.
 - **Road Jet** uses throttle and steering to control the jet. It plays at up to 8 km/h (about 5 mph) and pauses when speed data is unavailable.
 - **BEAMer** offers Front, Rear, Both, and Insane patterns on supported lighting modules. It checks for a valid speed of 8 km/h (about 5 mph) or less before each lighting step.
+- **App Speedlock Bypass** (NBT Evo) is a hidden startup plugin for regions where BMW disables custom apps in motion (such as Australia). It runs once at boot inside `HmiMain3D`, bypasses `CRhmiSpeedlockServer` without modifying OEM files or the HMI registry, survives ConnectedDrive refreshes, and uses no background CPU. See [App Speedlock Bypass](source/docs/SPEEDLOCK-BYPASS.md).
 
 ## Contributors and credits
 
