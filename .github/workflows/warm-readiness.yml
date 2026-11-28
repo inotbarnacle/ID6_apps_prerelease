@@ -1,0 +1,51 @@
+name: WarmDeck independent targets
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - cc: gcc
+            cxx: g++
+          - cc: clang
+            cxx: clang++
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Native regressions and production WarmDeck UDP/UI
+        run: make -C source/native test CC=${{ matrix.cc }} CXX=${{ matrix.cxx }}
+      - name: Production syntax and static analysis
+        run: |
+          ${{ matrix.cxx }} -std=gnu++98 -Wall -Wextra -Werror -Isource/native/sdk -Isource/native/src/common -Isource/native/src/ipc -fsyntax-only source/native/src/plugins/warm_deck.cpp
+          clang++ --analyze -Xanalyzer -analyzer-output=text -std=gnu++98 -Isource/native/sdk -Isource/native/src/common -Isource/native/src/ipc source/native/src/plugins/warm_deck.cpp
+          clang --analyze -Xanalyzer -analyzer-output=text -std=c99 -DMOST_HOST -Isource/native/src/common -Isource/native/src/ipc -Isource/native/src/workers source/native/src/workers/warm_deck_worker.c
+          for variant in '' '-DID6_EMULATOR'; do
+            ${{ matrix.cxx }} -std=gnu++98 -O2 -Wall -Wextra -Werror -fsyntax-only $variant '-DID6_PLUGIN_NAME="HostWarm"' -DID6_ENTRY_PAGE=7 -Isource/fullscreen/native/sdk -Isource/fullscreen/native/src -Isource/fullscreen/native/generated -Isource/fullscreen/native/telemetry/common -Isource/fullscreen/native/telemetry/ipc source/fullscreen/native/src/library.cpp
+          done
+          clang++ --analyze -Xanalyzer -analyzer-output=text -std=gnu++98 '-DID6_PLUGIN_NAME="HostWarm"' -DID6_ENTRY_PAGE=7 -Isource/fullscreen/native/sdk -Isource/fullscreen/native/src -Isource/fullscreen/native/generated -Isource/fullscreen/native/telemetry/common -Isource/fullscreen/native/telemetry/ipc source/fullscreen/native/src/library.cpp
+      - name: Generated model bindings and original artwork
+        run: |
+          python3 -m pip install Pillow==13.0.0
+          python3 -B source/tools/test_warm_readiness_resources.py
+          python3 -B source/tools/test_full_warm_resources.py
+          make -C source/native build/full-warm-surface.so CC=${{ matrix.cc }}
+          python3 -B source/tools/preview_full_warm.py --renderer source/native/build/full-warm-surface.so --models source/native/build/full-warm-models/missing-oil.bin --out /tmp/full-warm-host-synthetic.png
+  memory:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Independent targets, worker and production UDP/UI under sanitizers
+        env:
+          ASAN_OPTIONS: detect_leaks=1
+          UBSAN_OPTIONS: halt_on_error=1
+        run: make -C source/native test-warm-readiness CC=clang CXX=clang++ CFLAGS='-O1 -g -std=c99 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer' CXXFLAGS='-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'

@@ -1,5 +1,5 @@
 """Bitmap assets for ShiftDeck's native iDrive 6 image components."""
-from functools import lru_cache
+from functools import lru_cache, partial
 from io import BytesIO
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
@@ -34,11 +34,12 @@ def art(size):
     return image, ImageDraw.Draw(image)
 
 
-def text(draw, xy, value, size, color=WHITE, anchor="mt"):
-    draw.text(xy, value, font=font(size), fill=color, anchor=anchor)
+def text(draw, xy, value, size, color=WHITE, anchor="mt", face=font):
+    draw.text(xy, value, font=face(size), fill=color, anchor=anchor)
 
 
-def bitmaps():
+def bitmaps(face=font):
+    label = partial(text, face=face)
     for alert in (False, True):
         for step in range(SWEEP_STEPS + 1):
             image, d = art((BAR_WIDTH, 80))
@@ -75,9 +76,9 @@ def bitmaps():
 
     for i,rpm in enumerate(TARGETS):
         image,d=art((180,135))
-        text(d,(173,4),"SHIFT AT",25,DIM,"rt")
-        text(d,(173,32),str(rpm),68,BLUE,"rt")
-        text(d,(173,101),"RPM",22,DIM,"rt")
+        label(d,(173,4),"SHIFT AT",25,DIM,"rt")
+        label(d,(173,32),str(rpm),68,BLUE,"rt")
+        label(d,(173,101),"RPM",22,DIM,"rt")
         d.line((5,133,173,133),fill=LINE,width=2)
         yield TARGET_BASE+i,image
         image,d=art((BAR_WIDTH,9))
@@ -88,25 +89,25 @@ def bitmaps():
     for color,base in ((WHITE,DIGIT_BASE),(RED,DIGIT_WARN)):
         for i,c in enumerate("0123456789- "):
             image,d=art((58,92))
-            text(d,(29,4),c,91,color)
+            label(d,(29,4),c,91,color)
             yield base+i,image
 
     for identifier,phrase in ((SHIFT_OFF,""),(SHIFT_ON,"S H I F T")):
         image,d=art((350,84))
         if phrase:
             d.rounded_rectangle((3,4,346,79),radius=8,fill="#3c1420",outline=RED,width=2)
-            text(d,(175,18),phrase,52,RED)
+            label(d,(175,18),phrase,52,RED)
         yield identifier,image
 
     for identifier,unit in ((SPEED_LEGEND,"MPH"),(SPEED_LEGEND_KMH,"KM/H")):
         image,d=art((200,179))
-        text(d,(2,3),"SPEED",25,DIM,"lt")
-        text(d,(2,143),unit,22,DIM,"lt")
+        label(d,(2,3),"SPEED",25,DIM,"lt")
+        label(d,(2,143),unit,22,DIM,"lt")
         d.line((2,177,143,177),fill=LINE,width=2)
         yield identifier,image
 
     image,d=art((68,35))
-    text(d,(2,3),"RPM",25,DIM,"lt")
+    label(d,(2,3),"RPM",25,DIM,"lt")
     yield RPM_LEGEND,image
 
     image,d=art((BAR_WIDTH,51))
@@ -115,7 +116,7 @@ def bitmaps():
         color=RED if i>=14 else WHITE if i%2==0 else LINE
         d.line((x,3,x,17 if i%2==0 else 11),fill=color,width=2)
         if i%2==0:
-            text(d,(max(9,x),22),str(i//2),26,color)
+            label(d,(max(9,x),22),str(i//2),26,color)
     yield SCALE,image
 
     image,d=art((1104,33))

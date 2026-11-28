@@ -42,8 +42,8 @@ int main(int argc, char **argv) {
     unsigned udp_port=DRIVE_PORT, cycles=0, count=0;
     pid_t parent=getppid();
     struct sockaddr_in dest;
-    int sock, active, i, lost, speed_only=0;
-    uint64_t speed_due=0;
+    int active, i, lost, speed_only=0;
+    uint64_t speed_due=0, speed_sampled=0;
     int last_speed=-1;
     for (i=1;i<argc;++i) {
         if (!strcmp(argv[i],"--host") && i+1<argc && !cfg.host) cfg.host=argv[++i];
@@ -64,8 +64,6 @@ int main(int argc, char **argv) {
     const unsigned source = speed_only ? LAUNCH_ACTIVE_PORT : SHIFT_ACTIVE_PORT;
     active = gauge_bind(source);
     if (active < 0) return 1;
-    sock=socket(AF_INET,SOCK_DGRAM,0);
-    if (sock<0) { close(active); return 1; }
     memset(&dest,0,sizeof dest);
     dest.sin_family=AF_INET;
     dest.sin_port=htons((uint16_t)udp_port);
@@ -77,24 +75,27 @@ int main(int argc, char **argv) {
         int up=diag_link_up(&link);
         if (up) {
             if (speed_only) {
+                speed_sampled=bd_mono_ms();
                 rc=read_live_pid(&link,0x0d,1,&kph);
             } else {
                 rc=read_live_pid(&link,0x0c,2,&rpm);
                 if (!rc && start>=speed_due) {
+                    speed_sampled=bd_mono_ms();
                     rc=read_live_pid(&link,0x0d,1,&last_speed);
                     speed_due=start+65;
                 }
                 kph=last_speed;
             }
-            if (rc==-1) diag_link_drop(&link);
+            if (rc==-1) { diag_link_drop(&link);last_speed=-1;speed_sampled=speed_due=0; }
             else if (!rc) {
-                f.sampled_ms=bd_mono_ms();
+                f.sampled_ms=speed_only ? speed_sampled : start;
+                f.speed_sampled_ms=speed_sampled;
                 f.rpm=rpm;
                 f.kph=kph;
-                if (sendto(sock,&f,sizeof f,0,(struct sockaddr *)&dest,sizeof dest)!=(ssize_t)sizeof f) break;
+                if (sendto(active,&f,sizeof f,0,(struct sockaddr *)&dest,sizeof dest)!=(ssize_t)sizeof f) break;
             }
             (void)diag_link_should_yield(&link,bd_mono_ms());
-        }
+        } else { last_speed=-1;speed_sampled=speed_due=0; }
         diag_link_tick(&link);
         ++count;
         elapsed=bd_mono_ms()-start;
@@ -102,7 +103,6 @@ int main(int argc, char **argv) {
     }
     lost=diag_link_lost(&link);
     diag_link_close(&link);
-    close(sock);
     close(active);
     return lost ? 1 : 0;
 }

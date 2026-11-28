@@ -5,8 +5,8 @@
 #include "companion_logos.h"
 #include "companions.h"
 #include "road_jet_frame.h"
-#include "warm_units.h"
 #include "launch_timer.h"
+#include "surface_shift.h"
 #include "dme_descriptions.h"
 #include <stdbool.h>
 #include <stdio.h>
@@ -293,26 +293,25 @@ static void hub(struct canvas c, const struct surface_state *s)
 
 unsigned surface_tach(const struct surface_state *s)
 {
-    if (s->page != surface_shift) return 0;
-    char *end;
-    long rpm = strtol(s->values[1],&end,10);
-    return end != s->values[1] && rpm >= 0 && rpm <= 20000 ? (unsigned)rpm+1 : 0;
+    return surface_shift_sample(s);
 }
 
-static void tachometer(struct canvas c, unsigned rpm, int y, int height, bool marks)
+static void tachometer(struct canvas c, unsigned rpm, unsigned ceiling, unsigned target, bool diesel, int y, int height)
 {
     for (int i=0; i<40; ++i) {
         int x=25+i*14, h=height-8+i/4;
         unsigned color = i>33 ? 0xff4b50 : i>27 ? 0xf4a941 : i>16 ? 0x647bff : 0x22adfa;
-        unsigned step = (unsigned)(i+1)*200;
-        if (rpm < step) color = i>33 ? 0x432124 : 0x1b222d;
+        unsigned step = (unsigned)(i+1)*ceiling/40;
+        if (diesel) color=step>=target ? 0xff4b50 : step+1000>target ? 0xf4a941 : 0x647bff;
+        if (!ceiling || rpm < step) color = color==0xff4b50 ? 0x432124 : 0x1b222d;
         for (int row=0; row<h; ++row)
             fill(c,x+(h-row)/6,y+height-row,10,1,color);
     }
-    if (marks) {
-        for (int i=0; i<9; ++i) {
+    if (ceiling) {
+        const unsigned marks=ceiling/1000;
+        for (unsigned i=0; i<=marks; ++i) {
             char number[] = {(char)('0'+i),0};
-            text(c,25+i*69,y+height+5,number,muted,11);
+            text(c,25+(int)(i*552/marks),y+height+5,number,muted,11);
         }
         text(c,584,y+height+5,"x1000",muted,11);
     }
@@ -320,25 +319,27 @@ static void tachometer(struct canvas c, unsigned rpm, int y, int height, bool ma
 
 static void draw_shift(struct canvas c, const struct surface_state *s)
 {
+    const bool valid=surface_shift_valid(s)!=0;
     unsigned sample = surface_tach(s);
-    unsigned visual = sample && s->tach_visual ? s->tach_visual : sample;
+    unsigned visual = sample && s->tach_visual && s->tach_visual<=20001 ? s->tach_visual : sample;
     unsigned rpm = visual ? visual-1 : 0;
-    const unsigned target = s->shift_target >= 6000 && s->shift_target <= 8000 ? s->shift_target : 6500;
     for (int i=0; i<12; ++i) {
-        unsigned trigger = target - (11u-i)*200u;
         unsigned color = i>8 ? 0xff4b50 : i>5 ? 0xffb34a : active;
-        fill(c,138+31*i,51,24,6,sample && sample-1 >= trigger ? color : frame);
+        fill(c,138+31*i,51,24,6,surface_shift_light(s,(unsigned)i) ? color : frame);
     }
-    tachometer(c,rpm,140,39,true);
+    tachometer(c,rpm,valid ? s->boost_level[0] : 0,s->shift_target,valid && s->boost_signal[0],140,39);
     char digits[16] = "--";
     if (sample) snprintf(digits,sizeof digits,"%u",(sample-1+5u)/10u*10u);
     center(c,320,61,digits,bright,53);
-    center(c,320,120,"ENGINE RPM",muted,13);
+    center(c,320,120,valid && s->boost_signal[0] ? "DIESEL RPM" : "ENGINE RPM",muted,13);
     char target_text[24];
-    snprintf(target_text,sizeof target_text,"Target %u RPM",target);
+    if (valid) snprintf(target_text,sizeof target_text,"Target %u RPM",s->shift_target);
+    else snprintf(target_text,sizeof target_text,"Settings unavailable");
     button(c,479,4,138,24,target_text,s->selection==216);
-    metric(c,24,77,134,"ROAD SPEED",value(s,0),24);
-    metric(c,483,77,133,"GEAR",value(s,2),24);
+    metric(c,24,77,134,"ROAD SPEED",valid ? value(s,0) : "--",24);
+    metric(c,483,77,133,"GEAR",valid ? value(s,2) : "--",24);
+    center(c,320,226,s->boost_signal[1] ? "Settings not saved; check storage and reselect" :
+           "App target; follow vehicle guidance",muted,11);
 }
 
 static const char *const boost_names[][2] = {
@@ -404,32 +405,22 @@ static void draw_boost(struct canvas c, const struct surface_state *s)
 static void draw_warm(struct canvas c, const struct surface_state *s)
 {
     static const char *const names[] = {"Engine oil","Coolant","Transmission"};
-    bool complete=true, valid=true;
     for (unsigned i=0;i<COUNT(names);++i) {
         int x=24+i*199;
         card(c,x,46,192,115,false);
         text(c,x+14,55,names[i],muted,20);
         text(c,x+14,82,value(s,i),bright,30);
-        char *end;
-        const double shown=strtod(value(s,i),&end);
-        const double temp=s->warm_fahrenheit ? (shown-32.0)/1.8 : shown;
-        const double target=kWarmTarget[i];
-        const bool known=end!=value(s,i) && temp>=-48 && temp<=180;
-        const bool reached=known && shown>=warm_display_temperature(target,s->warm_fahrenheit);
-        valid=valid && known;
-        complete=complete && reached;
+        const bool known=s->boost_signal[i]==surface_warm_pending || s->boost_signal[i]==surface_warm_met;
+        const bool reached=known && s->boost_signal[i]==surface_warm_met;
         rounded(c,x+14,122,163,6,frame);
-        int width=known && temp>0 ? reached ? 163 : (int)(163*temp/target) : 0;
+        unsigned level=s->boost_level[i]>1000 ? 1000 : s->boost_level[i];
+        int width=known ? (int)(163*level/1000) : 0;
         if (width>=6) rounded(c,x+14,122,width,6,reached ? active : accent);
-        char label[24];
-        snprintf(label,sizeof label,"Target %.0f %c",warm_display_temperature(target,s->warm_fahrenheit),
-                 s->warm_fahrenheit ? 'F' : 'C');
-        text(c,x+14,133,label,muted,15);
+        text(c,x+14,133,value(s,i+3),!known ? muted : reached ? active : accent,15);
     }
     card(c,24,169,590,33,false);
-    text(c,38,174,complete ? "Temperature targets reached" :
-                   valid ? "Warming up" : "Waiting for all three temperatures",
-         complete ? active : bright,19);
+    text(c,38,174,s->status,bright,19);
+    text(c,38,212,"App targets are advisory; follow vehicle guidance",muted,15);
 }
 
 static void segment(struct canvas c, int x1, int y1, int x2, int y2, unsigned tint)
@@ -584,5 +575,5 @@ void surface_draw(struct canvas c, const struct surface_state *s)
     }
     default: break;
     }
-    if (s->status[0]) text(c,26,211,s->status,muted,13);
+    if (s->status[0] && s->page!=surface_warm) text(c,26,211,s->status,muted,13);
 }

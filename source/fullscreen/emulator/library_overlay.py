@@ -12,6 +12,8 @@ class LibraryOverlay:
         self._client.connect(socket_path)
         self._renderer = ctypes.CDLL(renderer)
         self._renderer.overlay_state_size.restype = ctypes.c_uint
+        self._renderer.overlay_state_magic.restype = ctypes.c_uint
+        self._magic = self._renderer.overlay_state_magic()
         self._renderer.overlay_animation_size.restype = ctypes.c_uint
         self._renderer.overlay_hidden_page.restype = ctypes.c_uint
         self._renderer.overlay_frame.argtypes = (
@@ -86,7 +88,7 @@ class LibraryOverlay:
                         if len(packet) != self._size:
                             continue
                         magic, page = struct.unpack_from("<II", packet)
-                        if magic != 0x49443653:
+                        if magic != self._magic:
                             continue
                     except ValueError:
                         continue

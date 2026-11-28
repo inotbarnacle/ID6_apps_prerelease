@@ -10,7 +10,10 @@ MOST_HEADERS = src/common/most/most_link.h src/common/most/dsi_client.h src/comm
 FAKE_DSI = tests/fake_dsi.c tests/fake_dme.c tests/fake_dsi.h tests/fake_dme.h
 WORKER_COMMON = $(CORE_LINK) $(MOST) tests/fake_most_env.c $(FAKE_DSI) $(HEADERS) $(MOST_HEADERS)
 HOST_LINK = $(CC) $(CFLAGS) -pthread -DMOST_HOST -Isrc/common -Isrc/ipc -Isrc/workers -Itests
-.PHONY: assets launch-assets test test-launch-records
+.PHONY: assets launch-assets test test-shift-profiles test-launch-records test-warm-readiness test-full-warm test-full-shift
+
+FULLSCREEN_NATIVE ?= ../fullscreen/native
+FULL_WARM_INCLUDES = -I$(FULLSCREEN_NATIVE)/src -I$(FULLSCREEN_NATIVE)/generated -isystem $(FULLSCREEN_NATIVE)/sdk -I$(FULLSCREEN_NATIVE)/telemetry/common -I$(FULLSCREEN_NATIVE)/telemetry/ipc
 
 assets: | build
 	unzip -p ../../packages/dashboard.zip BoostDeck/BoostDeck_ALL_Images.zip > build/boostdeck-base-images.zip
@@ -19,8 +22,9 @@ assets: | build
 	@set -e; for app in MhdMaps ShiftDeck; do \
 		name=$${app}_ALL_Images.zip; \
 		unzip -p ../../packages/dashboard.zip "$$app/$$name" > "build/$$name"; \
-		mv "build/$$name" manifests/; \
+		cp "build/$$name" manifests/; \
 	done
+	$(PYTHON) ../tools/make_shift_profiles.py --base-images build/ShiftDeck_ALL_Images.zip
 	$(PYTHON) ../tools/make_warmdeck.py
 	$(PYTHON) ../tools/make_hybrid_and_mg.py
 
@@ -92,7 +96,39 @@ build/warmdeck-collector: src/workers/warm_deck_worker.c src/common/dct_temperat
 	$(HOST_LINK) $(filter %.c,$^) -lm -o $@
 
 build/test-warm-progress: tests/test_warm_progress.cpp src/plugins/warm_progress.h src/common/warm_units.h src/common/gauge_preferences.h src/ipc/warm_frame.h | build
-	$(CXX) -O2 -std=gnu++98 -Wall -Wextra -Werror -Isrc/plugins -Isrc/common -Isrc/ipc $< -o $@
+	$(CXX) $(CXXFLAGS) -std=gnu++98 -Wall -Wextra -Werror -Isrc/plugins -Isrc/common -Isrc/ipc $< -o $@
+
+build/test-warm-readiness-plugin: tests/test_warm_readiness_plugin.cpp tests/fake_bmw.cpp tests/fake_bmw.h src/plugins/warm_deck.cpp src/plugins/warm_progress.h src/common/warm_units.h src/common/gauge_preferences.h src/ipc/warm_frame.h sdk/bmw_list.h | build
+	$(CXX) $(CXXFLAGS) -std=gnu++98 -fno-access-control -Isdk -Isrc/common -Isrc/ipc -Isrc/plugins -Itests $< tests/fake_bmw.cpp -o $@
+
+build/full-warm-core.o: $(FULLSCREEN_NATIVE)/telemetry/common/gauge_core.c $(FULLSCREEN_NATIVE)/telemetry/common/gauge_core.h $(FULLSCREEN_NATIVE)/telemetry/common/boost_signals.def | build
+	$(CC) $(CFLAGS) $(FULL_WARM_INCLUDES) -c $< -o $@
+
+build/full-warm-launch.o: $(FULLSCREEN_NATIVE)/telemetry/common/launch_timer.c $(FULLSCREEN_NATIVE)/telemetry/common/launch_timer.h | build
+	$(CC) $(CFLAGS) $(FULL_WARM_INCLUDES) -c $< -o $@
+
+build/test-full-warm-plugin: tests/test_full_warm_plugin.cpp tests/fake_bmw.cpp tests/fake_bmw.h $(wildcard $(FULLSCREEN_NATIVE)/src/*.h) $(FULLSCREEN_NATIVE)/src/library.cpp $(wildcard $(FULLSCREEN_NATIVE)/telemetry/common/*.h) $(FULLSCREEN_NATIVE)/telemetry/ipc/drive_frame.h src/plugins/shift_preferences.h src/plugins/warm_progress.h $(FULLSCREEN_NATIVE)/generated/boost_settings_assets.h build/full-warm-core.o build/full-warm-launch.o | build
+	$(CXX) $(CXXFLAGS) -std=gnu++98 -Wall -Wextra -Werror -fno-access-control -fno-strict-aliasing -DFAKE_BMW_NO_BOOL_MODEL $(FULL_WARM_INCLUDES) -Itests $< tests/fake_bmw.cpp build/full-warm-core.o build/full-warm-launch.o -lm -o $@
+
+build/test-full-warm-surface: tests/test_full_warm_surface.c $(FULLSCREEN_NATIVE)/src/surface_draw.c $(FULLSCREEN_NATIVE)/src/surface_draw.h $(FULLSCREEN_NATIVE)/src/surface_shift.h $(FULLSCREEN_NATIVE)/src/surface_protocol.h $(wildcard $(FULLSCREEN_NATIVE)/generated/*.h) build/full-warm-core.o | build
+	$(CC) $(CFLAGS) $(FULL_WARM_INCLUDES) $< build/full-warm-core.o -lm -o $@
+
+build/test-full-surface-session: tests/test_full_surface_session.cpp $(FULLSCREEN_NATIVE)/src/surface_session.h $(FULLSCREEN_NATIVE)/src/surface_protocol.h | build
+	$(CXX) $(CXXFLAGS) -std=gnu++98 -Wall -Wextra -Werror -fno-access-control $(FULL_WARM_INCLUDES) $< -o $@
+
+build/full-warm-surface.so: $(FULLSCREEN_NATIVE)/../emulator/host_surface.c $(FULLSCREEN_NATIVE)/src/surface_draw.c $(FULLSCREEN_NATIVE)/telemetry/common/gauge_core.c $(FULLSCREEN_NATIVE)/src/surface_protocol.h $(FULLSCREEN_NATIVE)/src/surface_draw.h $(FULLSCREEN_NATIVE)/src/surface_shift.h $(FULLSCREEN_NATIVE)/src/surface_animation.h $(wildcard $(FULLSCREEN_NATIVE)/generated/*.h) | build
+	$(CC) $(CFLAGS) -fPIC -shared $(FULL_WARM_INCLUDES) $(filter %.c,$^) -Wl,--no-undefined -lm -o $@
+
+test-full-warm: build/test-full-warm-plugin build/test-full-warm-surface build/test-full-surface-session
+	mkdir -p build/full-warm-models
+	FULL_WARM_CAPTURE_DIR=build/full-warm-models ./build/test-full-warm-plugin
+	./build/test-full-warm-surface
+	./build/test-full-surface-session
+
+test-warm-readiness: test-full-warm build/test-warm-progress build/test-warm-readiness-plugin build/warmdeck-collector
+	./build/test-warm-progress
+	./build/test-warm-readiness-plugin
+	$(PYTHON) -B tests/test_warm_freshness.py
 
 build/boost-test-core.o: $(CORE) $(HEADERS) | build
 	$(CC) $(CFLAGS) -Isrc/common -c $< -o $@
@@ -100,11 +136,41 @@ build/boost-test-core.o: $(CORE) $(HEADERS) | build
 build/test-boost-preferences: tests/test_boost_preferences.cpp build/boost-test-core.o src/plugins/boost_preferences.h src/common/gauge_preferences.h | build
 	$(CXX) -O2 -std=gnu++98 -Wall -Wextra -Werror -Isrc/plugins -Isrc/common $(filter %.cpp %.o,$^) -o $@
 
+build/test-shift-preferences: tests/test_shift_preferences.cpp src/plugins/shift_preferences.h src/plugins/shift_assets.h src/common/gauge_preferences.h | build
+	$(CXX) $(CXXFLAGS) -std=gnu++98 -Wall -Wextra -Werror -Isrc/plugins -Isrc/common $< -o $@
+
+# Framework fake borrowed from AndreasBoehm's PR #143 (MIT); no factory libraries.
+build/test-shift-profile-plugin: tests/test_shift_profile_plugin.cpp tests/fake_bmw.cpp tests/fake_bmw.h src/plugins/shift_deck.cpp src/plugins/shift_preferences.h src/plugins/shift_profile_assets.h src/plugins/shift_assets.h sdk/bmw_list.h | build
+	$(CXX) $(CXXFLAGS) -std=gnu++98 -fno-access-control -Isdk -Isrc/common -Isrc/ipc -Isrc/plugins -Itests $< tests/fake_bmw.cpp -o $@
+
+build/test-full-shift-state: tests/test_full_shift_state.cpp $(FULLSCREEN_NATIVE)/src/shift_state.h src/plugins/shift_preferences.h src/plugins/shift_assets.h $(FULLSCREEN_NATIVE)/telemetry/common/gauge_preferences.h $(FULLSCREEN_NATIVE)/telemetry/ipc/drive_frame.h | build
+	$(CXX) $(CXXFLAGS) -std=gnu++98 -Wall -Wextra -Werror $(FULL_WARM_INCLUDES) $< -o $@
+
+build/test-full-shift-surface: tests/test_full_shift_surface.c $(FULLSCREEN_NATIVE)/src/surface_draw.c $(FULLSCREEN_NATIVE)/src/surface_draw.h $(FULLSCREEN_NATIVE)/src/surface_shift.h $(FULLSCREEN_NATIVE)/src/surface_protocol.h $(wildcard $(FULLSCREEN_NATIVE)/generated/*.h) build/full-warm-core.o | build
+	$(CC) $(CFLAGS) $(FULL_WARM_INCLUDES) $< build/full-warm-core.o -lm -o $@
+
+build/test-full-shift-plugin: tests/test_full_shift_plugin.cpp tests/fake_bmw.cpp tests/fake_bmw.h $(wildcard $(FULLSCREEN_NATIVE)/src/*.h) $(FULLSCREEN_NATIVE)/src/library.cpp $(wildcard $(FULLSCREEN_NATIVE)/telemetry/common/*.h) $(FULLSCREEN_NATIVE)/telemetry/ipc/drive_frame.h src/plugins/shift_preferences.h src/plugins/warm_progress.h build/full-warm-core.o build/full-warm-launch.o | build
+	$(CXX) $(CXXFLAGS) -std=gnu++98 -Wall -Wextra -Werror -fno-access-control -fno-strict-aliasing -DFAKE_BMW_NO_BOOL_MODEL $(FULL_WARM_INCLUDES) -Itests $< tests/fake_bmw.cpp build/full-warm-core.o build/full-warm-launch.o -lm -o $@
+
+build/full-shift-deck: $(FULLSCREEN_NATIVE)/telemetry/workers/shift_deck_worker.c $(FULLSCREEN_NATIVE)/telemetry/common/diag_link.c $(wildcard $(FULLSCREEN_NATIVE)/telemetry/common/most/*.c) tests/fake_most_env.c $(FAKE_DSI) $(wildcard $(FULLSCREEN_NATIVE)/telemetry/common/*.h) $(wildcard $(FULLSCREEN_NATIVE)/telemetry/common/most/*.h) $(FULLSCREEN_NATIVE)/telemetry/ipc/drive_frame.h build/full-warm-core.o | build
+	$(CC) $(CFLAGS) -pthread -DMOST_HOST $(FULL_WARM_INCLUDES) -Itests $(filter %.c %.o,$^) -lm -o $@
+
+test-full-shift: build/test-full-shift-state build/test-full-shift-surface build/test-full-shift-plugin build/full-shift-deck
+	./build/test-full-shift-state
+	./build/test-full-shift-surface
+	mkdir -p build/full-shift-models
+	FULL_SHIFT_CAPTURE_DIR=build/full-shift-models ./build/test-full-shift-plugin
+	$(PYTHON) -B tests/test_full_shift_worker.py
+
+test-shift-profiles: test-full-shift build/test-shift-preferences build/test-shift-profile-plugin
+	./build/test-shift-preferences
+	mkdir -p build/shift-preview-models
+	./build/test-shift-profile-plugin build/shift-preview-models
+
 launch-assets:
 	$(PYTHON) ../tools/launch_art.py
 
-test: build/xdrive-control build/boost-deck build/shift-deck build/mhd-maps build/engine-codes build/test-core build/test-core-locale build/test-most build/test-diag-link build/bootmod3 build/exhaust-flap build/beamer build/road-jet build/test-launch-timer test-launch-records build/test-boost-preferences build/test-warm-progress build/warmdeck-collector build/mgflasher build/hybriddeck-collector
-	./build/test-warm-progress
+test: test-shift-profiles build/xdrive-control build/boost-deck build/shift-deck build/mhd-maps build/engine-codes build/test-core build/test-most build/test-diag-link build/bootmod3 build/exhaust-flap build/test-launch-timer build/test-boost-preferences build/test-warm-progress build/warmdeck-collector build/mgflasher build/hybriddeck-collector build/test-core-locale build/beamer build/road-jet test-launch-records test-warm-readiness
 	./build/test-boost-preferences
 	./build/test-launch-timer
 	./build/test-core
@@ -113,6 +179,5 @@ test: build/xdrive-control build/boost-deck build/shift-deck build/mhd-maps buil
 	./build/test-diag-link
 	$(PYTHON) -B tests/test_udp_ports.py
 	$(PYTHON) -B tests/test_drive_apps.py
-	$(PYTHON) -B tests/test_warm_freshness.py
 	$(PYTHON) -B tests/test_oneshot_most.py
 	$(PYTHON) -B tests/test_transport.py
