@@ -338,7 +338,8 @@ static void draw_shift(struct canvas c, const struct surface_state *s)
     button(c,479,4,138,24,target_text,s->selection==216);
     metric(c,24,77,134,"ROAD SPEED",valid ? value(s,0) : "--",24);
     metric(c,483,77,133,"GEAR",valid ? value(s,2) : "--",24);
-    center(c,320,226,"App target; follow vehicle guidance",muted,11);
+    center(c,320,226,s->boost_signal[1] ? "Settings not saved; check storage and reselect" :
+           "App target; follow vehicle guidance",muted,11);
 }
 
 static const char *const boost_names[][2] = {

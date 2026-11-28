@@ -215,7 +215,7 @@
               <property id="10" value="45" />
             </properties>
           </label>
-          <label id="1896" text="App target; follow vehicle guidance">
+          <label id="1896" model="1886" text="App target; follow vehicle guidance">
             <properties>
               <property id="20" value="28" />
               <property id="21" value="275" />

@@ -174,7 +174,7 @@ for i, item in enumerate(catalog):
     if item['id'] == 'ShiftDeck':
         geometry(element(components, 'label', id=1894, model=1883), (28,180,1160,45))
         geometry(element(components, 'label', id=1895, model=1884), (28,225,1160,45))
-        geometry(element(components, 'label', id=1896,
+        geometry(element(components, 'label', id=1896, model=1886,
                          text='App target; follow vehicle guidance'), (28,275,1160,55))
     element(models, 'raDataModel', id=600+i, modelType='Richtext')
     geometry(element(components, 'label', id=460+i, model=600+i), (30, 365, 1110, 70))

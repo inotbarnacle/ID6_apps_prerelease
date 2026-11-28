@@ -35,7 +35,7 @@ struct surface_state {
     char values[9][surface_text_size];
     char status[96];
     uint16_t boost_level[9]; /* Warm: progress. Shift: [0] display RPM, [1] RPM+1 (0 unknown). */
-    uint8_t boost_signal[9]; /* Warm: surface_warm_* states. Shift: [0] 0 gasoline, 1 diesel. */
+    uint8_t boost_signal[9]; /* Warm: states. Shift: [0] gasoline/diesel, [1] save failure. */
     uint8_t boost_style, boost_color, launch_run_state, warm_fahrenheit, road_has_scene;
 };
 

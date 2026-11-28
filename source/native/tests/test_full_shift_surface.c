@@ -33,6 +33,7 @@ int main(void) {
         }
     }
     assert(word_width("App target; follow vehicle guidance",11)<600);
+    assert(word_width("Settings not saved; check storage and reselect",11)<600);
     for (unsigned panel_index=0;panel_index<COUNT(panels);++panel_index) {
         const unsigned width=panels[panel_index][0],height=panels[panel_index][1];
         const size_t size=(size_t)width*height*4;

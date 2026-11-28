@@ -107,13 +107,16 @@ int main() {
     assert(fake_fire(0,5801,event));assert(captured.boost_signal[0]);
     app.shiftProfile_=missing;assert(fake_fire(0,5700,event));
     assert(captured.boost_signal[0] && captured.shift_target==4900);
+    assert(captured.boost_signal[1]==1);
     assert(text_model(1886).find("partially updated")!=std::string::npos);
     const unsigned char partial[]={'G',1,0,1};same(gasoline,partial,sizeof partial);
     app.shiftProfile_=profile;assert(fake_fire(0,5705,event));
     assert(!captured.boost_signal[0] && captured.shift_target==6500);
+    assert(captured.boost_signal[1]==0);
     capture("gasoline-live");
     app.shiftPreferences_=missing;assert(fake_fire(0,5751,event));
     assert(!app.shiftPrefs_.metric && !strcmp(captured.values[0],"62 mph"));
+    assert(captured.boost_signal[1]==1 && text_model(1881)=="Could not save speed units");
     app.shiftPreferences_=gasoline;
     assert(fake_fire(0,5801,event));
     clock_ms=1100;frame.sampled_ms=frame.speed_sampled_ms=clock_ms;frame.rpm=4000;

@@ -90,6 +90,7 @@ class ID6LibraryLab : public bmw::PluginApp {
     FullShiftPreferences shiftPrefs_;
     FullShiftState shiftState_;
     const char *shiftPreferences_, *shiftProfile_;
+    bool shiftSaved_;
     bool warmFahrenheit_;
     FullWarmState warmState_;
     launch_timer timer_;
@@ -499,6 +500,7 @@ class ID6LibraryLab : public bmw::PluginApp {
             state.boost_level[0]=static_cast<uint16_t>(shiftPrefs_.scaleRpm());
             state.boost_level[1]=rpm>=0 ? static_cast<uint16_t>(rpm+1) : 0;
             state.boost_signal[0]=shiftPrefs_.diesel ? 1 : 0;
+            state.boost_signal[1]=shiftSaved_ ? 0 : 1;
         }
         if (page_ == launchPage) state.launch_run_state=timer_.state;
         if (page_==codesConfirm) {
@@ -1048,8 +1050,9 @@ class ID6LibraryLab : public bmw::PluginApp {
         return true;
     }
 
-    void showShiftSettings(bool saved) {
-        updateModel(1881u,bmw::BasicString<char>(shiftPrefs_.metric ? "Speed units: km/h" : "Speed units: mph"));
+    void showShiftSettings(bool saved,bool units_change=false) {
+        updateModel(1881u,bmw::BasicString<char>(!saved && units_change ? "Could not save speed units" :
+                    shiftPrefs_.metric ? "Speed units: km/h" : "Speed units: mph"));
         char label[128];
         snprintf(label,sizeof label,"Engine profile: %s",shiftPrefs_.diesel ? "Diesel" : "Gasoline");
         updateModel(1883u,bmw::BasicString<char>(label));
@@ -1067,7 +1070,8 @@ class ID6LibraryLab : public bmw::PluginApp {
         if (gasoline) saved=next.saveGasoline(shiftPreferences_);
         if (profile) saved=next.saveProfile(shiftProfile_) && saved;
         if (saved) shiftPrefs_=next;
-        showShiftSettings(saved);
+        shiftSaved_=saved;
+        showShiftSettings(saved,gasoline && !profile);
         refreshShift(bd_mono_ms());
         syncSurface();
     }
@@ -1179,7 +1183,7 @@ public:
           boostFiles_(0),
 #endif
           boostSlot_(9), tone_(-1), lastTone_(0),
-          shiftPreferences_(shift_preferences), shiftProfile_(shift_profile), warmFahrenheit_(false), launchMode_(LT_0_100), surfaceFailed_(false), codesStarted_(false),
+          shiftPreferences_(shift_preferences), shiftProfile_(shift_profile), shiftSaved_(true), warmFahrenheit_(false), launchMode_(LT_0_100), surfaceFailed_(false), codesStarted_(false),
           codeSize_(0), codeOffset_(0), controlFocus_(0), lamps_(0), map_(0),
           controlUsed_(0), cooling_(-1), usbChild_(-1), usbRead_(-1), usbUsed_(0), roadSample_(0), roadMode_(ROAD_JET_WAITING),
           roadDistance_(0), roadLane_(2), roadAltitude_(0), roadHasScene_(false), codesClearPending_(false) {

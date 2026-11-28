@@ -113,7 +113,9 @@ flag. New profile choices use `ID6FullShiftDeck.diesel.prefs`, an S2 sidecar.
 Loads never rewrite files or import the standard app's legacy files. Diesel-only
 changes preserve G1; speed-unit changes preserve S2. A two-file preset change
 applies in memory only when both writes succeed. A failed write shows a warning;
-one file may already have changed, so resolve the error and reselect before
+one file may already have changed. The dashboard retains a save warning after
+leaving settings, and a failed unit change also reports the error in the Speed
+units menu. Resolve the error and reselect before
 relying on restart persistence. Each physical-unit file is replaced atomically.
 The existing emulator shared-memory paths retain their direct-write behavior.
 

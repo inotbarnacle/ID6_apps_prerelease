@@ -38,6 +38,7 @@ class FullShiftResources(unittest.TestCase):
             for model in (1883,1884):
                 self.assertIsNotNone(state.find("components/label[@model='%d']"%model))
             self.assertIn('vehicle guidance',state.find("components/label[@id='1896']").get('text'))
+            self.assertEqual(state.find("components/label[@id='1896']").get('model'),'1886')
             for node in state.findall('components/*'):
                 properties={p.get('id'):int(p.get('value')) for p in node.findall('properties/property')}
                 self.assertLessEqual(properties.get('20',0)+properties.get('9',0),right)
