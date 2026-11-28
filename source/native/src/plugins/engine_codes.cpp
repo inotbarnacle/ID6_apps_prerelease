@@ -30,17 +30,8 @@ void format_code_line(char* text, size_t size, const char* line, int length, cha
         snprintf(text,size,"%.*s",length,line);
         return;
     }
-    const char* description="Description unavailable";
-    if (!raw) {
-        for (unsigned i=0;i<sizeof kDmeDescriptions/sizeof kDmeDescriptions[0];++i) {
-            if (kDmeDescriptions[i].code==fault.code) {
-                description=kDmeDescriptions[i].text;
-                break;
-            }
-        }
-    }
     snprintf(text,size,"%06lX %s",static_cast<unsigned long>(fault.code),faultState(fault));
-    if (!raw) snprintf(detail,detail_size,"%s",description);
+    if (!raw) snprintf(detail,detail_size,"%s",dme_code_description(fault.code));
     else if (fault.has_mask) snprintf(detail,detail_size,"Description unavailable; status %02X / support %02X",fault.status,fault.available);
     else snprintf(detail,detail_size,"Description unavailable; raw status %02X, support unknown",fault.status);
 }

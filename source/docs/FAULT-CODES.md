@@ -44,7 +44,8 @@ shows the numeric code and supported status, and states that the description is
 unavailable. This is a display choice, not ECU identification or a DDE calibration.
 
 The legacy gasoline lookup remains available with an explicit **gas ref** label
-for existing installations. Its original table is unchanged; its applicability
+for existing installations and uses upstream's shared lookup helper. The raw
+view does not consult that helper. Its original table is unchanged; its applicability
 is not asserted for other engines. Selecting a description profile does not start
 diagnostics. It saves a validated four-byte `E1` preference at
 `/var/opt/hmi/data/ID5/EngineCodes.prefs`, outside Plugins. Corrupt or unreadable

@@ -71,7 +71,7 @@ The pairs below were extracted from the head-unit software in BMW programming da
 
 Results:
 
-- **ABI audit:** `tools/audit_framework_abi.py`, with the ID5_1911 pair as reference, passes for all seven packaged plugins (BoostDeck, ShiftDeck, EngineCodes, MhdMaps, Bootmod3Suite, XDriveControl, HudTest) on every build above. It covers 46 to 52 function prefixes per plugin and the `bmw::PluginApp` vtable slots.
+- **ABI audit:** `tools/audit_framework_abi.py`, with the ID5_1911 pair as reference, passes for the audited packaged plugins (BoostDeck, ShiftDeck, EngineCodes, MhdMaps, Bootmod3Suite, XDriveControl) on every build above. It covers 46 to 52 function prefixes per plugin and the `bmw::PluginApp` vtable slots.
 - **Exports and imports:** all ten builds export the same framework symbols with the same names, sizes, and types, and all 52 `bmw::` symbols imported by the plugins resolve in each.
 - **Car capture:** the P18362I pair equals the pair read from a 2017 F20 (B58). The Y21432J and Y24073J pairs equal hashes reported from cars in issues #1, #11, and #13.
 - **System libraries:** `libm.so.2`, `libsocket.so.3`, and `libstdc++.so.6` are byte-identical in M17345I, O18184I, P18362I, S19221I, X20511I, Y21432J, and Y24073J. They were not extracted for R19101I, S19322I, and U19384I. For P18362I, every symbol and symbol version imported by the seven plugins and seven workers resolves against these and the firmware's `libc.so.3`. The `libc.so.3` of the other builds was not checked.
@@ -81,6 +81,24 @@ Open points:
 - The original ten-build audit used ID5_1911 as its reference. The downloadable fingerprint now uses the N18032I reference capture.
 - The R19144I report matches both R19101I framework hashes. Its [HMI freeze report](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/27) is unexplained by these checks.
 - The audit compares instruction prefixes and vtable slots. It does not show that a plugin loads or that its menus work.
+
+### Local PSdZData 4.61.20 emulator checks
+
+| SWFL revision | Firmware from the system package | Result |
+| --- | --- | --- |
+| `007_001_016` | `NBTevo_S19221I` | Exact match to the approved S19221I/S19322I framework pair |
+| `007_030_001` | `NBTevo_X20511I` | Exact match to the approved X20511I pair |
+| `007_039_008` | `NBTevo_Y21432J` | Exact match to the approved Y21432J/T21424I pair |
+| `007_051_002` | `NBTevo_Y24073J` | Exact match to the approved Y24073J/T24081I pair |
+| `001_056_001` | `NBTevo_E16382A` | ID4 framework paths |
+| `001_060_001` | `NBTevo_E17235A` | ID4 framework paths |
+
+All 12 standard plugins and nine full-screen bundle plugins loaded in the
+networkless QNX test image for each `007_*` revision using libraries from
+that firmware. These runs exercised the dynamic loader and each
+`pluginAppInfo` export. The desktop full-screen installer supports 800 × 480,
+960 × 480, 1280 × 480, 1440 × 540 and 1920 × 720. N18032I remains the
+reference firmware pair. Other pairs are offered as early beta.
 
 ## xDrive Control (experimental)
 
@@ -125,6 +143,4 @@ The installer recognises capture-only pairs and reports that they require a nati
 
 - Bootmod3 Suite reads the active slot automatically when the map page opens and after each selection, after identifying a supported CustomROM. The ID6 candidate imports newer marker layouts and profile metadata from [iDrive7 Engine Config](https://github.com/cauliflowermossgrape/idrive7-apps/blob/35bca28bc82b30482d73782877ebaf92c69dcb8c/apps/live_adjustments/bm3_protocol.js). For an unsupported dynamic DID, it tries the same fixed marker via a direct diagnostic read. This covers the refusal reported in [issue #95](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/95) in simulation. Whether the S55 accepts the direct read and matches a supported ROM still needs a parked test.
 - An unsupported DSC can report the DSC, LMV, and VIP module indexes via **Refresh status**. Upstream has a distinct [G-series VIP control path](https://github.com/cauliflowermossgrape/idrive7-apps/blob/35bca28bc82b30482d73782877ebaf92c69dcb8c/apps/live_adjustments/README.md#xdrive-experimental). The ID6 candidate keeps its existing DSC and LMV write allowlist.
-- HUD Gauges accepts a verified gateway IPv4 address and distinguishes missing vehicle data from an overlay rejection. The F06 and F16 in [issue #82](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/82) and [issue #36](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/36) reject the reference HUD text handle. The worker checks the reference text handle before changing visibility or drawing. Their layouts still need a parked capture of the factory HUD handle setup. st1ng's [CarPlay Advanced protocol notes](https://github.com/st1ng/nbtevo-carplay-advanced/blob/main/AGENTS.md) describe observing the factory handle setup, and document why the fixed 6WA handles cannot be assumed across clusters.
-- HUD Gauges starts only when enabled for the current HMI session. The worker checks for native NBT-AAD and the CarPlay Advanced HUD hook before registering on MOST. BoostDeck, ShiftDeck, LaunchDeck and WarmDeck retain HSFZ diagnostics when native NBT-AAD is present. Their MOST fallback is disabled in that configuration. HUD Gauges yields its MOST client when a dashboard needs the MOST diagnostics tunnel. The affected combinations still need an on-car check. [Issue #22](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/22) · [Issue #105](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/105)
 - HUD uses the active dashboard worker's RPM stream. BoostDeck can also share a current boost reading from its selected channels over HSFZ. ShiftDeck shares RPM only. The HUD overlay also pauses while LaunchDeck or WarmDeck uses the link. [Issue #27](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/27) · [Issue #88](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/88) · [Issue #107](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/107)

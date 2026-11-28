@@ -9,6 +9,8 @@ import (
 
 type request struct {
 	Apps                                []string
+	EntryPassword                       string
+	EntryNav, Fullscreen                bool
 	Head, Gateway, Local, Fingerprint   string
 	Version, DisplayResolution          string
 	WiFi, CheckOnly, Uninstall, CarPlay bool
@@ -57,11 +59,59 @@ func perform(in request) outcome {
 	if in.CheckOnly && in.Uninstall {
 		return fail(errors.New("Choose one operation at a time."))
 	}
-	var selection []plugin
-	var err error
 	if in.CarPlay {
-		if in.WiFi || in.Uninstall || len(in.Apps) != 0 {
-			return fail(errors.New("CarPlay Advanced uses its own operation over wired ENET."))
+		return fail(errors.New("This installer provides ID6Apps menus."))
+	}
+	var selection []plugin
+	var entrySelection []entryMenu
+	var err error
+	if in.EntryNav {
+		if in.CarPlay || in.Fullscreen || in.WiFi || strings.TrimSpace(in.Head) == "" || in.EntryPassword == "" ||
+			(in.DisplayResolution != "" && in.DisplayResolution != "1280x480" && in.DisplayResolution != "800x480") {
+			return fail(errors.New("EntryNav2 needs wired ENET, the head-unit IP, its SSH password, and an 800 × 480 or 1280 × 480 display."))
+		}
+		entrySelection, err = selectEntryMenus(in.Apps)
+		if err != nil {
+			return fail(err)
+		}
+	} else if in.Fullscreen {
+		if in.Uninstall && len(in.Apps) != 0 {
+			return fail(errors.New("Choose one operation at a time."))
+		}
+		selection = fullscreenApps
+		if in.Uninstall {
+			selection = append(append([]plugin{}, fullscreenApps...), fullscreenCompanions...)
+		}
+		if len(in.Apps) != 0 {
+			var companions []plugin
+			companions, err = choose(in.Apps)
+			if err != nil {
+				return fail(err)
+			}
+			alternateTuning := false
+			for _, app := range companions {
+				switch app.name {
+				case "Bootmod3Suite", "MgFlasher":
+					alternateTuning = true
+				case "XDriveControl", "HybridDeck":
+				default:
+					return fail(errors.New("That menu is already available in the full-screen bundle."))
+				}
+			}
+			selection = nil
+			for _, app := range fullscreenApps {
+				if app.name != "ID6FullMhdMaps" || !alternateTuning {
+					selection = append(selection, app)
+				}
+			}
+			for _, app := range companions {
+				for _, full := range fullscreenCompanions {
+					if full.name == "ID6Full"+app.name {
+						selection = append(selection, full)
+						break
+					}
+				}
+			}
 		}
 	} else {
 		selection, err = selectMenus(in.Apps, in.Uninstall)
@@ -80,14 +130,14 @@ func perform(in request) outcome {
 			return fail(err)
 		}
 	} else {
-		if _, err := usableIP(in.Head); err != nil {
+		if _, err := peerIP(in.Head); err != nil {
 			return fail(err)
 		}
 		target = endpoint{Head: in.Head, Gateway: in.Gateway, Local: in.Local}
 	}
 	settings := vehicleInput{Head: target.Head, Gateway: target.Gateway, Local: target.Local,
 		Fingerprint: in.Fingerprint, WiFi: in.WiFi, Version: strings.TrimSpace(in.Version),
-		DisplayResolution: in.DisplayResolution}
+		DisplayResolution: in.DisplayResolution, EntryNav: in.EntryNav, EntryPassword: in.EntryPassword}
 	client, socket, observed, err := sshConnect(settings)
 	if err != nil {
 		if observed != "" && observed != in.Fingerprint {
@@ -101,23 +151,16 @@ func perform(in request) outcome {
 	if err != nil {
 		return fail(err)
 	}
-	runner.split = strings.Contains(strings.ToLower(string(kernel)), "hu-jacinto")
-	settings.Split = runner.split
-	if in.CarPlay {
-		if !isNBTPlatform(kernel) {
-			return fail(errors.New("CarPlay Advanced requires an NBT Evo head unit with QNX 6.5.0 ARM."))
-		}
+	if in.EntryNav {
 		runner.commandTimeout = 90 * time.Second
-		message, err := performCarPlay(runner, in.CheckOnly)
+		result, err := entryNav(runner, in, entrySelection, kernel)
 		if err != nil {
 			return fail(err)
 		}
-		state := "installed"
-		if in.CheckOnly {
-			state = "checked"
-		}
-		return outcome{State: state, Message: message}
+		return result
 	}
+	runner.split = strings.Contains(strings.ToLower(string(kernel)), "hu-jacinto")
+	settings.Split = runner.split
 	if in.Uninstall {
 		backup, count, err := uninstall(runner, selection)
 		if err != nil {
@@ -140,21 +183,32 @@ func perform(in request) outcome {
 		return fail(err)
 	}
 	if in.CheckOnly {
-		if err := checkConnectors(runner, selection...); err != nil {
+		replaced, err := replacedMenuBackups(runner, selection, true)
+		if err != nil {
 			return fail(err)
 		}
-		return outcome{State: "checked", Message: fmt.Sprintf("Compatible head unit: %s (%s). Gateway: %s. Selected connectors are available.", result.Version, result.Display, target.Gateway)}
+		if err := checkConnectorsReplacing(runner, replaced, selection...); err != nil {
+			return fail(err)
+		}
+		if in.Fullscreen && result.pair != profiles["NBTevo_N18032I"] {
+			result.Result = "Early beta: this firmware has not been validated with the full-screen renderer."
+		}
+		return outcome{State: "checked", Message: fmt.Sprintf("%s (%s). Gateway: %s. Selected connectors are available.\n%s", result.Version, result.Display, target.Gateway, result.Result)}
 	}
-	backup, err := install(runner, target.Gateway, result.screen, false, selection...)
+	backup, err := installReplacing(runner, target.Gateway, result.screen, false, true, selection...)
 	if err != nil {
 		if backup != "" {
 			return fail(fmt.Errorf("%w. Head-unit transaction folder %s", err, backup))
 		}
 		return fail(err)
 	}
-	return outcome{State: "installed", Message: fmt.Sprintf(
+	message := fmt.Sprintf(
 		"Installed and verified %d menus on %s (%s). Restart iDrive while parked. Backup on head unit: %s",
-		len(selection), result.Version, result.Display, backup)}
+		len(selection), result.Version, result.Display, backup)
+	if !approvedFrameworkPair(result.pair) || (in.Fullscreen && result.pair != profiles["NBTevo_N18032I"]) {
+		message += "\nEarly beta: verify menu loading on this firmware while parked."
+	}
+	return outcome{State: "installed", Message: message}
 }
 
 func (in *request) normalizeAddresses() {

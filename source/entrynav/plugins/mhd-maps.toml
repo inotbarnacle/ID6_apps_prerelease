@@ -1,0 +1,14 @@
+# MHD+ Suite in Flare Drive's plugin catalog (Flare Drive's design/dynamic-plugins.md, Plugin manifest).
+# tools/publish_release.py sends it with every release. The catalog already has this plugin, so name, summary,
+# description and order here only describe it; edit them on the publishing page (publish.darkzone.dev).
+# folder and worker can never change: installs on cars use them.
+id = "mhd-maps"
+name = "MHD+ Suite"
+summary = ""
+description = "Switches between MHD's four maps from My Vehicle in iDrive, and turns Max Cooling on or off. It needs an MHD+ multi-map tune: an engine computer without one refuses the request, and the app says so. MHD has no known way to report the active map, so the app confirms only that the engine computer accepted it. Pick only maps made for the fuel in the tank."
+contract = "entrynav-app/1"
+order = 45
+
+[entrynav-app]
+folder = "MhdMaps"
+worker = "mhd-maps"

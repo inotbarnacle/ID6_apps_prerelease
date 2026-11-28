@@ -23,16 +23,46 @@ type endpoint struct {
 	Local   string
 }
 
-func usableIP(text string) (netip.Addr, error) {
+func peerIP(text string) (netip.Addr, error) {
 	ip, err := netip.ParseAddr(text)
 	if err != nil || !ip.Is4() || !(ip.IsLinkLocalUnicast() || ip.IsPrivate()) {
 		return netip.Addr{}, errors.New("use a private IPv4 address on the car adapter")
+	}
+	if ip == netip.MustParseAddr("169.254.0.0") || ip == netip.MustParseAddr("169.254.255.255") {
+		return netip.Addr{}, errors.New("use an ENET host address")
+	}
+	return ip, nil
+}
+
+func usableIP(text string) (netip.Addr, error) {
+	ip, err := peerIP(text)
+	if err != nil {
+		return netip.Addr{}, err
 	}
 	b := ip.As4()
 	if ip.IsLinkLocalUnicast() && (b[2] == 0 || b[2] == 255) {
 		return netip.Addr{}, errors.New("use a usable ENET link-local address")
 	}
 	return ip, nil
+}
+
+// A manually addressed device can use the reserved edge of 169.254/16.
+// Bind such a connection to a local interface that can reach it on-link.
+func onLinkLocal(host netip.Addr, requested string, addrs []net.Addr) (string, error) {
+	for _, addr := range addrs {
+		prefix, err := netip.ParsePrefix(addr.String())
+		if err != nil || !prefix.Contains(host) || prefix.Addr() == host {
+			continue
+		}
+		localAddress := prefix.Addr().String()
+		if requested != "" && requested != localAddress {
+			continue
+		}
+		if _, err := usableIP(localAddress); err == nil {
+			return localAddress, nil
+		}
+	}
+	return "", errors.New("the selected ENET address is not on a directly connected adapter")
 }
 
 func discover() ([]endpoint, error) {
@@ -130,8 +160,19 @@ func broadcast(local string) (gateways, heads []string) {
 }
 
 func enetDial(local, host, port string, limit time.Duration) (net.Conn, error) {
-	if _, err := usableIP(host); err != nil {
+	peer, err := peerIP(host)
+	if err != nil {
 		return nil, err
+	}
+	if _, err := usableIP(host); err != nil {
+		addrs, err := net.InterfaceAddrs()
+		if err != nil {
+			return nil, err
+		}
+		local, err = onLinkLocal(peer, local, addrs)
+		if err != nil {
+			return nil, err
+		}
 	}
 	d := net.Dialer{Timeout: limit}
 	if local != "" {

@@ -1,0 +1,8 @@
+/build/
+/build-arm/
+/plugin/*_ALL_Images.zip
+__pycache__/
+.venv/
+.DS_Store
+/dist/
+/.wrangler/

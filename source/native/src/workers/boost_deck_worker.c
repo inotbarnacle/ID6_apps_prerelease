@@ -25,6 +25,7 @@ static unsigned number(const char *s, unsigned lo, unsigned hi) {
 
 #include "most/dsi_client.h"
 #include "most/most_link.h"
+#include "dct_temperature.h"
 
 #ifdef __QNX__
 int boost_alert_tone(void);
@@ -144,6 +145,7 @@ int main(int argc, char **argv) {
     const char *host = 0;
     unsigned port = 6801, udp_port = BD_UDP_PORT, cycles = 0, count = 0, i;
     int demo = 0, sock, active = -1, no_trans = 0, session = 0, scanned = 0, transport = DIAG_AUTO, most_lost = 0;
+    int dct=dct_temperature_enabled();
     struct diag_link link;
     struct diag_link_cfg cfg;
     pid_t parent = getppid();
@@ -166,7 +168,6 @@ int main(int argc, char **argv) {
     uint64_t failed_until[sizeof dids/sizeof dids[0]] = {0};
     int ethanol=0, diesel=0;
     int check_fuel_support=1, fuel_supported=1;
-    uint64_t next_hud=0;
     unsigned selected=(1u << 8) - 1;
     uint64_t next_ethanol=0;
     uint64_t obd_due[sizeof obd_pids/sizeof obd_pids[0]] = {0};
@@ -181,6 +182,7 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "--session")) session = 1;
         else if (!strcmp(argv[i], "--trace")) trace_reads = 1;
         else if (!strcmp(argv[i], "--no-trans")) no_trans = 1;
+        else if (!strcmp(argv[i], "--dct-temp")) dct = 1;
         else if (!strcmp(argv[i], "--host") && i+1 < (unsigned)argc) host = argv[++i];
         else if (!strcmp(argv[i], "--port") && i+1 < (unsigned)argc) port = number(argv[++i],1,65535);
         else if (!strcmp(argv[i], "--udp-port") && i+1 < (unsigned)argc) udp_port = number(argv[++i],1,65535);
@@ -262,7 +264,8 @@ int main(int argc, char **argv) {
                 /* Preserve values supplied by OBD while retrying the preferred DID. */
                 kept = i ? f.valid & did_values & (1u << (i-1)) : 0;
                 f.valid &= ~kept;
-                rc = read_did(&link, dids[i] == 0xda12 ? 0x18 : 0x12, dids[i], &v);
+                rc = dids[i] == 0xda12 && dct ? read_dct_temperature(&link,&v) :
+                    read_did(&link, dids[i] == 0xda12 ? 0x18 : 0x12, dids[i], &v);
                 if (rc == -3) { /* skip it for a while; a value still fresh stays shown */
                     failed_until[i] = bd_mono_ms()+read_retry_ms;
                     if (kept) {
@@ -340,25 +343,6 @@ int main(int argc, char **argv) {
                 }
                 f.value[k]=v; observed[k]=bd_mono_ms(); f.valid |= 1u << k;
                 if (diag_link_on_most(&link) && !send_frame(sock,&dest,&f,observed)) { perror("send frame"); diag_running=0; }
-            }
-            // Supply RPM over the existing HSFZ connection only while HUD needs it.
-            // Boost is shared from the dashboard's selected signals, with the same freshness rule.
-            if (active >= 0 && start >= next_hud) {
-                next_hud = bd_mono_ms() + 150;
-                if (link.fd >= 0 && diag_running && gauge_active(HUD_TELEMETRY_PORT)) {
-                    double rpm;
-                    int read = read_pid(&link, 0x0c, &rpm);
-                    struct hud_telemetry sample = { bd_mono_ms(), BOOST_ACTIVE_PORT, 0, 0, 0 };
-                    if (read == 1) {
-                        sample.rpm = (unsigned)rpm;
-                        sample.valid = HUD_SAMPLE_RPM;
-                    } else if (read == -1) diag_link_drop(&link);
-                    if ((f.valid & (1u << BD_BOOST)) && sample.sampled_ms - observed[BD_BOOST] < 1100) {
-                        sample.boost_tenths = (int)round(f.value[BD_BOOST] * 10);
-                        sample.valid |= HUD_SAMPLE_BOOST;
-                    }
-                    gauge_publish(active, &sample);
-                }
             }
             /* Not over MOST: the tunnel's echo check and 2 s wait do not suit this read. */
             if (up && link.fd>=0 && ethanol && !diesel && start>=next_ethanol && diag_running) {
