@@ -55,6 +55,8 @@ type shellFixture struct {
 	failMapRename       bool
 	failRemoveShiftDeck bool
 	corruptStagedRead   bool
+	failDPFRename       bool
+	corruptDPFRead      bool
 }
 
 func (f shellFixture) run(command string, input []byte, _ int) ([]byte, error) {
@@ -71,6 +73,9 @@ func (f shellFixture) run(command string, input []byte, _ int) ([]byte, error) {
 	if f.corruptStagedRead && strings.HasPrefix(command, "cat ") && strings.HasSuffix(command, "/new-BoostDeck/BoostDeck.xml") {
 		return []byte("truncated upload"), nil
 	}
+	if f.corruptDPFRead && strings.HasPrefix(command, "cat ") && strings.HasSuffix(command, "/new-DPFDeck/DPFDeck.xml") {
+		return []byte("truncated DPF upload"), nil
+	}
 	if strings.Contains(command, "find "+root+"/Plugins") {
 		cmd += " | sed 's|" + f.dir + "|" + root + "|'"
 	}
@@ -80,6 +85,9 @@ func (f shellFixture) run(command string, input []byte, _ int) ([]byte, error) {
 		guard := ""
 		if f.failMapRename {
 			guard = `case "$1:$2:$3" in move:*/new-MhdMaps:*/Plugins/MhdMaps) return 1;; esac; `
+		}
+		if f.failDPFRename {
+			guard += `case "$1:$2:$3" in move:*/new-DPFDeck:*/Plugins/DPFDeck) return 1;; esac; `
 		}
 		if f.failRemoveShiftDeck {
 			guard = `case "$1:$2:$3" in move:*/Plugins/ShiftDeck:*/old-ShiftDeck) return 1;; esac; `

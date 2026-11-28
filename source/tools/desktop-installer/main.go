@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/rand"
 	"embed"
 	"encoding/hex"
@@ -41,6 +42,7 @@ func main() {
 	var operations sync.Mutex
 	mux := http.NewServeMux()
 	html, _ := page.ReadFile("index.html")
+	html = installerPage(html)
 	mux.HandleFunc(prefix, func(w http.ResponseWriter, r *http.Request) {
 		if r.Host != host {
 			http.Error(w, "Invalid host", 403)
@@ -101,4 +103,12 @@ func main() {
 		}
 	}
 	_ = server.Serve(listener)
+}
+
+func installerPage(html []byte) []byte {
+	attribute := []byte("")
+	if !dpfPayloadAvailable() {
+		attribute = []byte(`disabled title="DPFDeck is not included in this installer build."`)
+	}
+	return bytes.ReplaceAll(html, []byte("data-dpf-availability"), attribute)
 }

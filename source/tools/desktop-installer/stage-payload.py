@@ -25,6 +25,7 @@ GROUPS = {
     "launchdeck": ("LaunchDeck",),
     "warmdeck": ("WarmDeck",),
 }
+OPTIONAL_GROUPS = {"dpfdeck": ("DPFDeck",)}
 COMPACT = {"BoostDeck", "ShiftDeck", "EngineCodes", "MhdMaps", "Bootmod3Suite", "MgFlasher",
            "LaunchDeck", "WarmDeck", "HybridDeck", "XDriveControl"}
 GEOMETRY = re.compile(rb'(<property id=")(9|10|20|21)(" value=")(-?\d+)(")')
@@ -109,13 +110,25 @@ def compact_entry_archive(data, width=800, height=480):
     return output.getvalue()
 
 
-def stage(repo, qnx_fileops, installer, fullscreen=None, entrynav=None):
+def stage(repo, qnx_fileops, installer, fullscreen=None, entrynav=None, *, test_fixture=False):
     payload = installer / "payload"
+    if test_fixture:
+        # Protect even the first synthetic file and interrupted fixture staging.
+        payload.mkdir(parents=True, exist_ok=True)
+        (payload / "TEST-ONLY-DPF-FIXTURE").write_text(
+            "Synthetic input for host tests; never distribute or install.\n")
     layouts = payload / "layouts"
     if layouts.exists():
         shutil.rmtree(layouts)
-    for group, apps in GROUPS.items():
-        with ZipFile(repo / "packages" / f"{group}.zip") as archive:
+    for group, apps in {**GROUPS, **OPTIONAL_GROUPS}.items():
+        package = repo / "packages" / f"{group}.zip"
+        if group in OPTIONAL_GROUPS and not package.is_file():
+            for app in apps:
+                directory = payload / app
+                if directory.exists():
+                    shutil.rmtree(directory)
+            continue
+        with ZipFile(package) as archive:
             sums = {name: digest for digest, name in
                     (row.split("  ", 1) for row in archive.read("SHA256SUMS").decode().splitlines())}
             for app in apps:
@@ -191,6 +204,9 @@ def stage(repo, qnx_fileops, installer, fullscreen=None, entrynav=None):
     (installer / "native").mkdir(exist_ok=True)
     shutil.copyfile(repo / "source/native/fileops.c", installer / "native/fileops.c")
     shutil.copyfile(repo / "source/docs/installer-profiles.json", installer / "installer-profiles.json")
+    # Keep a prior fixture blocked if staging fails partway through.
+    if not test_fixture:
+        (payload / "TEST-ONLY-DPF-FIXTURE").unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

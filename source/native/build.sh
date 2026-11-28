@@ -40,6 +40,7 @@ worker src/workers/beamer_worker.c out/core.o -o out/beamer-qnx
 worker src/workers/road_jet_worker.c out/core.o -o out/road-jet-qnx
 
 worker src/workers/warm_deck_worker.c out/core.o -o out/warmdeck-collector-qnx
+worker src/workers/dpf_deck_worker.c src/common/dpf_core.c src/common/obd_capabilities.c src/common/dpf_regen_capabilities.c out/core.o -o out/dpfdeck-collector-qnx
 
 # The desktop installer stages this static helper on the head unit.
 c -O2 -static fileops.c -o out/gaugedeck-fileops
@@ -78,6 +79,10 @@ cxx -Isrc/common -Isrc/ipc -Isdk -O2 -fno-exceptions -fPIC -shared src/plugins/l
 cxx -Isrc/common -Isrc/ipc -Isdk -O2 -fno-exceptions -fPIC -shared src/plugins/warm_deck.cpp out/core.o \
     "$frameworks/libAppFramework.A.so" "$frameworks/libCoreFramework.A.so" -Lout -lm -lsocket \
     -Wl,--allow-shlib-undefined -Wl,-soname,libWarmDeck.so -o out/libWarmDeck.so
+c -Isrc/common -O2 -fPIC -c src/common/dpf_core.c -o out/dpf-core.o
+cxx -Isrc/common -Isrc/ipc -Isdk -O2 -fno-strict-aliasing -fno-exceptions -fPIC -shared src/plugins/dpf_deck.cpp out/core.o out/dpf-core.o \
+    "$frameworks/libAppFramework.A.so" "$frameworks/libCoreFramework.A.so" -Lout -lm -lsocket \
+    -Wl,--allow-shlib-undefined -Wl,-soname,libDPFDeck.so -o out/libDPFDeck.so
 
 cxx -Isrc/common -Isrc/ipc -Isdk -O2 -fno-exceptions -fPIC -shared src/plugins/mg_flasher.cpp \
     "$frameworks/libAppFramework.A.so" "$frameworks/libCoreFramework.A.so" -Lout -lsocket \

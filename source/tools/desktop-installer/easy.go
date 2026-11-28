@@ -25,9 +25,9 @@ func choose(names []string) ([]plugin, error) {
 }
 
 func selectMenus(names []string, removal bool) ([]plugin, error) {
-	available := apps
+	available := append(append([]plugin(nil), apps...), dpfApp)
 	if removal {
-		available = append(append([]plugin(nil), apps...),
+		available = append(available,
 			plugin{name: "ExhaustFlap", connector: "120"})
 	}
 	var selected []plugin
@@ -46,6 +46,9 @@ func selectMenus(names []string, removal bool) ([]plugin, error) {
 	}
 	if len(selected) == 0 || len(selected) != len(names) {
 		return nil, errors.New("Choose at least one available menu.")
+	}
+	if !removal && seen["DPFDeck"] && !dpfPayloadAvailable() {
+		return nil, errors.New("DPFDeck is not included in this installer build.")
 	}
 	if !removal && ((seen["MhdMaps"] && seen["Bootmod3Suite"]) ||
 		(seen["MgFlasher"] && (seen["MhdMaps"] || seen["Bootmod3Suite"]))) {

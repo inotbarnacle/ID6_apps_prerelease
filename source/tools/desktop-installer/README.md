@@ -16,3 +16,18 @@ sh build-release.sh template /absolute/path/to/output
 The release script runs the Go tests, makes an ad-hoc signed universal macOS
 application and builds the two Windows executables. CarPlay Advanced is fetched
 from st1ng's pinned GitHub release on request.
+
+DPFDeck is optional. Generate its resources and package an actual licensed QNX
+build with `../package_dpfdeck.py`, as described in the
+[DPFDeck guide](../../docs/DPFDECK.md#build-and-optional-installer-payload).
+Place the reviewed archive at `packages/dpfdeck.zip` before staging. If absent,
+staging removes stale DPF payload and the install choice stays disabled; the
+legacy defaults do not change. DPFDeck requires a supported wide layout and
+separate firmware/vehicle validation.
+
+For host-only Go tests, `../test_dpf_resources.py --stage-installer-fixture`
+stages synthetic DPF input alongside the existing public packages. The fixture
+marker is created before the first synthetic payload file, disables DPF
+installation and blocks release builds until real inputs have staged
+successfully. Interrupted staging retains it. Never distribute or install that
+test payload.

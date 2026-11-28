@@ -52,8 +52,32 @@ int most_fake_bind(void)
     if (!strcmp(mode, "no-server")) { fake_dme_start(FAKE_NO_SERVER); return 0; }
     if (strcmp(mode, "up") && strcmp(mode, "drop") && strcmp(mode, "mhd-refuse") &&
         strcmp(mode, "codes-512") && strcmp(mode, "codes-513") &&
-        strcmp(mode, "bm3-unknown") && strcmp(mode, "gauge-mismatch")) return -1;
+        strcmp(mode, "bm3-unknown") && strcmp(mode, "gauge-mismatch") && strcmp(mode,"dpf") && strcmp(mode,"dpf-regen")) return -1;
     fake_dme_start(FAKE_UP);
+    if (!strcmp(mode,"dpf") || !strcmp(mode,"dpf-regen")) {
+        static const uint8_t pages[][6]={{0x41,0,0x08,0,0,1},{0x41,0x20,0,0,0,1},
+                                        {0x41,0x40,0,0,0,1},{0x41,0x60,0,0,0,0x70}};
+        static const uint8_t coolant[]={0x41,5,0x7a};
+        static const uint8_t b1[]={0x41,0x7a,7,0xff,0xf6,0,0,0x27,0x10};
+        static const uint8_t b2[]={0x41,0x7b,5,0x80,0,0xff,0xff,0xff,0xff};
+        static const uint8_t temperatures[]={0x41,0x7c,15,1,0x90,1,0x91,0x47,0xe0,3,0xe8};
+        for (i=0;i<4;++i) {
+            char key[5];uint8_t page[6];
+            snprintf(key,sizeof key,"01%02X",i*0x20);
+            memcpy(page,pages[i],sizeof page);
+            if (i==3 && !strcmp(mode,"dpf-regen")) page[5]|=1;
+            fake_dme_raw(key,page,sizeof page);
+        }
+        if (!strcmp(mode,"dpf-regen")) {
+            static const uint8_t bitmap[]={0x41,0x80,0,0x20,0,0},
+                                 status[]={0x41,0x8b,3,3,0,0,0,0,0};
+            fake_dme_raw("0180",bitmap,sizeof bitmap);fake_dme_raw("018B",status,sizeof status);
+        }
+        fake_dme_raw("0105",coolant,sizeof coolant);
+        fake_dme_raw("017A",b1,sizeof b1);fake_dme_raw("017B",b2,sizeof b2);
+        fake_dme_raw("017C",temperatures,sizeof temperatures);
+        return 0;
+    }
     if (delay && atoi(delay) > 0 && atoi(delay) <= 2000) fake_dme_hold_ms(atoi(delay));
     if (!strcmp(mode, "drop")) fake_dme_drop_link_after(5);
     if (!strcmp(mode, "mhd-refuse")) fake_dme_refuse("2F", 0x31, 0);
