@@ -12,6 +12,8 @@
 #include "road_jet_frame.h"
 #include "launch_records.h"
 #include "surface_session.h"
+#include "warm_state.h"
+#include "gauge_coexistence.h"
 #ifdef ID6_EMULATOR
 #include "emulator_telemetry.h"
 #include "surface_assets.h"
@@ -85,6 +87,7 @@ class ID6LibraryLab : public bmw::PluginApp {
     unsigned shiftTarget_;
     bool shiftMph_;
     bool warmFahrenheit_;
+    FullWarmState warmState_;
     launch_timer timer_;
     lt_mode launchMode_;
     LaunchRecords records_;
@@ -481,6 +484,12 @@ class ID6LibraryLab : public bmw::PluginApp {
             state.boost_color=boostPrefs_.color;
             state.boost_style=boostPrefs_.choice[BOOST_STYLE];
         }
+        if (page_ == warm) {
+            for (unsigned i=0;i<WARM_COUNT;++i) {
+                state.boost_signal[i]=static_cast<uint8_t>(warmState_.target(i));
+                state.boost_level[i]=static_cast<uint16_t>(warmState_.level(i));
+            }
+        }
         if (page_ == launchPage) state.launch_run_state=timer_.state;
         if (page_==codesConfirm) {
             state.page=codes;
@@ -508,8 +517,44 @@ class ID6LibraryLab : public bmw::PluginApp {
         snprintf(last_[index], sizeof last_[index], "%s", text);
         updateModel(1400u + page * 20u + index, bmw::BasicString<char>(text));
     }
+    void refreshWarm(uint64_t now) {
+        warmState_.update(now);
+        char label[80];
+        for (unsigned i=0;i<WARM_COUNT;++i) {
+            const unsigned target=warmState_.target(i);
+            if (target==surface_warm_unknown) strcpy(label,"--");
+            else snprintf(label,sizeof label,"%.1f %c",
+                          warm_display_temperature(warmState_.celsius(i),warmFahrenheit_),
+                          warmFahrenheit_ ? 'F' : 'C');
+            display(warm,i,label);
+            snprintf(label,sizeof label,"%.0f %c target: %s",
+                     warm_display_temperature(kWarmTarget[i],warmFahrenheit_),warmFahrenheit_ ? 'F' : 'C',
+                     target==surface_warm_unknown ? "unknown" : target==surface_warm_met ? "met" : "pending");
+            display(warm,i+3,label);
+        }
+        if (telemetryFailed_ || surfaceFailed_) return;
+        const unsigned valid=warmState_.valid();
+        const int eta=warmState_.eta();
+        if (!valid) strcpy(label,"Waiting for temperature readings");
+        else if (valid!=(1u<<WARM_COUNT)-1) strcpy(label,"Waiting for all three temperatures");
+        else if (!eta) strcpy(label,"App temperature targets met");
+        else if (eta<0) strcpy(label,"Measuring warm-up trend");
+        else snprintf(label,sizeof label,"Estimated time to app targets  %d:%02d",eta/60,eta%60);
+#ifdef ID6_EMULATOR
+        char simulated[96];
+        snprintf(simulated,sizeof simulated,"IDEmu simulated: %.78s",label);
+        status(warm,simulated);
+#else
+        status(warm,label);
+#endif
+    }
     void clear(unsigned page) {
         memset(last_, 0, sizeof last_);
+        if (page==warm) {
+            warmState_.reset(bd_mono_ms());
+            refreshWarm(bd_mono_ms());
+            return;
+        }
         for (unsigned i = 0; i < fields(page); ++i) display(page, i, "--");
     }
     void reap() {
@@ -540,6 +585,10 @@ class ID6LibraryLab : public bmw::PluginApp {
         if (saved) warmFahrenheit_=!warmFahrenheit_;
         updateModel(1882u,bmw::BasicString<char>(saved ? warmUnitsLabel(warmFahrenheit_) :
                                                 "Could not save temperature units"));
+        if (saved && page_==warm) {
+            refreshWarm(bd_mono_ms());
+            syncSurface();
+        }
         return true;
     }
     void schedule() {
@@ -550,6 +599,7 @@ class ID6LibraryLab : public bmw::PluginApp {
         post(bmw::Message(0x40000003u, event), usesWorker(page_) ? live_poll_ms : menu_poll_ms);
     }
     void finishPoll() {
+        if (page_==warm) refreshWarm(bd_mono_ms());
         syncSurface();
         schedule();
     }
@@ -667,17 +717,10 @@ class ID6LibraryLab : public bmw::PluginApp {
             warm_frame frame;
             if (size != sizeof frame) return;
             memcpy(&frame, bytes, sizeof frame);
-            for (unsigned i = 0; i < WARM_COUNT; ++i) {
-                if (fresh(now, frame.sample[i], WARM_STALE_MS) &&
-                    frame.celsius[i]>=-48 && frame.celsius[i]<=180)
-                    snprintf(value, sizeof value, "%.1f %c",
-                             warm_display_temperature(frame.celsius[i],warmFahrenheit_),
-                             warmFahrenheit_ ? 'F' : 'C');
-                else strcpy(value, "--");
-                display(page_, i, value);
-            }
+            warmState_.accept(frame,now);
+            refreshWarm(now);
         }
-        if (!received_) { if (page_!=boost) status(page_, "Worker connected"); received_ = true; }
+        if (!received_) { if (page_!=boost && page_!=warm) status(page_, "Worker connected"); received_ = true; }
         lastPacket_ = now;
     }
 #ifdef ID6_EMULATOR
@@ -749,7 +792,7 @@ class ID6LibraryLab : public bmw::PluginApp {
         }
         lastPacket_ = sample.sampled_ms;
         received_ = true;
-        if (page_ != road && page_ != boost) status(page_,"IDEmu simulated telemetry");
+        if (page_ != road && page_ != boost && page_ != warm) status(page_,"IDEmu simulated telemetry");
     }
 #endif
     const char* recordPath() const {
@@ -1197,10 +1240,10 @@ public:
         if (!usesWorker(page_) || telemetryFailed_) { finishPoll(); return true; }
         if (child_ < 0 && wasRunning) {
             stopWorker();
+            telemetryFailed_ = true;
             status(page_, "Worker stopped. Reopen the page to retry.");
             if (page_ == road) roadMode_ = ROAD_JET_WAITING;
             else clear(page_);
-            telemetryFailed_ = true;
             finishPoll();
             return true;
         }
@@ -1214,8 +1257,14 @@ public:
             char packet[BD_MAX_PACKET];
             const uint64_t now = bd_mono_ms();
             for (unsigned i = 0; i < 8; ++i) {
-                const ssize_t got = recv(socket_, packet, sizeof packet, 0);
+                struct sockaddr_in sender;
+                socklen_t senderSize=sizeof sender;
+                const ssize_t got = recvfrom(socket_, packet, sizeof packet, 0,
+                    reinterpret_cast<struct sockaddr*>(&sender),&senderSize);
                 if (got <= 0) break;
+                if (page_==warm && (childStopping_ || senderSize!=sizeof sender ||
+                    sender.sin_family!=AF_INET || sender.sin_addr.s_addr!=htonl(INADDR_LOOPBACK) ||
+                    ntohs(sender.sin_port)!=WARM_ACTIVE_PORT)) continue;
                 render(packet, static_cast<unsigned>(got), now);
             }
             if (page_ == road) {

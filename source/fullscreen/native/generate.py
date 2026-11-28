@@ -151,6 +151,14 @@ for i, item in enumerate(catalog):
             model = 1400 + 20*i + j
             element(models, 'raDataModel', id=model, modelType='Richtext')
             geometry(element(components, 'label', id=1020 + 40*i + j, model=model), (x, y+53, 365, 65))
+    if item['id'] == 'WarmDeck':
+        for j in range(3):
+            model = 1400 + 20*i + 3 + j
+            element(models, 'raDataModel', id=model, modelType='Richtext')
+            geometry(element(components, 'label', id=1040 + 40*i + j, model=model),
+                     (28 + j*403, 180, 365, 55))
+        geometry(element(components, 'label', id=8000+i,
+                         text='App targets are advisory; follow vehicle guidance'), (28, 265, 1160, 55))
     element(models, 'raDataModel', id=600+i, modelType='Richtext')
     geometry(element(components, 'label', id=460+i, model=600+i), (30, 365, 1110, 70))
 for index, (title, target) in enumerate((('Updates', 210), ('System', 211))):
