@@ -1,0 +1,80 @@
+<?xml version='1.0' encoding='utf-8'?>
+<pluginApps>
+  <pluginApp applicationType="VehicleInformation" applicationWeight="250" text="BEAMer">
+    <entryButton id="1" action="10">
+      <properties>
+        <property id="23" value="2" />
+      </properties>
+    </entryButton>
+    <actions>
+      <hmiAction id="10" target="205" />
+      <raAction id="250" />
+      <raAction id="6250" />
+      <raAction id="251" />
+      <raAction id="6251" />
+      <raAction id="252" />
+      <raAction id="6252" />
+      <raAction id="253" />
+      <raAction id="6253" />
+      <raAction id="254" />
+      <raAction id="6254" />
+    </actions>
+    <models>
+      <raDataModel id="605" modelType="Richtext" />
+    </models>
+    <hmiStates>
+      <hmiState id="205" text="BEAMer">
+        <components>
+          <button id="850" text="Front" action="250" selectAction="6250">
+            <properties>
+              <property id="20" value="30" />
+              <property id="21" value="280" />
+              <property id="9" value="125" />
+              <property id="10" value="64" />
+            </properties>
+          </button>
+          <button id="851" text="Rear" action="251" selectAction="6251">
+            <properties>
+              <property id="20" value="165" />
+              <property id="21" value="280" />
+              <property id="9" value="125" />
+              <property id="10" value="64" />
+            </properties>
+          </button>
+          <button id="852" text="Both" action="252" selectAction="6252">
+            <properties>
+              <property id="20" value="299" />
+              <property id="21" value="280" />
+              <property id="9" value="125" />
+              <property id="10" value="64" />
+            </properties>
+          </button>
+          <button id="853" text="Insane" action="253" selectAction="6253">
+            <properties>
+              <property id="20" value="434" />
+              <property id="21" value="280" />
+              <property id="9" value="125" />
+              <property id="10" value="64" />
+            </properties>
+          </button>
+          <button id="854" text="Stop" action="254" selectAction="6254">
+            <properties>
+              <property id="20" value="569" />
+              <property id="21" value="280" />
+              <property id="9" value="135" />
+              <property id="10" value="64" />
+            </properties>
+          </button>
+          <label id="465" model="605">
+            <properties>
+              <property id="20" value="17" />
+              <property id="21" value="365" />
+              <property id="9" value="634" />
+              <property id="10" value="70" />
+            </properties>
+          </label>
+        </components>
+      </hmiState>
+    </hmiStates>
+  </pluginApp>
+</pluginApps>

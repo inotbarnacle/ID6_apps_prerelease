@@ -44,26 +44,19 @@ use fixed requests. Map and burble results still use DME readback.
 
 ## MG Flasher
 
-The app sends map slots 0–4, burble slots 0–5 and Max Cooling using the
-MG Flasher 507 command identifiers and checksum. No profile is needed to
-send a command. A matching UDS response is shown as acknowledged. If optional
-readback locators are present, the worker checks the command echo and active
-value before reporting the setting as verified. The worker never repeats an
-unconfirmed write automatically.
-[MG Flasher Live Control](https://chat.mgflasher.com/articles/1744470030)
+The MG Flasher menu supports **Custom Code 7.3 through 7.3.4**. Open its DME
+profile menu and select Gen 1 for A2L prefixes R0/R1 or Gen 2 for R4/F4.
+The version and generation come from your tune information. The app requires
+a readable setting before sending a command. It checks the confirmed DID and
+the feature's new value after acknowledgement. The DME busy response can
+trigger a bounded retry. A missing or mismatched readback is shown as
+unconfirmed.
 
-For optional live readback, store the matching vehicle's locators at
-`/var/opt/hmi/data/rw/mgflasher-live-profile.txt`. The fields are placeholders.
+Supported controls are map slots, burble presets, Max Cooling, antilag RPM,
+exhaust flap, valet mode and ethanol override. Gen 2 also has radiator-flap
+control. Refresh reads the available settings, ethanol content, antilag
+counter and valet-limit counter. Reports distinguish valid readback from
+unavailable data.
 
-```text
-MGF2 LENGTH_BYTES ENDIAN
-MAP_ACTIVE_ADDRESS MAP_ACTIVE_WIDTH MAP_COMMAND_ECHO_ADDRESS
-BURBLE_ACTIVE_ADDRESS BURBLE_ACTIVE_WIDTH BURBLE_COMMAND_ECHO_ADDRESS
-COOLING_ACTIVE_ADDRESS COOLING_ACTIVE_WIDTH COOLING_COMMAND_ECHO_ADDRESS
-```
-
-- Addresses are hexadecimal. Use `0 0 0` where locators are unavailable.
-- Length-field width is 1 or 2 decimal bytes, and active-value width is 1, 2
-  or 4 decimal bytes. Byte order is `LE` or `BE`. Command echoes are two bytes.
-- Older MGF1 locator files also work. Identity fields and masks are ignored.
-- This build uses the primary DME at address 12.
+This release was tested against a simulated diagnostic gateway. On-car
+behavior of this revision is pending.

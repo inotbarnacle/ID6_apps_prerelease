@@ -27,6 +27,11 @@ JACINTO_IFCONFIG = "on -f hu-omap /sbin/ifconfig"
 HMI_IP = re.compile(rb"\binet (169\.254\.\d{1,3}\.\d{1,3})\b")
 JACINTO_SCREEN = ('on -f hu-omap sh -c "export LD_LIBRARY_PATH=/opt/sys/lib:/usr/lib:/lib; '
                   + SCREEN + '"')
+STORAGE_PATH = "/var/opt/hmi/data/ID5"
+STORAGE = "LC_ALL=C df -kP " + STORAGE_PATH
+JACINTO_STORAGE = 'on -f hu-omap sh -c "' + STORAGE + '"'
+MAX_STORAGE_OUTPUT = 4096
+MAX_STORAGE_KIB = 2**53 - 1  # exact JSON integer interchange, not a QNX capacity limit
 LEGACY = (
     "HostKeyAlgorithms=+ssh-rsa",
     "KexAlgorithms=+diffie-hellman-group14-sha1,diffie-hellman-group1-sha1",
@@ -70,7 +75,34 @@ def is_arm_elf(data):
     return len(data) >= 20 and data[:6] == b"\x7fELF\x01\x01" and struct.unpack_from("<HH", data, 16) == (3, 40)
 
 
-def capture(read, entered):
+def storage_snapshot(data):
+    """Read only documented POSIX df -kP counts; discard device/mount names."""
+    unavailable = {"path": STORAGE_PATH, "status": "unavailable", "reason": "unrecognized_output"}
+    if data == b"":
+        return {**unavailable, "reason": "command_unavailable"}
+    if not isinstance(data, bytes) or len(data) > MAX_STORAGE_OUTPUT:
+        return unavailable
+    if any(c not in (9, 10, 13) and not 32 <= c < 127 for c in data):
+        return unavailable
+    lines = [line.split() for line in data.splitlines() if line.strip()]
+    if len(lines) != 2 or lines[0] != [b"Filesystem", b"1024-blocks", b"Used", b"Available",
+                                     b"Capacity", b"Mounted", b"on"]:
+        return unavailable
+    row = lines[1]
+    if len(row) != 6 or not row[5].startswith(b"/"):
+        return unavailable
+    if any(not re.fullmatch(rb"[0-9]{1,16}", value) for value in row[1:4]):
+        return unavailable
+    total, used, available = (int(value) for value in row[1:4])
+    if not 0 < total <= MAX_STORAGE_KIB or used > total or available > total or used + available > total:
+        return unavailable
+    if not re.fullmatch(rb"[0-9]{1,3}%", row[4]) or int(row[4][:-1]) > 100:
+        return unavailable
+    return {"path": STORAGE_PATH, "status": "reported", "total_kib": total,
+            "used_kib": used, "available_kib": available}
+
+
+def capture(read, entered, *, include_storage=False):
     platform = read("uname -a").decode(errors="replace").split()
     if len(platform) < 4 or platform[0] != "QNX" or platform[-1] != "armle":
         raise ValueError("expected an ARM QNX head unit")
@@ -131,6 +163,18 @@ def capture(read, entered):
         "frameworks": {name: {"sha256": hashlib.sha256(data).hexdigest(), "size_bytes": len(data)}
                        for name, data in frameworks.items()},
     }
+    if include_storage:
+        if ssh_node == "unknown":
+            report["storage"] = {"path": STORAGE_PATH, "status": "unavailable",
+                                 "reason": "hmi_node_unconfirmed"}
+        else:
+            # Run df on the HMI node itself. A Jacinto/Qnet filesystem view
+            # must not be substituted for the OMAP data filesystem.
+            try:
+                raw = read(JACINTO_STORAGE if split else STORAGE, optional=True)
+            except (OSError, ValueError, subprocess.TimeoutExpired):
+                raw = b""
+            report["storage"] = storage_snapshot(raw)
     return report, frameworks
 
 
@@ -141,13 +185,14 @@ def main():
     parser.add_argument("--out", required=True, type=Path, help="new private output directory")
     parser.add_argument("--include-frameworks", action="store_true", help="also save both framework binaries for private ABI comparison")
     parser.add_argument("--legacy", action="store_true", help="allow legacy SSH algorithms for this ENET connection only")
+    parser.add_argument("--storage", action="store_true", help="also read HMI data free-space evidence")
     args = parser.parse_args()
     try:
         if args.out.exists():
             raise ValueError("output directory already exists")
         def read(command, optional=False):
             return ssh_read(args.head, args.legacy, command, optional)
-        report, frameworks = capture(read, args.firmware)
+        report, frameworks = capture(read, args.firmware, include_storage=args.storage)
         args.out.mkdir(mode=0o700)
         (args.out / "compatibility.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
         if args.include_frameworks:

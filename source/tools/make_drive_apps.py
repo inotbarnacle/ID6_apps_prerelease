@@ -50,16 +50,25 @@ def button(group, identifier, action, text):
     ET.SubElement(group, "button", id=str(identifier), action=str(action), text=text)
 
 
+# ShiftDeck's Speed screen, in the order of its actions (46, 47); src/shift_deck.cpp keeps the same order.
+SPEED_UNITS = ("MPH", "km/h")
+
+
 def shift_app():
     name="ShiftDeck"
     doc, actions, models, states, page = entry(name,"ShiftDeck",207,104,100,images=True)
     ET.SubElement(actions,"hmiAction",id="40",target="101")
     for i in range(len(art.TARGETS)):
-        ET.SubElement(actions,"raAction",id=str(41+i))
+        ET.SubElement(actions,"raAction",id=str(400+i))
+    ET.SubElement(actions,"hmiAction",id="48",target="102")
+    for i in range(len(SPEED_UNITS)):
+        ET.SubElement(actions,"raAction",id=str(46+i))
     ET.SubElement(models,"raDataModel",id="53",modelType="Richtext")
+    ET.SubElement(models,"raDataModel",id="58",modelType="Richtext")
 
     options=ET.SubElement(page,"optionComponents")
     button(options,30,40,"Shift light setting")
+    button(options,31,48,"Speed")
     content=ET.SubElement(page,"components")
 
     def graphic(model, asset, x, y, w, h):
@@ -70,7 +79,7 @@ def shift_app():
         ET.SubElement(props,"property",id="2",value="false")
         ET.SubElement(props,"property",id="3",value="true")
 
-    graphic(54,art.BAR_BASE,52,287,art.BAR_WIDTH,90)
+    graphic(54,art.SWEEP_BASE,52,287,art.BAR_WIDTH,90)
     graphic(55,art.LIGHT_BASE,52,10,1104,76)
     graphic(56,art.TARGET_BASE+art.DEFAULT_INDEX,1003,113,153,135)
     graphic(57,art.SHIFT_OFF,454,215,350,42)
@@ -88,10 +97,34 @@ def shift_app():
     items=ET.SubElement(settings,"components")
     ET.SubElement(items,"label",id="300",model="53")
     for i,rpm in enumerate(art.TARGETS):
-        button(items,301+i,41+i,f"{rpm:,} RPM")
+        button(items,301+i,400+i,f"{rpm:,} RPM")
+
+    speed=ET.SubElement(states,"hmiState",id="102",parentId="100",text="Speed")
+    items=ET.SubElement(speed,"components")
+    ET.SubElement(items,"label",id="310",model="58")
+    for i,unit in enumerate(SPEED_UNITS):
+        button(items,311+i,46+i,unit)
 
     save(doc,f"{name}.xml")
     art.save_assets(ROOT/f"{name}_ALL_Images.zip",ROOT.parent/"src"/"plugins"/"shift_assets.h")
+
+
+# Bootmod3 Suite's option screens: (action that opens it, its state, its result model, title, [(action, button text)]).
+# The worker's arguments for each button are in src/bm3_maps.cpp.
+# No exhaust flap screen: bootmod3 sets the flap in each map, and the DME lets a tester's flap request go after about
+# 20 s (the BM3 Live port's notes), so a one-off request would undo itself.
+BM3_SCREENS = (
+    (13, 103, 52, "Active Sound", ((28, "Off"), (29, "On"))),
+    (14, 104, 53, "Burbles", ((30, "Off"), (31, "Aggression 4"), (32, "Aggression 8"), (33, "Aggression 12"))),
+)
+
+
+# MHD+ Suite's option screen, as BM3_SCREENS. The worker's arguments for each button are in src/mhd_maps.cpp.
+# No exhaust flap screen: Live Adjustments documents no MHD flap command, and BMW's own flap request is let go by the
+# DME after about 20 s, as for Bootmod3 Suite.
+MHD_SCREENS = (
+    (13, 103, 52, "Max Cooling", ((28, "Off"), (29, "On"))),
+)
 
 
 def map_app():

@@ -1,6 +1,7 @@
 #include "fake_bmw.h"
 #include "gauge_core.h"
 #include "diagnostic_worker.h"
+#include "warm_units.h"
 #include <assert.h>
 #include <math.h>
 
@@ -8,11 +9,15 @@ namespace bmw { class IDispatcher {}; class Bundle {}; }
 static uint64_t clock_ms=1000;
 extern "C" uint64_t bd_mono_ms(void) { return clock_ms; }
 static unsigned launch_attempts=0;
+static bool saved_fahrenheit=false;
+static bool save_test_units(bool value) { saved_fahrenheit=value; return true; }
 static pid_t no_worker(const char* const* args,int) {
     assert(args && args[0]); ++launch_attempts; return -1;
 }
 #define launch no_worker
+#define saveWarmFahrenheit save_test_units
 #include "../src/plugins/warm_deck.cpp"
+#undef saveWarmFahrenheit
 #undef launch
 
 static FakeUpdate last(unsigned model) {
@@ -45,28 +50,28 @@ int main() {
     int source=gauge_bind(WARM_ACTIVE_PORT); assert(source>=0);
     int wrong_source=socket(AF_INET,SOCK_DGRAM,0); assert(wrong_source>=0);
     visible(true);
-    assert(last(50).text=="--" && last(55).text.find("unknown")!=std::string::npos);
+    assert(last(50).text=="--" && last(70).text.find("unknown")!=std::string::npos);
     assert(last(60).number==58100); advisory();
 
     warm_frame frame={{0,1000,1000},{0,75,40}};
     send_frame(app,source,frame);
     assert(last(50).text=="--" && last(51).text=="75.0 \260C" && last(52).text=="40.0 \260C");
-    assert(last(55).text.find("unknown")!=std::string::npos);
-    assert(last(56).text.find("met")!=std::string::npos && last(57).text.find("met")!=std::string::npos);
+    assert(last(70).text.find("unknown")!=std::string::npos);
+    assert(last(71).text.find("met")!=std::string::npos && last(72).text.find("met")!=std::string::npos);
     assert(last(61).number==58120 && last(62).number==58120);
     assert(last(53).text=="Waiting for all three temperatures"); advisory();
 
     clock_ms=2000; fresh(frame,40,73,37);
     send_frame(app,source,frame);
-    assert(last(55).text.find("pending")!=std::string::npos);
-    assert(last(56).text.find("met")!=std::string::npos && last(57).text.find("met")!=std::string::npos);
+    assert(last(70).text.find("pending")!=std::string::npos);
+    assert(last(71).text.find("met")!=std::string::npos && last(72).text.find("met")!=std::string::npos);
     // Older positive samples cannot replace newer samples in another fluid.
     clock_ms=2500;
     frame.sample[0]=1500; frame.celsius[0]=90;
     frame.sample[1]=2500; frame.celsius[1]=69;
     send_frame(app,source,frame);
     assert(last(50).text=="40.0 \260C" && last(51).text=="69.0 \260C");
-    assert(last(56).text.find("pending")!=std::string::npos);
+    assert(last(71).text.find("pending")!=std::string::npos);
     // A zero marker invalidates immediately; queued old positives cannot revive it.
     frame.sample[0]=0; send_frame(app,source,frame); assert(last(50).text=="--");
     frame.sample[0]=2000; frame.celsius[0]=40; send_frame(app,source,frame); assert(last(50).text=="--");
@@ -85,7 +90,7 @@ int main() {
     clock_ms=3700; fresh(frame,181,75,40); send_frame(app,source,frame); assert(last(50).text=="--");
     clock_ms+=WARM_STALE_MS; app.tick();
     assert(last(51).text=="--" && last(52).text=="--" && last(61).number==58100);
-    assert(last(56).text.find("unknown")!=std::string::npos); advisory();
+    assert(last(71).text.find("unknown")!=std::string::npos); advisory();
 
     // Estimates use actual per-fluid trends; stale/missing data cannot yield a complete ETA.
     visible(false); clock_ms=10000; visible(true);
@@ -98,14 +103,26 @@ int main() {
     clock_ms=31000;
     frame.sample[1]=frame.sample[2]=clock_ms; frame.celsius[1]=73; frame.celsius[2]=37;
     send_frame(app,source,frame);
-    assert(last(50).text=="--" && last(55).text.find("unknown")!=std::string::npos);
-    assert(last(56).text.find("met")!=std::string::npos && last(57).text.find("met")!=std::string::npos);
+    assert(last(50).text=="--" && last(70).text.find("unknown")!=std::string::npos);
+    assert(last(71).text.find("met")!=std::string::npos && last(72).text.find("met")!=std::string::npos);
     assert(last(53).text=="Waiting for all three temperatures");
     // Reopening rejects pre-open readings and resets every bar/target state.
     visible(false); clock_ms=32000; visible(true);
     send_frame(app,source,frame);
     assert(last(50).text=="--" && last(51).text=="--" && last(52).text=="--");
-    assert(last(55).text.find("unknown")!=std::string::npos); advisory();
+    assert(last(70).text.find("unknown")!=std::string::npos); advisory();
+    // Unit changes refresh measurements and independent targets together,
+    // while the DCT control retains its own model and selected source.
+    clock_ms=33000; fresh(frame,85,75,40); send_frame(app,source,frame);
+    const std::string dct_label=last(55).text;
+    bmw::Parcel change;
+    assert(fake_fire(0,5752,change) && saved_fahrenheit);
+    assert(last(50).text=="185.0 \260F" && last(51).text=="167.0 \260F" && last(52).text=="104.0 \260F");
+    assert(last(70).text=="185 F target: met" && last(71).text=="167 F target: met" && last(72).text=="104 F target: met");
+    assert(last(55).text==dct_label && last(56).text=="Temperature units: Fahrenheit");
+    assert(fake_fire(0,5752,change) && !saved_fahrenheit);
+    assert(last(50).text=="85.0 \260C" && last(70).text=="85 C target: met");
+    assert(last(55).text==dct_label && last(56).text=="Temperature units: Celsius");
     assert(app.onFinalize());
     assert(app.onInit() && last(60).number==58100 && last(61).number==58100 && last(62).number==58100);
     assert(app.onFinalize()); close(source); close(wrong_source);

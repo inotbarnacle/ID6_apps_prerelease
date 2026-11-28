@@ -26,6 +26,8 @@ The worker enforces data length, plausibility limits, and freshness. BoostDeck k
 WarmDeck uses OBD `01 5C` (oil), `01 05` (coolant) and the existing HSFZ EGS
 `22 DA12` decoder (transmission). Each reading expires independently. MOST can
 supply DME temperatures where supported. The transmission tile requires HSFZ.
+WarmDeck timestamps each valid sample when its request starts, so a slow
+diagnostic reply consumes part of the freshness window.
 If any required reading is unavailable, WarmDeck waits for it before showing a
 complete warm-up estimate. The display estimates warm-up from measured trends
 and uses 85/75/40 °C as its own targets, with independent per-fluid indicators.

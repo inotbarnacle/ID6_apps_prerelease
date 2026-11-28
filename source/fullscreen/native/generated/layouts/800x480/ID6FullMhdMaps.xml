@@ -1,0 +1,129 @@
+<?xml version='1.0' encoding='utf-8'?>
+<pluginApps>
+  <pluginApp applicationType="VehicleInformation" applicationWeight="247" text="MHD+ Suite">
+    <entryButton id="1" action="10">
+      <properties>
+        <property id="23" value="2" />
+      </properties>
+    </entryButton>
+    <actions>
+      <hmiAction id="10" target="202" />
+      <raAction id="240" />
+      <raAction id="6240" />
+      <raAction id="241" />
+      <raAction id="6241" />
+      <raAction id="242" />
+      <raAction id="6242" />
+      <raAction id="243" />
+      <raAction id="6243" />
+      <raAction id="244" />
+      <raAction id="6244" />
+      <raAction id="245" />
+      <raAction id="6245" />
+      <raAction id="246" />
+      <raAction id="6246" />
+      <raAction id="247" />
+      <raAction id="6247" />
+      <raAction id="248" />
+      <raAction id="6248" />
+    </actions>
+    <models>
+      <raDataModel id="1440" modelType="Richtext" />
+      <raDataModel id="602" modelType="Richtext" />
+    </models>
+    <hmiStates>
+      <hmiState id="202" text="MHD+ Suite">
+        <components>
+          <button id="840" text="Map 1" action="240" selectAction="6240">
+            <properties>
+              <property id="20" value="30" />
+              <property id="21" value="50" />
+              <property id="9" value="160" />
+              <property id="10" value="138" />
+            </properties>
+          </button>
+          <button id="841" text="Map 2" action="241" selectAction="6241">
+            <properties>
+              <property id="20" value="201" />
+              <property id="21" value="50" />
+              <property id="9" value="160" />
+              <property id="10" value="138" />
+            </properties>
+          </button>
+          <button id="842" text="Map 3" action="242" selectAction="6242">
+            <properties>
+              <property id="20" value="373" />
+              <property id="21" value="50" />
+              <property id="9" value="160" />
+              <property id="10" value="138" />
+            </properties>
+          </button>
+          <button id="843" text="Map 4" action="243" selectAction="6243">
+            <properties>
+              <property id="20" value="544" />
+              <property id="21" value="50" />
+              <property id="9" value="160" />
+              <property id="10" value="138" />
+            </properties>
+          </button>
+          <button id="844" text="Exhaust open" action="244" selectAction="6244">
+            <properties>
+              <property id="20" value="30" />
+              <property id="21" value="206" />
+              <property id="9" value="215" />
+              <property id="10" value="52" />
+            </properties>
+          </button>
+          <button id="845" text="Exhaust auto" action="245" selectAction="6245">
+            <properties>
+              <property id="20" value="256" />
+              <property id="21" value="206" />
+              <property id="9" value="215" />
+              <property id="10" value="52" />
+            </properties>
+          </button>
+          <button id="846" text="Exhaust closed" action="246" selectAction="6246">
+            <properties>
+              <property id="20" value="482" />
+              <property id="21" value="206" />
+              <property id="9" value="222" />
+              <property id="10" value="52" />
+            </properties>
+          </button>
+          <button id="847" text="Max cooling off" action="247" selectAction="6247">
+            <properties>
+              <property id="20" value="30" />
+              <property id="21" value="270" />
+              <property id="9" value="327" />
+              <property id="10" value="52" />
+            </properties>
+          </button>
+          <button id="848" text="Max cooling on" action="248" selectAction="6248">
+            <properties>
+              <property id="20" value="370" />
+              <property id="21" value="270" />
+              <property id="9" value="334" />
+              <property id="10" value="52" />
+            </properties>
+          </button>
+          <label id="540" model="1440">
+            <properties>
+              <property id="20" value="30" />
+              <property id="21" value="290" />
+              <property id="9" value="629" />
+              <property id="10" value="54" />
+            </properties>
+          </label>
+          <label id="462" model="602">
+            <properties>
+              <property id="20" value="17" />
+              <property id="21" value="365" />
+              <property id="9" value="634" />
+              <property id="10" value="70" />
+            </properties>
+          </label>
+        </components>
+      </hmiState>
+    </hmiStates>
+  </pluginApp>
+</pluginApps>

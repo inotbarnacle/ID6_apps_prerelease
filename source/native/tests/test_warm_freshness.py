@@ -50,7 +50,7 @@ class Gateway:
                     try:
                         size, control = struct.unpack('>IH', exact(connection, 6))
                         request = exact(connection, size)
-                        received = time.monotonic_ns() // 1_000_000
+                        received = time.clock_gettime_ns(time.CLOCK_MONOTONIC) // 1_000_000
                         assert control == 1
                         if request[:3] == b'\xf4\x12\x01' and len(request) == 4:
                             pid = request[3]

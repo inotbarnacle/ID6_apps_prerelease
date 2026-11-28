@@ -4,6 +4,7 @@
 #include "gauge_coexistence.h"
 #include "gauge_core.h"
 #include "warm_progress.h"
+#include "dct_settings.h"
 #include <math.h>
 #include <stdio.h>
 #include <sys/wait.h>
@@ -18,7 +19,7 @@ class WarmDeck : public bmw::PluginApp {
     int socket_;
     pid_t child_;
     unsigned generation_;
-    bool visible_, stopping_;
+    bool visible_, stopping_, fahrenheit_;
     uint64_t opened_, retry_;
     warm_frame frame_;
     uint64_t newest_[WARM_COUNT];
@@ -62,6 +63,11 @@ class WarmDeck : public bmw::PluginApp {
         bool newVisibility;
         if (e.readBool(newVisibility) && newVisibility!=visible_) {
             visible_=newVisibility;
+            if (visible_) {
+                updateModel(55u,bmw::BasicString<char>(dctTemperatureLabel()));
+                fahrenheit_=loadWarmFahrenheit();
+                showUnits();
+            }
             memset(&frame_,0,sizeof frame_);
             memset(newest_,0,sizeof newest_);
             progress_.reset();
@@ -73,10 +79,36 @@ class WarmDeck : public bmw::PluginApp {
         return true;
     }
 
+    bool changeDctTemperature(const bmw::Parcel&) {
+        const bool saved=toggleDctTemperature();
+        if (saved) {
+            stopWorker();
+            memset(&frame_,0,sizeof frame_);
+            progress_.reset();
+            opened_=bd_mono_ms();
+            retry_=0;
+        }
+        updateModel(55u,bmw::BasicString<char>(saved ? dctTemperatureLabel() : "Could not save DCT setting"));
+        return true;
+    }
+
+    void showUnits() {
+        updateModel(56u,bmw::BasicString<char>(warmUnitsLabel(fahrenheit_)));
+    }
+
+    bool toggleUnits(const bmw::Parcel&) {
+        if (saveWarmFahrenheit(!fahrenheit_)) {
+            fahrenheit_=!fahrenheit_;
+            showUnits();
+            tick();
+        } else updateModel(56u,bmw::BasicString<char>("Could not save temperature units"));
+        return true;
+    }
+
     void text(unsigned slot, const char* value) {
         if (strcmp(displayed_[slot],value)) {
             snprintf(displayed_[slot],sizeof displayed_[slot],"%s",value);
-            updateModel(50u+slot,bmw::BasicString<char>(value));
+            updateModel(slot<5 ? 50u+slot : 70u+slot-5,bmw::BasicString<char>(value));
         }
     }
 
@@ -122,7 +154,8 @@ class WarmDeck : public bmw::PluginApp {
                 now-frame_.sample[i]<WARM_STALE_MS &&
                 frame_.celsius[i]>=-48 && frame_.celsius[i]<=180) {
                 valid|=1u<<i;
-                snprintf(value,sizeof value,"%.1f \260C",frame_.celsius[i]);
+                snprintf(value,sizeof value,"%.1f \260%c",
+                         warm_display_temperature(frame_.celsius[i],fahrenheit_),fahrenheit_ ? 'F' : 'C');
                 const double fraction=frame_.celsius[i]/kWarmTarget[i];
                 step=fraction>=1 ? 20u : fraction>0 ? static_cast<unsigned>(fraction*20+0.5) : 0u;
             }
@@ -141,7 +174,8 @@ class WarmDeck : public bmw::PluginApp {
         else snprintf(status,sizeof status,"Estimated time to app targets  %d:%02d",eta/60,eta%60);
         text(3,status);
         for (unsigned i=0;i<WARM_COUNT;++i) {
-            snprintf(status,sizeof status,"%.0f C target: %s",kWarmTarget[i],
+            snprintf(status,sizeof status,"%.0f %c target: %s",
+                warm_display_temperature(kWarmTarget[i],fahrenheit_),fahrenheit_ ? 'F' : 'C',
                 !(valid&(1u<<i)) ? "unknown" : progress_.targetReached(i) ? "met" : "pending");
             text(5+i,status);
         }
@@ -152,7 +186,7 @@ public:
              unsigned major, unsigned minor, bmw::RHMIInterfaceVersion version,
              const bmw::Bundle& config, const bmw::Bundle& resources)
         : PluginApp(dispatcher,name,major,minor,version,config,resources),socket_(-1),
-          child_(-1),generation_(0),visible_(false),stopping_(false),opened_(0),retry_(0) {}
+          child_(-1),generation_(0),visible_(false),stopping_(false),fahrenheit_(false),opened_(0),retry_(0) {}
 
     virtual ~WarmDeck() { shutdown(); }
     virtual bool onFinalize() { shutdown(); return true; }
@@ -169,10 +203,18 @@ public:
         show.m_obj=this;
         show.m_exec=&Handler::execImpl<WarmDeck,&WarmDeck::visibility>;
         addHandler(100u,11u,show);
+        show.m_exec=&Handler::execImpl<WarmDeck,&WarmDeck::changeDctTemperature>;
+        addHandler(5750u,show);
+        updateModel(55u,bmw::BasicString<char>(dctTemperatureLabel()));
+        show.m_exec=&Handler::execImpl<WarmDeck,&WarmDeck::toggleUnits>;
+        addHandler(5752u,show);
+        fahrenheit_=loadWarmFahrenheit();
+        showUnits();
         for (unsigned i=0;i<WARM_COUNT;++i) {
             text(i,"--");
             char target[80];
-            snprintf(target,sizeof target,"%.0f C target: unknown",kWarmTarget[i]);
+            snprintf(target,sizeof target,"%.0f %c target: unknown",
+                     warm_display_temperature(kWarmTarget[i],fahrenheit_),fahrenheit_ ? 'F' : 'C');
             text(5+i,target);
             updateModel(60u+i,bmw::ImageID(58100u));
         }

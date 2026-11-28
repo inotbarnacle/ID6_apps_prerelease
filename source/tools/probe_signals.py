@@ -10,6 +10,9 @@ import struct
 import time
 
 
+EGS_LEGACY_FLUID_TEMP = bytes.fromhex("21 0A")
+
+
 def enet_address(value):
     address = IPv4Address(value)
     if not address.is_link_local or address.packed[2] in (0, 255):
@@ -18,8 +21,10 @@ def enet_address(value):
 
 
 def read_request(value):
+    if value.lower() == "210a":
+        return EGS_LEGACY_FLUID_TEMP
     if not re.fullmatch(r"01[0-9a-fA-F]{2}|22[0-9a-fA-F]{4}", value):
-        raise argparse.ArgumentTypeError("use a read-only OBD PID (0105) or UDS DID (224300)")
+        raise argparse.ArgumentTypeError("use an OBD PID (0105), UDS DID (224300), or EGS temperature candidate (210a)")
     return bytes.fromhex(value)
 
 
@@ -67,6 +72,8 @@ def main():
     args = parser.parse_args()
     if args.local == args.gateway or len(args.requests) > 12:
         parser.error("use separate local and gateway IPs and at most 12 explicit requests")
+    if args.ecu != "18" and EGS_LEGACY_FLUID_TEMP in args.requests:
+        parser.error("210a is only available with --ecu 18 (EGS)")
     try:
         for request in args.requests:
             result = {"ecu": args.ecu, "request": request.hex(" ")}

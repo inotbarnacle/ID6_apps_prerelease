@@ -3,11 +3,12 @@
 #include "gauge_core.h"
 
 #include <poll.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 enum { FOG = 1, HIGH = 2, POSITION = 4, REVERSE = 8, QUICK = 16,
-       PULSE_MS = 160, PERIOD_MS = 500, QUICK_MS = 250 };
+       PULSE_MS = 160, PERIOD_MS = 500, QUICK_MS = 250, MAX_SHOW_KPH = 8 };
 static const unsigned char lamp_functions[] = {0x08, 0x05, 0x01, 0x0f};
 
 /* One pulse per selected lamp in a step. Each is independently timed by the FEM. */
@@ -47,17 +48,13 @@ static int supported(struct diag_link *link) {
            request(link, 0x40, capability, sizeof capability, positive, sizeof positive, reply) > 3;
 }
 
-/* Return an explicit stop reason if either signal cannot confirm Park and zero speed. */
-static unsigned char parking_status(struct diag_link *link) {
-    const unsigned char gear[] = {0x22, 0xda, 0x2e}, gear_ok[] = {0x62, 0xda, 0x2e};
+/* Require a fresh speed response before each lighting step. */
+static unsigned char motion_status(struct diag_link *link) {
     const unsigned char speed[] = {0x01, 0x0d}, speed_ok[] = {0x41, 0x0d};
     unsigned char reply[64];
-    if (request(link, 0x18, gear, sizeof gear, gear_ok, sizeof gear_ok, reply) != 5)
-        return 'T';
-    if (reply[3] != 0 || reply[4] != 6) return 'P';
     if (request(link, 0x12, speed, sizeof speed, speed_ok, sizeof speed_ok, reply) != 3)
         return 'V';
-    return reply[2] == 0 ? 0 : 'M';
+    return reply[2] <= MAX_SHOW_KPH ? 0 : 'M';
 }
 
 enum PulseResult { PULSE_FAILED, PULSE_ACCEPTED, PULSE_UNSUPPORTED };
@@ -90,7 +87,7 @@ static unsigned char show(struct diag_link *link, unsigned pattern) {
         unsigned mask = (beat & ~QUICK) & ~unavailable;
         unsigned active = 0;
         uint64_t step = bd_mono_ms();
-        unsigned char blocked = parking_status(link);
+        unsigned char blocked = motion_status(link);
         if (blocked) return blocked;
         for (unsigned index = 0; index < sizeof lamp_functions; ++index) {
             unsigned lamp = 1u << index;
@@ -113,10 +110,18 @@ static unsigned char show(struct diag_link *link, unsigned pattern) {
 }
 
 int main(int argc, char **argv) {
-    if (argc != 4 || strcmp(argv[1], "--host") ||
+    if ((argc != 4 && argc != 6) || strcmp(argv[1], "--host") ||
         strlen(argv[3]) != 1 || argv[3][0] < '0' || argv[3][0] > '3') return 2;
 
-    struct diag_link_cfg config = {argv[2], 6801, DIAG_HSFZ, DIAG_ONESHOT, 0, 0};
+    unsigned port = 6801;
+    if (argc == 6) {
+        char *end;
+        if (strcmp(argv[4], "--port")) return 2;
+        const unsigned long value = strtoul(argv[5], &end, 10);
+        if (*end || !value || value > 65535) return 2;
+        port = (unsigned)value;
+    }
+    struct diag_link_cfg config = {argv[2], port, DIAG_HSFZ, DIAG_ONESHOT, 0, 0};
     struct diag_link link;
     diag_link_signals();
     struct sigaction action;
@@ -131,7 +136,7 @@ int main(int argc, char **argv) {
     else if (!diag_link_up(&link)) result = 'G';
     else if (cancelled) result = 0;
     else if (!supported(&link)) result = 'U';
-    else if ((result = parking_status(&link)) != 0) {
+    else if ((result = motion_status(&link)) != 0) {
         /* Neither the diagnostic session nor the lamps have been changed. */
     }
     else {

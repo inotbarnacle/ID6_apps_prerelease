@@ -1,9 +1,8 @@
 #ifndef WARM_PROGRESS_H
 #define WARM_PROGRESS_H
 
-#include "warm_frame.h"
+#include "warm_units.h"
 
-static const double kWarmTarget[WARM_COUNT]={85,75,40};
 static const double kWarmLower[WARM_COUNT]={81,70,35};
 
 class WarmProgress {

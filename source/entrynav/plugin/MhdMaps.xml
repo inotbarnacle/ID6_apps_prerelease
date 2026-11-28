@@ -1,0 +1,103 @@
+<?xml version='1.0' encoding='utf-8'?>
+<pluginApps>
+  <pluginApp applicationType="VehicleInformation" applicationWeight="211" text="MHD+ Suite">
+    <entryButton id="1" action="10">
+      <properties>
+        <property id="23" value="2" />
+      </properties>
+    </entryButton>
+    <actions>
+      <hmiAction id="10" target="100" />
+      <hmiAction id="13" target="103" />
+      <raAction id="28" />
+      <raAction id="29" />
+      <raAction id="21" />
+      <raAction id="22" />
+      <raAction id="23" />
+      <raAction id="24" />
+    </actions>
+    <models>
+      <raDataModel id="50" modelType="Richtext" />
+      <raDataModel id="52" modelType="Richtext" />
+      <imageIdModel id="60" imageId="56800" />
+      <imageIdModel id="61" imageId="56801" />
+      <imageIdModel id="62" imageId="56802" />
+    </models>
+    <hmiStates>
+      <hmiState id="100" text="MHD+ Suite">
+        <optionComponents>
+          <button id="312" action="13" text="Max Cooling" />
+        </optionComponents>
+        <components>
+          <image id="200" model="60">
+            <properties>
+              <property id="20" value="400" />
+              <property id="21" value="30" />
+              <property id="9" value="420" />
+              <property id="10" value="48" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <image id="201" model="61">
+            <properties>
+              <property id="20" value="80" />
+              <property id="21" value="96" />
+              <property id="9" value="1060" />
+              <property id="10" value="230" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <button id="151" action="21" imageModel="62">
+            <properties>
+              <property id="20" value="80" />
+              <property id="21" value="96" />
+              <property id="9" value="250" />
+              <property id="10" value="230" />
+            </properties>
+          </button>
+          <button id="152" action="22" imageModel="62">
+            <properties>
+              <property id="20" value="350" />
+              <property id="21" value="96" />
+              <property id="9" value="250" />
+              <property id="10" value="230" />
+            </properties>
+          </button>
+          <button id="153" action="23" imageModel="62">
+            <properties>
+              <property id="20" value="620" />
+              <property id="21" value="96" />
+              <property id="9" value="250" />
+              <property id="10" value="230" />
+            </properties>
+          </button>
+          <button id="154" action="24" imageModel="62">
+            <properties>
+              <property id="20" value="890" />
+              <property id="21" value="96" />
+              <property id="9" value="250" />
+              <property id="10" value="230" />
+            </properties>
+          </button>
+          <label id="150" model="50">
+            <properties>
+              <property id="20" value="80" />
+              <property id="21" value="348" />
+              <property id="9" value="1060" />
+              <property id="10" value="53" />
+            </properties>
+          </label>
+        </components>
+      </hmiState>
+      <hmiState id="103" parentId="100" text="Max Cooling">
+        <components>
+          <button id="400" action="28" text="Off" />
+          <button id="401" action="29" text="On" />
+          <label id="320" model="52" />
+        </components>
+      </hmiState>
+    </hmiStates>
+  </pluginApp>
+</pluginApps>

@@ -6,6 +6,11 @@ release thresholds are application choices, not BMW operating specifications or
 permission to use a particular engine speed. The footer directs the driver to
 the vehicle's guidance; the former generic 2,500/3,500-RPM guide is removed.
 
+The existing temperature-units preference applies to both measurements and
+target labels. Changing units updates the display immediately; the underlying
+target comparisons stay in Celsius. The separate experimental DCT-temperature
+option retains its source selection and does not share the readiness labels.
+
 An unavailable or expired fluid loses its own target state and trend history.
 Other fresh fluids retain their independent states. A complete estimate requires
 all three valid readings and a measured rising trend for every fluid still below

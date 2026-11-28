@@ -17,9 +17,18 @@ def main():
                         applicationWeight="206", text="WarmDeck")
     entry = ET.SubElement(app, "entryButton", id="1", action="10")
     ET.SubElement(ET.SubElement(entry, "properties"), "property", id="23", value="2")
-    ET.SubElement(ET.SubElement(app, "actions"), "hmiAction", id="10", target="100")
+    actions = ET.SubElement(app, "actions")
+    ET.SubElement(actions, "hmiAction", id="10", target="100")
+    ET.SubElement(actions, "raAction", id="5750")
+    ET.SubElement(actions, "raAction", id="5752")
     models = ET.SubElement(app, "models")
     state = ET.SubElement(ET.SubElement(app, "hmiStates"), "hmiState", id="100", text="WarmDeck")
+    ET.SubElement(models, "raDataModel", id="55", modelType="Richtext")
+    ET.SubElement(models, "raDataModel", id="56", modelType="Richtext")
+    options = ET.SubElement(state, "optionComponents")
+    ET.SubElement(options, "button",
+                  id="5750", action="5750", model="55", text="DCT temperature")
+    ET.SubElement(options, "button", id="5752", action="5752", model="56", text="Temperature units")
     content = ET.SubElement(state, "components")
 
     def place(tag, identifier, model, geometry, text=None):
@@ -32,15 +41,16 @@ def main():
 
     ET.SubElement(models, "imageIdModel", id="65", imageId="58150")
     place("image", 200, 65, (32, 14, 1160, 428))
-    for i in range(8):
+    for i in range(5):
         ET.SubElement(models, "raDataModel", id=str(50+i), modelType="Richtext")
-    for i, name in enumerate(("Engine oil", "Coolant", "Transmission")):
+    for i, name in enumerate(("Engine oil","Coolant","Transmission")):
         x = 54+i*382
         ET.SubElement(models, "imageIdModel", id=str(60+i), imageId="58100")
         place("label", 220+i, None, (x, 48, 320, 45), name)
         place("label", 230+i, 50+i, (x, 101, 320, 72))
         place("image", 240+i, 60+i, (x, 190, 294, 16))
-        place("label", 250+i, 55+i, (x, 222, 320, 48))
+        ET.SubElement(models, "raDataModel", id=str(70+i), modelType="Richtext")
+        place("label", 250+i, 70+i, (x, 222, 320, 48))
     place("label", 260, 53, (54, 304, 1116, 50))
     place("label", 261, 54, (54, 363, 1116, 50))
     ET.indent(tree, space="  ")

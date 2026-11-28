@@ -29,9 +29,13 @@ class WarmReadinessResources(unittest.TestCase):
     def test_independent_target_labels_bind_to_native_models(self):
         for fluid in range(3):
             node = self.current.find(f".//label[@id='{250+fluid}']")
-            self.assertEqual(node.get("model"), str(55+fluid))
+            self.assertEqual(node.get("model"), str(70+fluid))
             self.assertNotIn("text", node.attrib)
-            self.assertEqual(self.current.find(f".//raDataModel[@id='{55+fluid}']").get("modelType"), "Richtext")
+            self.assertEqual(self.current.find(f".//raDataModel[@id='{70+fluid}']").get("modelType"), "Richtext")
+        for action, model in ((5750, 55), (5752, 56)):
+            button = self.current.find(f".//optionComponents/button[@action='{action}']")
+            self.assertIsNotNone(button)
+            self.assertEqual(button.get("model"), str(model))
         for selector in (".//models/*", ".//pluginApp/actions/*", ".//hmiState"):
             ids = [node.get("id") for node in self.current.findall(selector)]
             self.assertEqual(len(ids), len(set(ids)))

@@ -13,8 +13,8 @@
 namespace {
 const unsigned kShiftPoll=0x53484654u;
 const char kShiftWorker[]="/var/opt/hmi/data/ID5/Plugins/ShiftDeck/shift-deck-qnx";
-const char kPreferences[]="/var/opt/hmi/data/ID5/ShiftDeck.prefs";
-const unsigned kSweepSteps=128, kSweepBase=56400, kSweepAlert=56529;
+const char kPreferences[]="/var/opt/hmi/data/ID5/ShiftDeck.v2.prefs";
+const char kLegacyPreferences[]="/var/opt/hmi/data/ID5/ShiftDeck.prefs";
 const unsigned kEaseMs=50;
 }
 
@@ -75,9 +75,8 @@ class ShiftDeck : public bmw::PluginApp {
         int kph=live ? frame_.kph : -1;
         int target=static_cast<int>(kShiftTargets[target_]);
         bool shift=rpm>=target;
-        int displayed_rpm=rpm;
-        if (rpm>=0) displayed_rpm=static_cast<int>(animatedRpm(now)+.5);
-        unsigned bars=displayed_rpm>0 ? (displayed_rpm*kSweepSteps+4000)/8000 : 0;
+        const int eased_rpm=rpm>=0 ? static_cast<int>(animatedRpm(now)+.5) : -1;
+        unsigned bars=eased_rpm>0 ? (eased_rpm*kSweepSteps+4000)/8000 : 0;
         if (bars>kSweepSteps) bars=kSweepSteps;
         unsigned image=(shift ? kSweepAlert : kSweepBase)+bars;
         if (image!=bar_) {
@@ -91,9 +90,10 @@ class ShiftDeck : public bmw::PluginApp {
             lights_=lights;
         }
         char text[48];
+        const int displayed_rpm=eased_rpm<0 ? -1 : (eased_rpm+5)/10*10;
         if (displayed_rpm!=rpm_ || shift!=shift_) {
             if (displayed_rpm<0) strcpy(text,"--");
-            else snprintf(text,sizeof text,"%d",displayed_rpm>9999 ? 9999 : displayed_rpm);
+            else snprintf(text,sizeof text,"%d",displayed_rpm>9990 ? 9990 : displayed_rpm);
             digits(60u,4u,text,shift ? kDigitWarn : kDigitBase,true);
             rpm_=displayed_rpm;
         }
@@ -134,7 +134,7 @@ class ShiftDeck : public bmw::PluginApp {
         metric_=Metric;
         saveGaugePreferences(kPreferences, target_, metric_);
         kph_=-2;
-        updateModel(64u,bmw::ImageID(metric_ ? 56660u : 55916u));
+        updateModel(64u,bmw::ImageID(metric_ ? kSpeedLegendKmh : kSpeedLegendMph));
         draw(bd_mono_ms());
         return true;
     }
@@ -183,22 +183,29 @@ public:
         action.m_obj=this;
         action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::visibility>;
         addHandler(100u,11u,action);
-        action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::setTarget<0> >;
-        addHandler(41u,action);
-        action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::setTarget<1> >;
-        addHandler(42u,action);
-        action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::setTarget<2> >;
-        addHandler(43u,action);
-        action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::setTarget<3> >;
-        addHandler(44u,action);
-        action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::setTarget<4> >;
-        addHandler(45u,action);
-        loadGaugePreferences(kPreferences, sizeof kShiftTargets / sizeof kShiftTargets[0], target_, metric_);
+        typedef bool (*Handler)(void*,const bmw::Parcel&);
+#define TARGET(i) &Action::execImpl<ShiftDeck,&ShiftDeck::setTarget<i> >
+        const Handler targets[]={
+            TARGET(0),TARGET(1),TARGET(2),TARGET(3),TARGET(4),TARGET(5),TARGET(6),
+            TARGET(7),TARGET(8),TARGET(9),TARGET(10),TARGET(11),TARGET(12),TARGET(13),
+            TARGET(14),TARGET(15),TARGET(16),TARGET(17),TARGET(18),TARGET(19),TARGET(20)
+        };
+#undef TARGET
+        for (unsigned i=0;i<sizeof targets/sizeof targets[0];++i) {
+            action.m_exec=targets[i];
+            addHandler(400u+i,action);
+        }
+        if (!loadGaugePreferences(kPreferences, sizeof kShiftTargets / sizeof kShiftTargets[0], target_, metric_)) {
+            unsigned legacy;
+            static const unsigned converted[]={0,0,3,5,7};
+            if (loadGaugePreferences(kLegacyPreferences, sizeof converted / sizeof converted[0], legacy, metric_))
+                target_=converted[legacy];
+        }
         action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::setUnits<false> >;
         addHandler(46u,action);
         action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::setUnits<true> >;
         addHandler(47u,action);
-        updateModel(64u,bmw::ImageID(metric_ ? 56660u : 55916u));
+        updateModel(64u,bmw::ImageID(metric_ ? kSpeedLegendKmh : kSpeedLegendMph));
         updateModel(57u,bmw::ImageID(kShiftOff));
         showTarget();
         draw(bd_mono_ms());
