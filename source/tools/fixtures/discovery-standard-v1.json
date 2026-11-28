@@ -1,0 +1,170 @@
+{
+  "provenance": "Synthetic records; expected outputs generated from ac48c54f60cae82da69f0255b43bd338fc0b8219, not a vehicle capture.",
+  "input_records": [
+    {
+      "ecu": "12",
+      "request": "0100",
+      "reply": "410000200001"
+    },
+    {
+      "ecu": "12",
+      "request": "0120",
+      "reply": "412000000001"
+    },
+    {
+      "ecu": "12",
+      "request": "0140",
+      "reply": "414000000010"
+    },
+    {
+      "ecu": "12",
+      "request": "015c",
+      "reply": "415c7d"
+    },
+    {
+      "ecu": "12",
+      "request": "010b",
+      "reply": "410bff"
+    }
+  ],
+  "plan": {
+    "transport": "HSFZ TCP 6801, explicit wired link-local endpoint only",
+    "identity": [
+      {
+        "ecu": "12",
+        "request": "22 f1 50"
+      },
+      {
+        "ecu": "18",
+        "request": "22 f1 50"
+      }
+    ],
+    "capabilities": [
+      "01 00",
+      "01 20",
+      "01 40"
+    ],
+    "measurements_if_advertised": [
+      "01 04",
+      "01 05",
+      "01 0b",
+      "01 0c",
+      "01 0f",
+      "01 10",
+      "01 23",
+      "01 33",
+      "01 42",
+      "01 5c",
+      "01 5e"
+    ],
+    "max_requests": 16,
+    "max_duration_seconds": 45,
+    "minimum_gap_seconds": 0.2,
+    "retries": 0,
+    "writes_or_session_changes": false,
+    "ssh_or_most": false
+  },
+  "report": {
+    "format": "idrive-diesel-discovery-v1",
+    "evidence": "replay",
+    "vehicle_platform": "not_inferred",
+    "ecu_identification": {
+      "12": {
+        "sgbd_index_candidate": null,
+        "hardware_software_identifiers": "not_collected",
+        "engine_family": "requires_independent_confirmation"
+      },
+      "18": {
+        "sgbd_index_candidate": null,
+        "hardware_software_identifiers": "not_collected",
+        "engine_family": null
+      }
+    },
+    "obd_bitmaps": [
+      {
+        "pid": "00",
+        "reply": "41 00 00 20 00 01"
+      },
+      {
+        "pid": "20",
+        "reply": "41 20 00 00 00 01"
+      },
+      {
+        "pid": "40",
+        "reply": "41 40 00 00 00 10"
+      }
+    ],
+    "signals": [
+      {
+        "pid": "04",
+        "capability": "unsupported",
+        "measurement": "unavailable"
+      },
+      {
+        "pid": "05",
+        "capability": "unsupported",
+        "measurement": "unavailable"
+      },
+      {
+        "pid": "0B",
+        "capability": "advertised",
+        "measurement": "saturated_255_kpa_absolute",
+        "reply": "41 0b ff"
+      },
+      {
+        "pid": "0C",
+        "capability": "unsupported",
+        "measurement": "unavailable"
+      },
+      {
+        "pid": "0F",
+        "capability": "unsupported",
+        "measurement": "unavailable"
+      },
+      {
+        "pid": "10",
+        "capability": "unsupported",
+        "measurement": "unavailable"
+      },
+      {
+        "pid": "23",
+        "capability": "unsupported",
+        "measurement": "unavailable"
+      },
+      {
+        "pid": "33",
+        "capability": "unsupported",
+        "measurement": "unavailable"
+      },
+      {
+        "pid": "42",
+        "capability": "unsupported",
+        "measurement": "unavailable"
+      },
+      {
+        "pid": "5C",
+        "capability": "advertised",
+        "measurement": "response_requires_decoder_and_independent_validation",
+        "reply": "41 5c 7d"
+      },
+      {
+        "pid": "5E",
+        "capability": "unsupported",
+        "measurement": "unavailable"
+      }
+    ],
+    "headunit": null,
+    "transport": {
+      "hsfz": "response_observed",
+      "gateway": "explicit_endpoint_not_exported",
+      "most": "not_tested"
+    },
+    "firmware_approval": "not_established",
+    "physical_installation": "not_performed_by_this_tool",
+    "limitations": [
+      "SGBD tail is a candidate index, not a full ECU identity",
+      "No DPF, EGR, SCR or BMW-specific oil mapping is established",
+      "No standalone, QNX ABI or factory-function compatibility is established"
+    ]
+  }
+}

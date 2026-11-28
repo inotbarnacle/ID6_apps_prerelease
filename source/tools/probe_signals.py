@@ -53,6 +53,10 @@ def exchange(connection, ecu, request):
             raise ValueError("oversized HSFZ frame")
         payload = exact(connection, length, deadline)
         if control == 0x12:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("no matching ECU response")
+            connection.settimeout(remaining)
             connection.sendall(struct.pack(">IHBB", 2, 0x13, 0, 0xF4))
         if control != 1 or payload[:2] != bytes((ecu, 0xF4)):
             continue
