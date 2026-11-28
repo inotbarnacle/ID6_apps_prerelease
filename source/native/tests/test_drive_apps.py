@@ -90,7 +90,7 @@ class DriveAppsTest(unittest.TestCase):
         self.assertEqual(result,"Engine: 2 codes\n000002  status 23\n000001  status 23\n")
 
     def test_clear_fault_memory_rechecks_before_restoring_session(self):
-        result=self.run_worker("engine-codes", ["--clear"], [
+        result=self.run_worker("engine-codes", ["--clear","--confirm-clear"], [
             ("14ffffff", ["7f147f"]), ("1003", ["5003003201f4"]),
             ("14ffffff", ["7f1478", "54"]),
             ("1902af", ["5902ff1234562f"]), ("1001", ["5001003201f4"]),
@@ -98,15 +98,62 @@ class DriveAppsTest(unittest.TestCase):
         self.assertEqual(result,"Clear accepted; 1 engine code remains\n123456  status 2F\n")
 
     def test_clear_fault_memory_rechecks_after_busy_without_duplicate_write(self):
-        result=self.run_worker("engine-codes", ["--clear"], [
+        result=self.run_worker("engine-codes", ["--clear","--confirm-clear"], [
             ("14ffffff", ["7f1421"]), ("14ffffff", ["54"]),
             ("1902af", ["7f1921"]), ("1902af", ["5902ff"]),
         ])
         self.assertEqual(result,"Clear accepted; 0 engine codes remain\n")
 
     def test_clear_fault_memory_does_not_retry_an_unconfirmed_write(self):
-        result=self.run_worker("engine-codes", ["--clear"], [("14ffffff", [])])
+        result=self.run_worker("engine-codes", ["--clear","--confirm-clear"], [("14ffffff", [])])
         self.assertEqual(result,"Clear unconfirmed. Read engine codes before retrying.\n")
+
+    def test_fault_reads_default_to_read_only_and_preserve_supported_status(self):
+        result=self.run_worker("engine-codes", ["--status-mask"], [
+            ("1902af", ["59020802ff120900000101"]),
+        ])
+        self.assertEqual(result,"Engine: 1 code\n02FF12  status 09 mask 08\n")
+
+    def test_fault_status_unavailable_is_not_reported_as_no_codes(self):
+        for mask in ("00","10","40","50"):
+            with self.subTest(mask=mask):
+                result=self.run_worker("engine-codes", ["--codes","--status-mask"], [
+                    ("1902af", ["5902"+mask]),
+                ])
+                self.assertEqual(result,"Requested fault-status flags unavailable\n")
+
+    def test_fault_metadata_rejects_incomplete_records_and_retains_leading_zero_codes(self):
+        result=self.run_worker("engine-codes", ["--codes","--status-mask"], [
+            ("1902af", ["5902af0000012000000204"]),
+        ])
+        self.assertEqual(result,"Engine: 2 codes\n000001  status 20 mask AF\n000002  status 04 mask AF\n")
+        result=self.run_worker("engine-codes", ["--codes","--status-mask"], [
+            ("1902af", ["5902af0000012000"]),
+        ])
+        self.assertEqual(result,"No valid code response\n")
+
+    def test_fault_read_refusal_and_lost_reply_never_attempt_clear_or_session_changes(self):
+        for reply,expected in ((["7f1912"],"Read rejected (NRC 12)\n"),
+                               (["7f1933"],"Read rejected (NRC 33)\n"),
+                               ([],"No valid code response\n")):
+            with self.subTest(reply=reply):
+                result=self.run_worker("engine-codes", ["--codes","--status-mask"], [("1902af",reply)])
+                self.assertEqual(result,expected)
+
+    def test_clear_without_confirmation_never_opens_the_gateway(self):
+        with socket.socket() as listener:
+            listener.bind(("127.0.0.1",0))
+            listener.listen()
+            listener.settimeout(.05)
+            for flags in (("--clear",),("--confirm-clear",),("--codes","--confirm-clear")):
+                with self.subTest(flags=flags):
+                    result=subprocess.run([BUILD/"engine-codes","--host","127.0.0.1",
+                                           "--port",str(listener.getsockname()[1]),*flags],
+                                          capture_output=True,text=True,timeout=2)
+                    self.assertEqual(result.returncode,2)
+                    self.assertIn("--clear --confirm-clear",result.stderr)
+                    with self.assertRaises(socket.timeout):
+                        listener.accept()
 
     def test_warmdeck_reads_each_temperature_independently(self):
         with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as listener:

@@ -94,6 +94,14 @@ int most_fake_bind(void)
         fake_dme_raw("2F60FD032328", flap_adjust, sizeof flap_adjust);
     }
     fake_dme_raw("1902AF", codes, sizeof codes);
+    {
+        static const uint8_t confirmed[]={0x43,2,0x01,0x33,0xd0,0x16};
+        static const uint8_t pending[]={0x47,1,0x01,0x01};
+        static const uint8_t permanent[]={0x4a,0};
+        fake_dme_raw("03",confirmed,sizeof confirmed);
+        fake_dme_raw("07",pending,sizeof pending);
+        fake_dme_raw("0A",permanent,sizeof permanent);
+    }
     fake_dme_raw("14FFFFFF", cleared, sizeof cleared);
     return 0;
 }

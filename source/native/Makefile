@@ -10,7 +10,7 @@ MOST_HEADERS = src/common/most/most_link.h src/common/most/dsi_client.h src/comm
 FAKE_DSI = tests/fake_dsi.c tests/fake_dme.c tests/fake_dsi.h tests/fake_dme.h
 WORKER_COMMON = $(CORE_LINK) $(MOST) tests/fake_most_env.c $(FAKE_DSI) $(HEADERS) $(MOST_HEADERS)
 HOST_LINK = $(CC) $(CFLAGS) -pthread -DMOST_HOST -Isrc/common -Isrc/ipc -Isrc/workers -Itests
-.PHONY: assets launch-assets test test-launch-records
+.PHONY: assets launch-assets test test-faults test-launch-records
 
 assets: | build
 	unzip -p ../../packages/dashboard.zip BoostDeck/BoostDeck_ALL_Images.zip > build/boostdeck-base-images.zip
@@ -36,7 +36,7 @@ build/shift-deck: src/workers/shift_deck_worker.c $(WORKER_COMMON) | build
 build/mhd-maps: src/workers/mhd_maps_worker.c $(WORKER_COMMON) | build
 	$(HOST_LINK) $(filter %.c,$^) -lm -o $@
 
-build/engine-codes: src/workers/engine_codes_worker.c $(WORKER_COMMON) | build
+build/engine-codes: src/workers/engine_codes_worker.c src/common/fault_codes.h src/common/obd_fault_codes.h $(WORKER_COMMON) | build
 	$(HOST_LINK) $(filter %.c,$^) -lm -o $@
 
 build/bootmod3: src/workers/bootmod3_suite_worker.c src/workers/bm3_profiles.h $(WORKER_COMMON) | build
@@ -100,10 +100,29 @@ build/boost-test-core.o: $(CORE) $(HEADERS) | build
 build/test-boost-preferences: tests/test_boost_preferences.cpp build/boost-test-core.o src/plugins/boost_preferences.h src/common/gauge_preferences.h | build
 	$(CXX) -O2 -std=gnu++98 -Wall -Wextra -Werror -Isrc/plugins -Isrc/common $(filter %.cpp %.o,$^) -o $@
 
+build/test-fault-codes: tests/test_fault_codes.c src/common/fault_codes.h | build
+	$(CC) $(CFLAGS) -Isrc/common $< -o $@
+
+build/test-obd-fault-codes: tests/test_obd_fault_codes.c src/common/obd_fault_codes.h | build
+	$(CC) $(CFLAGS) -Isrc/common $< -o $@
+
+build/test-fault-display: tests/test_fault_display.cpp src/plugins/fault_display.h src/plugins/fault_preferences.h src/common/fault_codes.h src/common/obd_fault_codes.h src/common/gauge_preferences.h | build
+	$(CXX) $(CXXFLAGS) -std=gnu++98 -Wall -Wextra -Werror -Isrc/common -Isrc/plugins $< -o $@
+
+# Same MIT framework stand-in as PR #143/#203; no factory libraries are linked.
+build/test-fault-plugin: tests/test_fault_plugin.cpp tests/fake_bmw.cpp tests/fake_bmw.h src/plugins/engine_codes.cpp src/plugins/fault_display.h src/plugins/fault_preferences.h src/common/fault_codes.h src/common/obd_fault_codes.h src/common/gauge_preferences.h src/common/dme_descriptions.h sdk/bmw_list.h | build
+	$(CXX) $(CXXFLAGS) -std=gnu++98 -fno-access-control -Isdk -Isrc/common -Isrc/ipc -Isrc/plugins -Itests $< tests/fake_bmw.cpp -o $@
+
+test-faults: build/test-fault-codes build/test-obd-fault-codes build/test-fault-display build/test-fault-plugin
+	./build/test-fault-codes
+	./build/test-obd-fault-codes
+	./build/test-fault-display
+	./build/test-fault-plugin
+
 launch-assets:
 	$(PYTHON) ../tools/launch_art.py
 
-test: build/xdrive-control build/boost-deck build/shift-deck build/mhd-maps build/engine-codes build/test-core build/test-core-locale build/test-most build/test-diag-link build/bootmod3 build/exhaust-flap build/beamer build/road-jet build/test-launch-timer test-launch-records build/test-boost-preferences build/test-warm-progress build/warmdeck-collector build/mgflasher build/hybriddeck-collector
+test: test-faults build/xdrive-control build/boost-deck build/shift-deck build/mhd-maps build/engine-codes build/test-core build/test-most build/test-diag-link build/bootmod3 build/exhaust-flap build/test-launch-timer build/test-boost-preferences build/test-warm-progress build/warmdeck-collector build/mgflasher build/hybriddeck-collector build/test-core-locale build/beamer build/road-jet test-launch-records
 	./build/test-warm-progress
 	./build/test-boost-preferences
 	./build/test-launch-timer
@@ -115,4 +134,6 @@ test: build/xdrive-control build/boost-deck build/shift-deck build/mhd-maps buil
 	$(PYTHON) -B tests/test_drive_apps.py
 	$(PYTHON) -B tests/test_warm_freshness.py
 	$(PYTHON) -B tests/test_oneshot_most.py
+	$(PYTHON) -B tests/test_obd_faults.py
 	$(PYTHON) -B tests/test_transport.py
+	$(PYTHON) -B ../tools/test_fault_resources.py
