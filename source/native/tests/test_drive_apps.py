@@ -220,6 +220,54 @@ class DriveAppsTest(unittest.TestCase):
             result=self.run_worker("bootmod3",[mode,value],[(request,[reply])])
             self.assertIn("accepted by DME",result)
 
+    def test_s55_flap_uses_worker_specific_retry_after_explicit_rejection(self):
+        for worker, value, short, retry, refusals in (
+            ("bootmod3", "1", "2f60fd0314fe", "2f60fd03147afaff", ("13", "31")),
+            ("bootmod3", "2", "2f60fd032328", "2f60fd03eb85faff", ("13", "31")),
+            ("exhaust-flap", "1", "2f60fd0314fe", "2f60fd0319990aff", ("13",)),
+            ("exhaust-flap", "2", "2f60fd032328", "2f60fd03e6660aff", ("13",)),
+        ):
+            for nrc in refusals:
+                with self.subTest(worker=worker, value=value, nrc=nrc):
+                    result = self.run_worker(worker, ["--flap", value], [
+                        (short, ["7f2f" + nrc]), (retry, ["6f60fd03"]),
+                    ])
+                    self.assertRegex(result, r"accepted by DME|Confirmed:")
+
+    def test_flap_rejection_for_conditions_or_missing_reply_is_never_retried(self):
+        for worker in ("bootmod3", "exhaust-flap"):
+            for replies in (["7f2f22"], []):
+                with self.subTest(worker=worker, replies=replies):
+                    self.run_worker(worker, ["--flap", "1"], [("2f60fd0314fe", replies)])
+
+    def test_beamer_stops_above_limit_without_requesting_gear(self):
+        result = self.run_worker("beamer", ["0"], [
+            ("22f150", ["62f1500f16b0"]), ("22d542", ["62d54201"]),
+            ("010d", ["410d08"]), ("1003", ["5003"]),
+            ("010d", ["410d08"]), ("2ed54200080010", ["6ed542"]),
+            ("010d", ["410d09"]), ("1001", ["5001"]),
+        ], targets=["40", "40", "12", "40", "12", "40", "12", "40"])
+        self.assertEqual(result, "S\x01\x00M")
+
+    def test_beamer_without_vehicle_speed_does_not_start_lighting(self):
+        result = self.run_worker("beamer", ["0"], [
+            ("22f150", ["62f1500f16b0"]), ("22d542", ["62d54201"]),
+            ("010d", ["7f0131"]),
+        ], targets=["40", "40", "12"])
+        self.assertEqual(result, "V")
+
+    def test_road_jet_uses_speed_instead_of_gear_and_pauses_on_loss(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as receiver:
+            receiver.bind(("127.0.0.1", 56311))
+            receiver.settimeout(1)
+            self.run_worker("road-jet", ["--cycles", "3"], [
+                ("010d", ["410d08"]), ("22480b", ["62480b1000"]),
+                ("22db57", ["62db5700000000000003"]),
+                ("010d", ["410d09"]), ("010d", ["7f0131"]),
+            ], targets=["12", "12", "30", "12", "12"])
+            frames = [struct.unpack("=Qiii4x", receiver.recv(32)) for _ in range(3)]
+            self.assertEqual([packet[1:] for packet in frames], [(1, 500, 0), (4, 0, 0), (0, 0, 0)])
+
     def test_bm3_burble_preset_uses_automatically_identified_rom(self):
         marker=b"BM3_R #011000".ljust(255,b"\x00")
         timing="f0"*24

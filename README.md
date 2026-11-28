@@ -42,8 +42,8 @@ Full-screen ID6 adds **My Vehicle → ID6 App Updates**. That menu will be used 
 - **Bootmod3 Suite** is a control menu for compatible CustomROM tunes. It offers four map slots, exhaust flap control, Active Sound, and burble presets.
 - **xDrive Control (experimental)** temporarily selects rear-wheel drive on supported DSC versions. Mode changes require confirmed Park and zero speed. The F-series DSC_25 (0F1860) with LMV 0F1480 requires the engine running. The supported G-series DSCs require the engine off. See the [compatibility notes](source/docs/COMPATIBILITY.md#xdrive-control-experimental).
 - **Engine Fault Codes** reads engine/DME fault codes and shows descriptions when available. After a confirmed clear, it rereads the fault memory and reports codes that remain. Park with ignition on and the engine off before confirming a clear.
-- **Road Jet**. A simple game that makes a jet move based on throttle input and steering angle. [Road Jet package](packages/road-jet.zip)
-- **BEAMer** offers Front, Rear, Both, and Insane lighting patterns in Park at zero speed. Tested on an F3x car. Other Fxx cars may work if they have the supported lighting module. Gxx has not been tested. [BEAMer package](packages/beamer.zip)
+- **Road Jet** uses throttle and steering to control the jet. It plays at up to 8 km/h (about 5 mph) and pauses when speed data is unavailable.
+- **BEAMer** offers Front, Rear, Both, and Insane patterns on supported lighting modules. It checks for a valid speed of 8 km/h (about 5 mph) or less before each lighting step.
 
 ## Contributors and credits
 

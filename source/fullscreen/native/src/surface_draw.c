@@ -469,7 +469,7 @@ static void draw_road(struct canvas c, const struct surface_state *state)
 {
     const bool playing=state->road_mode==ROAD_JET_ACTIVE || state->road_mode==ROAD_JET_PEDAL_ONLY;
     if (!playing && !state->road_has_scene) {
-        center(c,320,91,"Ready when parked",bright,31);
+        center(c,320,91,"Ready at 5 mph or less",bright,31);
         return;
     }
 

@@ -10,8 +10,9 @@ The additional menus are WarmDeck, LaunchDeck, HybridDeck, Road Jet, BEAMer,
 xDrive Control and MG Flasher. BoostDeck, ShiftDeck, Engine Fault Codes,
 MHD+ Suite and Bootmod3 Suite use the upstream EntryNav2 code. ShiftDeck has
 21 selectable targets from 6,000 to 8,000 RPM and stores the choice alongside
-its speed-unit preference. Road Jet requires Park and zero speed. BEAMer
-and xDrive retain the original parked, capability and readback checks.
+its speed-unit preference. Road Jet and BEAMer require a valid speed of 8 km/h
+(about 5 mph) or less. BEAMer still checks lighting-module compatibility.
+xDrive retains its Park, capability and readback checks.
 
 Use a private EntryNav2 sysroot. This work uses the pinned GNU ARM GCC 4.7
 toolchain and the standard EntryNav2 release packager. Set

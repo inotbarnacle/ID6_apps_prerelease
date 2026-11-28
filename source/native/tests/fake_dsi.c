@@ -29,6 +29,7 @@ int fake_run_blocks_stops, fake_run_blocks_alarm;
 static void *g_cb[4];                       /* connected, disconnected, response, exit */
 static uint8_t g_app_blk[DSI_APP_BYTES];
 static void (*g_hook)(void *);
+static void (*g_stop_hook)(void);
 static void (*g_send_hook)(const fake_req_t *);
 static uint32_t g_next_id = 100;
 static fake_write_t g_w[FAKE_MAX_WRITES];
@@ -51,6 +52,7 @@ void fake_dsi_reset(void)
     fake_stop_nreq = -1;
     memset(g_cb, 0, sizeof g_cb);
     g_hook = NULL;
+    g_stop_hook = NULL;
     g_send_hook = NULL;
     g_nw = 0;
     g_rd_n = g_rd_pos = 0;
@@ -58,6 +60,8 @@ void fake_dsi_reset(void)
 }
 
 void fake_dsi_set_run_hook(void (*hook)(void *app)) { g_hook = hook; }
+void fake_dsi_set_stop_hook(void (*hook)(void)) { g_stop_hook = hook; }
+int fake_dsi_free_count(void) { return __atomic_load_n(&fake_free_calls, __ATOMIC_ACQUIRE); }
 void fake_dsi_set_send_hook(void (*hook)(const fake_req_t *r)) { g_send_hook = hook; }
 
 /* Other threads poll this while the link sends. The acquire pairs with the send's release, so every entry below the
@@ -129,9 +133,10 @@ int DSIClientStop(void *app, int unused)
     if (fake_stop_nreq < 0)            /* before the count: the run hook parks until it sees a stop */
         fake_stop_nreq = __atomic_load_n(&fake_nreq, __ATOMIC_ACQUIRE);
     __atomic_add_fetch(&fake_stop_calls, 1, __ATOMIC_RELEASE);   /* the DSI thread polls it: fake_dme_run_hook */
+    if (g_stop_hook) g_stop_hook();
     return 0;
 }
-void DSIClientFree(void *app) { (void)app; fake_free_calls++; }
+void DSIClientFree(void *app) { (void)app; __atomic_add_fetch(&fake_free_calls, 1, __ATOMIC_RELEASE); }
 
 int DSIClientSendRegister(void *app, const uint32_t *ids, int n, uint32_t session)
 {

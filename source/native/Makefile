@@ -54,6 +54,12 @@ build/xdrive-control: src/workers/xdrive_control_worker.c $(WORKER_COMMON) | bui
 build/exhaust-flap: src/workers/exhaust_flap_worker.c $(WORKER_COMMON) | build
 	$(HOST_LINK) $(filter %.c,$^) -lm -o $@
 
+build/beamer: src/workers/beamer_worker.c $(WORKER_COMMON) | build
+	$(HOST_LINK) $(filter %.c,$^) -lm -o $@
+
+build/road-jet: src/workers/road_jet_worker.c src/ipc/road_jet_frame.h $(WORKER_COMMON) | build
+	$(HOST_LINK) $(filter %.c,$^) -lm -o $@
+
 build/test-core: tests/test_core.c $(CORE) $(HEADERS) | build
 	$(CC) $(CFLAGS) -Isrc/common $(filter %.c,$^) -lm -o $@
 
@@ -97,7 +103,7 @@ build/test-boost-preferences: tests/test_boost_preferences.cpp build/boost-test-
 launch-assets:
 	$(PYTHON) ../tools/launch_art.py
 
-test: build/xdrive-control build/boost-deck build/shift-deck build/mhd-maps build/engine-codes build/test-core build/test-core-locale build/test-most build/test-diag-link build/bootmod3 build/exhaust-flap build/test-launch-timer test-launch-records build/test-boost-preferences build/test-warm-progress build/warmdeck-collector build/mgflasher build/hybriddeck-collector
+test: build/xdrive-control build/boost-deck build/shift-deck build/mhd-maps build/engine-codes build/test-core build/test-core-locale build/test-most build/test-diag-link build/bootmod3 build/exhaust-flap build/beamer build/road-jet build/test-launch-timer test-launch-records build/test-boost-preferences build/test-warm-progress build/warmdeck-collector build/mgflasher build/hybriddeck-collector
 	./build/test-warm-progress
 	./build/test-boost-preferences
 	./build/test-launch-timer
@@ -107,5 +113,6 @@ test: build/xdrive-control build/boost-deck build/shift-deck build/mhd-maps buil
 	./build/test-diag-link
 	$(PYTHON) -B tests/test_udp_ports.py
 	$(PYTHON) -B tests/test_drive_apps.py
+	$(PYTHON) -B tests/test_warm_freshness.py
 	$(PYTHON) -B tests/test_oneshot_most.py
 	$(PYTHON) -B tests/test_transport.py

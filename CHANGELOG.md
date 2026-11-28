@@ -1,5 +1,12 @@
 # Change notes
 
+## v0.7.20
+
+- BEAMer and Road Jet use a speed cutoff of 8 km/h (about 5 mph). Either app pauses or stops if speed exceeds the cutoff or the reading is lost.
+- Bootmod3 and the standalone exhaust flap worker use their respective captured S55 fallback requests after a matching format rejection.
+- WarmDeck counts the time spent waiting for a diagnostic reply against sample freshness.
+- MOST diagnostics keep the DSI client alive until an in-progress stop call returns.
+
 ## v0.7.19
 
 - Recovers from empty managed plugin folders left behind after a reset.

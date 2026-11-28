@@ -2,7 +2,7 @@
 set -eu
 cd "$(dirname "$0")"
 installer="$PWD"
-version=0.7.19
+version=0.7.20
 template="$(cd "$1" && pwd)"
 mkdir -p "$2"
 out="$(cd "$2" && pwd)"
@@ -19,7 +19,7 @@ bundle="$dist/mac/ID6Apps Installer.app"
 mkdir -p "$bundle/Contents/MacOS"
 lipo -create "$dist/mac-amd64" "$dist/mac-arm64" -output "$bundle/Contents/MacOS/ID6AppsInstaller"
 plutil -replace CFBundleShortVersionString -string "$version" "$bundle/Contents/Info.plist"
-plutil -replace CFBundleVersion -string 43 "$bundle/Contents/Info.plist"
+plutil -replace CFBundleVersion -string 44 "$bundle/Contents/Info.plist"
 codesign --force --sign - "$bundle"
 codesign --verify --strict "$bundle"
 for arch in arm64 x86_64; do

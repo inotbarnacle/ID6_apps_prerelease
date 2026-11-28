@@ -73,13 +73,12 @@ fault memory and re-reading the result.
   and Max Cooling on and off. The page shows worker replies and the last
   accepted map and cooling request from this session. The existing engine
   RPM check still applies to Max Cooling on.
-- **Road Jet** uses accelerator and steering data. It pauses unless the
-  gateway confirms Park and zero road speed. The scene freezes during a
-  telemetry interruption and resumes after Park and zero speed are confirmed.
-  MOST-only diagnostics cannot
-  confirm gear, so Road Jet pauses on that transport.
+- **Road Jet** uses accelerator and steering data. The scene pauses above
+  8 km/h (about 5 mph) or when the speed reading is unavailable. With MOST
+  fallback, the game uses pedal input if the DME supplies speed and pedal data.
 - **BEAMer** includes Front, Rear, Both, Insane, and Stop. The worker checks
-  lighting-module support, Park, and zero road speed. Leaving the page
+  lighting-module support and checks for a valid speed of 8 km/h or less before
+  each step. Leaving the page
   stops the worker. The diagrams reflect acknowledged lamp pulses.
 
 The separate apps and their overlay transitions were tested on the
@@ -136,5 +135,5 @@ and steering from IDEmu's vehicle controls. BoostDeck and WarmDeck label the
 feed as simulated. Boost, intake temperature, oil pressure, ethanol, oil
 temperature and transmission temperature use emulator-only test values because
 IDEmu does not provide those readings in its standard signal list. LaunchDeck
-uses the normal timer with IDEmu's speed. Road Jet uses IDEmu's Park, speed,
+uses the normal timer with IDEmu's speed. Road Jet uses IDEmu's speed,
 pedal and steering. Physical builds continue to use their diagnostic workers.

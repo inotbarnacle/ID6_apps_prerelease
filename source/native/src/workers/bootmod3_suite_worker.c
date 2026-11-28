@@ -176,6 +176,12 @@ static void control(control_link fd, const char *mode, unsigned value) {
         const unsigned char req[]={0x2f,0x60,0xfd,value?3:0,value==1?0x14:0x23,value==1?0xfe:0x28};
         const unsigned char ack[]={0x6f,0x60,0xfd,req[3]};
         n=exchange(fd,0x12,req,value?6:4,ack,sizeof ack,reply,sizeof reply,1600,&negative);
+        /* S55 (MEVD17.2.G) rejects the 6-byte override. Upstream issue #42 captured these
+           8-byte forms being acknowledged on an F80 M3; valve position was not verified. */
+        if (value && n==-2 && (negative==0x13 || negative==0x31)) {
+            const unsigned char wide[]={0x2f,0x60,0xfd,3,value==1?0x14:0xeb,value==1?0x7a:0x85,0xfa,0xff};
+            n=exchange(fd,0x12,wide,sizeof wide,ack,sizeof ack,reply,sizeof reply,1600,&negative);
+        }
         if (n>=4) puts("Exhaust flap request accepted by DME.");
         else puts("Exhaust flap request could not be confirmed.");
         return;

@@ -1,4 +1,4 @@
-# iDriveDeck Desktop Installer v0.7.19
+# iDriveDeck Desktop Installer v0.7.20
 
 The macOS app supports Apple silicon and Intel Macs. On Windows, open the x64 folder for Intel or AMD PCs, or the ARM64 folder for Windows on ARM.
 
@@ -58,3 +58,8 @@ managed menus are backed up before replacement.
 
 The W2408C1R, Q2051B1R and C1643D1R test builds passed ARM QEMU plugin-loader
 checks. Confirm menu loading and vehicle functions while parked.
+
+## BEAMer and Road Jet
+
+Both apps use a speed cutoff of 8 km/h (about 5 mph). They pause or stop if
+the reported speed exceeds the cutoff or the app loses the speed reading.

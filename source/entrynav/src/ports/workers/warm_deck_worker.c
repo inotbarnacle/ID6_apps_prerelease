@@ -50,8 +50,9 @@ int main(int argc, char **argv) {
             for (unsigned reads=0;reads<WARM_COUNT && diag_running;++reads) {
                 const unsigned signal=next;
                 next=(next+1)%WARM_COUNT;
+                const uint64_t started=bd_mono_ms();
                 const int status=temperature(&link,signal,&frame.celsius[signal]);
-                frame.sample[signal]=status==1 ? bd_mono_ms() : 0;
+                frame.sample[signal]=status==1 ? started : 0;
                 if (status==-1) {
                     diag_link_drop(&link);
                     break;

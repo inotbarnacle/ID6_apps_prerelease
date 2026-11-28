@@ -60,10 +60,11 @@ int main(int argc, char **argv) {
                     frame.sample[signal]=0;
                     continue;
                 }
+                const uint64_t started=bd_mono_ms();
                 const int status=signal==WARM_TRANS && dct ?
                     read_dct_temperature(&link,&frame.celsius[signal]) :
                     temperature(&link,signal,&frame.celsius[signal]);
-                frame.sample[signal]=status==1 ? bd_mono_ms() : 0;
+                frame.sample[signal]=status==1 ? started : 0;
                 if (status==-1) {
                     diag_link_drop(&link);
                     if (diag_link_lost(&link)) diag_running=0;

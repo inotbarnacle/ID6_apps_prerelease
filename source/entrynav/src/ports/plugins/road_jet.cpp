@@ -121,7 +121,7 @@ class RoadJet : public bmw::PluginApp {
             const char* label = "Waiting for vehicle data";
             if (mode == ROAD_JET_ACTIVE) label = "Live vehicle data";
             if (mode == ROAD_JET_PEDAL_ONLY) label = "Live vehicle data  |  Pedal only";
-            if (mode == ROAD_JET_PARK_REQUIRED) label = "Select Park and stop to play";
+            if (mode == ROAD_JET_TOO_FAST) label = "Slow to 5 mph or less to play";
             if (mode == ROAD_JET_WAITING && frame_.started_ms) label = "Vehicle data paused";
             updateModel(52u, bmw::BasicString<char>(label));
             mode_ = mode;
@@ -209,14 +209,14 @@ public:
             if (length < 0) break;
             if (length == sizeof next && next.started_ms >= shown_at_ && next.started_ms <= bd_mono_ms() &&
                 next.started_ms >= frame_.started_ms && next.mode >= ROAD_JET_WAITING &&
-                next.mode <= ROAD_JET_PARK_REQUIRED && next.pedal >= 0 && next.pedal <= 1000 &&
+                next.mode <= ROAD_JET_TOO_FAST && next.pedal >= 0 && next.pedal <= 1000 &&
                 next.steering >= -90000 && next.steering <= 90000) {
                 frame_ = next;
                 if (next.mode == ROAD_JET_ACTIVE) {
                     steering_at_ = next.started_ms;
                     steering_ = next.steering;
                 }
-                if (next.mode == ROAD_JET_PARK_REQUIRED || next.mode == ROAD_JET_WAITING) steering_at_ = 0;
+                if (next.mode == ROAD_JET_TOO_FAST || next.mode == ROAD_JET_WAITING) steering_at_ = 0;
             }
         }
         draw(bd_mono_ms());

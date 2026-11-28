@@ -1,4 +1,6 @@
-#define _POSIX_C_SOURCE 200809L
+#ifdef __QNX__
+#define _QNX_SOURCE
+#endif
 
 #include "road_jet_frame.h"
 #include "diag_link.h"
@@ -6,12 +8,12 @@
 
 #include <arpa/inet.h>
 #include <poll.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
-/* IDs and lengths are specific to the initial BMW diagnostic profile.
-   Every request is ReadDataByIdentifier in the default diagnostic session. */
+/* IDs and lengths are specific to the initial BMW diagnostic profile. */
 static int read_did(struct diag_link *link, unsigned ecu, unsigned did,
                     unsigned char *reply, unsigned expected) {
     unsigned char request[] = {0x22, did >> 8, did & 255};
@@ -23,22 +25,24 @@ static int read_did(struct diag_link *link, unsigned ecu, unsigned did,
     return result == (int)expected;
 }
 
-/* Animate only while both the gearbox and speed can confirm the parked state. */
-static int parked(struct diag_link *link) {
+/* The game needs a fresh speed reading within its low-speed limit. */
+static int vehicle_speed(struct diag_link *link) {
     unsigned char reply[32];
     const unsigned char speed[] = {0x01, 0x0d}, match[] = {0x41, 0x0d};
     unsigned negative;
-    if (!read_did(link,0x18,0xda2e,reply,5) || reply[3] != 0 || reply[4] != 6) return 0;
-    return diag_link_request(link,0x12,speed,sizeof speed,match,sizeof match,
-                             reply,sizeof reply,180,&negative) == 3 && reply[2] == 0;
+    const int length=diag_link_request(link,0x12,speed,sizeof speed,match,sizeof match,
+                                       reply,sizeof reply,180,&negative);
+    if (length==-1) diag_link_drop(link);
+    return length==3 ? reply[2] : -1;
 }
 
 static struct road_jet_frame read_frame(struct diag_link *link) {
     struct road_jet_frame frame = {bd_mono_ms(), ROAD_JET_WAITING, 0, 0};
     unsigned char data[32];
 
-    if (!parked(link)) {
-        frame.mode = ROAD_JET_PARK_REQUIRED;
+    const int speed=vehicle_speed(link);
+    if (speed<0 || speed>ROAD_JET_MAX_KPH) {
+        if (speed>ROAD_JET_MAX_KPH) frame.mode=ROAD_JET_TOO_FAST;
         return frame;
     }
 
@@ -66,21 +70,33 @@ static struct road_jet_frame read_frame(struct diag_link *link) {
 }
 
 int main(int argc, char **argv) {
-    if (argc != 3 || strcmp(argv[1], "--host")) return 2;
+    if (argc < 3 || strcmp(argv[1], "--host")) return 2;
+    unsigned port = 6801, cycles = 0;
+    for (int i = 3; i + 1 < argc; i += 2) {
+        const int is_port = !strcmp(argv[i], "--port");
+        char *end;
+        if (!is_port && strcmp(argv[i], "--cycles")) return 2;
+        const unsigned long value = strtoul(argv[i + 1], &end, 10);
+        if (*end || !value || value > (is_port ? 65535u : 1000u)) return 2;
+        if (is_port) port = (unsigned)value;
+        else cycles = (unsigned)value;
+    }
+    if ((argc - 3) % 2) return 2;
     int fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (fd < 0) return 1;
     struct sockaddr_in address;
     memset(&address, 0, sizeof address);
     address.sin_family = AF_INET;
     address.sin_port = htons(ROAD_JET_PORT);
-    address.sin_addr.s_addr = htonl(0x7f000001u);
+    address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
-    struct diag_link_cfg config = {argv[2], 6801, DIAG_LOOP};
+    struct diag_link_cfg config = {argv[2], port, DIAG_LOOP};
     struct diag_link link;
     diag_link_signals();
     diag_link_init(&link, &config);
     pid_t parent = getppid();
-    while (diag_running && getppid() == parent) {
+    unsigned count = 0;
+    while ((!cycles || count < cycles) && diag_running && getppid() == parent) {
         struct road_jet_frame frame = {bd_mono_ms(), ROAD_JET_WAITING, 0, 0};
         if (diag_link_up(&link)) {
             frame = read_frame(&link);
@@ -88,7 +104,8 @@ int main(int argc, char **argv) {
         }
         (void)sendto(fd, &frame, sizeof frame, 0,
                      (const struct sockaddr *)&address, sizeof address);
-        poll(0, 0, frame.mode == ROAD_JET_WAITING ? 350 : 100);
+        if (cycles && ++count == cycles) break;
+        poll(0, 0, frame.mode == ROAD_JET_WAITING || frame.mode == ROAD_JET_TOO_FAST ? 350 : 100);
     }
     diag_link_close(&link);
     close(fd);

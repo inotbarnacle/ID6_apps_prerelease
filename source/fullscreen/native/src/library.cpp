@@ -248,7 +248,7 @@ class ID6LibraryLab : public bmw::PluginApp {
         childStopping_ = false;
         controlUsed_ = 0;
         controlReply_[0] = 0;
-        status(page_,beamer == page_ ? "Checking lighting module and Park" : "Sending request to DME");
+        status(page_,beamer == page_ ? "Checking lighting module and speed" : "Sending request to DME");
         schedule();
         return true;
     }
@@ -333,10 +333,8 @@ class ID6LibraryLab : public bmw::PluginApp {
         switch (signal) {
             case 'S': status(beamer,"Playing exterior light pattern"); return;
             case 'D': message="Pattern finished"; break;
-            case 'P': message="Select Park to start a light pattern"; break;
-            case 'M': message="Stop the vehicle to start a light pattern"; break;
-            case 'T': message="Could not confirm Park"; break;
-            case 'V': message="Could not confirm zero speed"; break;
+            case 'M': message="Slow to 5 mph / 8 km/h or less"; break;
+            case 'V': message="Vehicle speed unavailable"; break;
             case 'K': message="Pattern finished. Unsupported lamps skipped."; break;
             case 'L': message="Selected lamps are unsupported"; break;
             case 'E': message="Lighting diagnostic session unavailable"; break;
@@ -427,7 +425,7 @@ class ID6LibraryLab : public bmw::PluginApp {
         switch (mode) {
             case ROAD_JET_ACTIVE: status(road,"Pedal climbs. Steering changes lanes."); break;
             case ROAD_JET_PEDAL_ONLY: status(road,"Pedal only. Steering data unavailable."); break;
-            case ROAD_JET_PARK_REQUIRED: status(road,"Select Park and stop to play."); break;
+            case ROAD_JET_TOO_FAST: status(road,"Slow to 5 mph / 8 km/h or less to play."); break;
             default: status(road,roadHasScene_ ? "Paused. Checking vehicle data." : "Waiting for vehicle data"); break;
         }
     }
@@ -439,7 +437,7 @@ class ID6LibraryLab : public bmw::PluginApp {
             unsigned(frame.started_ms-roadSample_) : 100;
         roadSample_ = frame.started_ms;
         lastPacket_ = now;
-        if (frame.mode == ROAD_JET_PARK_REQUIRED) { setRoadMode(ROAD_JET_PARK_REQUIRED); return; }
+        if (frame.mode == ROAD_JET_TOO_FAST) { setRoadMode(ROAD_JET_TOO_FAST); return; }
         if (frame.mode != ROAD_JET_ACTIVE && frame.mode != ROAD_JET_PEDAL_ONLY) {
             setRoadMode(ROAD_JET_WAITING);
             return;
@@ -744,7 +742,8 @@ class ID6LibraryLab : public bmw::PluginApp {
             };
             render(reinterpret_cast<const char*>(&frame),sizeof frame,now);
         } else if (page_ == road) {
-            const int mode = sample.kph == 0 && sample.gear == 0 ? ROAD_JET_ACTIVE : ROAD_JET_PARK_REQUIRED;
+            const int mode = sample.kph < 0 ? ROAD_JET_WAITING :
+                sample.kph <= ROAD_JET_MAX_KPH ? ROAD_JET_ACTIVE : ROAD_JET_TOO_FAST;
             const road_jet_frame frame = {sample.sampled_ms,mode,sample.pedal_tenths,sample.steering_hundredths};
             updateRoad(frame,now);
         }
@@ -932,7 +931,7 @@ class ID6LibraryLab : public bmw::PluginApp {
             } else if (Page == mhd) {
                 showMhdSettings();
                 status(mhd,"Select a setting");
-            } else if (Page == beamer) status(beamer,"Select a pattern while parked");
+            } else if (Page == beamer) status(beamer,"Select a lighting pattern");
             else if (usbPage(Page)) {
                 status(Page,usbRead_ >= 0 ? "Checking the signed USB package..." :
                             Page == updates && usbReply_[0] ? usbReply_ : "");

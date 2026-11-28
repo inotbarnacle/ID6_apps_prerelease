@@ -110,10 +110,8 @@ class LightShow : public bmw::PluginApp {
         switch (signal) {
         case 'S': status("Playing exterior light pattern"); return;
         case 'D': status("Pattern finished"); break;
-        case 'P': status("Select Park to start a light pattern"); break;
-        case 'M': status("Stop the vehicle to start a light pattern"); break;
-        case 'T': status("Could not confirm that the transmission is in Park"); break;
-        case 'V': status("Could not confirm that vehicle speed is zero"); break;
+        case 'M': status("Slow to 5 mph / 8 km/h or less"); break;
+        case 'V': status("Vehicle speed unavailable"); break;
         case 'K': status("Pattern finished  |  An unsupported lamp was skipped"); break;
         case 'L': status("None of the selected lamps are supported"); break;
         case 'E': status("Lighting diagnostic session unavailable"); break;
