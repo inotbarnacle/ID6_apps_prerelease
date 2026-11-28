@@ -30,7 +30,10 @@ WarmDeck timestamps each valid sample when its request starts, so a slow
 diagnostic reply consumes part of the freshness window.
 If any required reading is unavailable, WarmDeck waits for it before showing a
 complete warm-up estimate. The display estimates warm-up from measured trends
-and uses 85/75/40 °C as its own thresholds.
+and uses 85/75/40 °C as its own targets, with independent per-fluid indicators.
+These are app choices, not BMW operating specifications. See
+[WarmDeck target behavior](WARM-READINESS.md) for hysteresis, unavailable samples,
+estimate limits, and host-only validation.
 
 
 ## BoostDeck selectable OBD readings
@@ -42,6 +45,82 @@ The original nine dashboard positions can also select spark advance (`0E`), abso
 
 The Diesel profile uses `01 05` coolant, `01 0F` intake air, `01 23` direct-injection rail gauge pressure, and `01 0B` manifold pressure minus `01 33` ambient pressure for boost. It retains the existing EGS transmission-temperature query over HSFZ. AFR, timing, oil pressure, and active ethanol require separate DDE-specific evidence. The standard PIDs can also be selected individually where available. A B47 or N57 parked capture is still needed to verify what each DDE supports.
 
+### Diesel capabilities and pressure limits
+
+Optional [standard reagent gauges](STANDARD-REAGENT.md) add advertised PID 85
+level and average consumption/demand to custom layouts. Detected defaults and
+earlier signal IDs/read sets are unchanged; no SCR health or range is inferred.
+
+New installations can use [Detected defaults](AUTO-DIESEL-GAUGES.md): only
+advertised standard channels, plus an existing EGS temperature channel after a
+valid positive reply, can occupy automatic slots. Unknown capabilities leave
+slots empty. Existing saved layouts remain in Custom mode unless the owner
+selects Detected defaults. This identifies available channels, not an N57 family.
+
+BoostDeck's Diesel profile now checks Mode 01 supported-PID bitmaps before
+polling a selected standard channel. Oil temperature and fuel rate use the same
+gate in the gasoline profile; other gasoline DIDs and fallbacks retain their
+existing selection. WarmDeck checks oil support before requesting `01 5C`.
+This avoids the unsupported oil request reported to reset the DDE741 connection
+in [issue #162](https://github.com/inotbarnacle/iDriveDeck/issues/162).
+
+The shared gate follows continuation bits through `01 00`, `01 20`, `01 40` and `01 60`,
+one bitmap read per call. Only an exact positive reply with four bitmap bytes
+enables a channel. A missing bit leaves it unavailable. Unknown, refused,
+truncated or lost bitmap replies do not enable speculative reads; failed
+discovery backs off for five seconds. Successful bitmaps are cached for this
+worker's single DME/endpoint, including across short diagnostic leases. Reopening
+the app starts a fresh cache. This is PID capability detection, not engine-family
+identification. Advertisement does not validate a reading's meaning or accuracy;
+the existing decoders and freshness rules still apply.
+
+Standard EGT `01 78`/`01 79` adds individually named bank/sensor gauges only
+after PID and per-sensor support evidence. Nine-byte layouts, 0.1 °C scaling,
+independent unavailable values and the versioned wider masks are documented in
+[Standard EGT](STANDARD-EGT.md). This establishes neither a DDE family nor
+the sensor's physical location or DPF regeneration state.
+
+Discovery can delay the first oil reading by a few polling cycles. Unsupported
+oil remains blank in both apps, and WarmDeck can still report the other fluids
+independently. It cannot give a complete three-fluid warm-up estimate without oil.
+No dynamic DID or diagnostic-session change is sent by this gate. The project's
+local lease cannot exclude an external OBD tester: close other diagnostic tools
+before collecting parked evidence.
+
+Standard MAP PID `0B` has only an 8-bit, 0–255 kPa **absolute** range. The Diesel
+profile leaves both the MAP and derived boost gauges unavailable at 255 kPa;
+subtracting measured barometric pressure cannot recover pressure above that
+ceiling. Readings below the ceiling still do not establish full-range N57 boost
+support. PID `23` is **rail gauge pressure** in 0.1 bar/count (for example synthetic
+`41 23 27 10` is 1000 bar), independent of the gasoline `56D7` conversion.
+
+N57/DDE741 oil source `4517` and temporary `F303` evidence in
+[#21](https://github.com/inotbarnacle/iDriveDeck/issues/21) and #162 does not
+establish a fixed read-only oil DID. The worker never defines or reads `F303` for
+diesel oil. Fixed BMW diesel oil, DPF and SCR need independently validated
+ECU-specific definitions. The optional standard requested/actual pressure fields
+below still need exact DDE support and independent comparisons. See the [diesel investigation](DIESEL-DEVELOPMENT.md)
+for the evidence matrix and overlapping upstream work.
+
+### Optional standard EGR
+
+Custom layout can select requested EGR (`01 2C`), error (`01 2D`) and the
+separate requested/actual/error A/B fields of `01 69`, with per-field support.
+[Standard EGR](STANDARD-EGR.md) documents exact lengths, source provenance,
+normalization, grouped timing, unavailable values and packet/settings revisions.
+Actual duty/position is not inferred from error or treated as measured EGR flow.
+No exact N57 support or A/B physical assignment is established. These gauges do
+not expand the automatic diesel default pool or send actuator commands.
+
+
+### Optional requested and actual pressure
+
+Custom layout can select separate rail A/B request/actual gauge pressures
+(`01 6D`) and boost A/B request/actual absolute pressures (`01 70`). Each field
+requires advertised PID and field support. [Standard pressure](STANDARD-PRESSURE.md)
+records the exact layouts, conversions, source provenance and limitations.
+These manual choices do not replace MAP or infer atmospheric pressure, sensor
+location, DDE identity or physical vehicle support. Default gauges stay unchanged.
 
 ## MHD+ setting display
 

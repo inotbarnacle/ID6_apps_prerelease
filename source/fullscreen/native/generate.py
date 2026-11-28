@@ -84,12 +84,24 @@ for i, item in enumerate(catalog):
     if item['id'] == 'ShiftDeck':
         element(actions, 'hmiAction', id=216, target=216)
         options = element(detail, 'optionComponents')
-        element(options, 'button', id=917, text='Shift light target', action=216)
+        element(options, 'button', id=917, text='Engine profile and targets', action=216)
         element(actions, 'raAction', id=5751)
         element(models, 'raDataModel', id=1881, modelType='Richtext')
         element(options, 'button', id=918, text='Speed units', model=1881, action=5751)
-        surface_button(actions, components, id=916, text='Shift light target', action=216, position=(958,8,275,48))
-        picker = element(element(states, 'hmiState', id=216, parentId=target, text='Shift light target'), 'components')
+        surface_button(actions, components, id=916, text='Engine profile and targets', action=216, position=(958,8,275,48))
+        settings = element(element(states, 'hmiState', id=216, parentId=target, text='ShiftDeck settings'), 'components')
+        for index in range(4):
+            element(models, 'raDataModel', id=1883+index, modelType='Richtext')
+            element(settings, 'label', id=1890+index, model=1883+index)
+        for index, (label, action) in enumerate((('Gasoline profile',5800),('Diesel profile',5801),
+                ('Diesel target -100 RPM',5820),('Diesel target +100 RPM',5821),
+                ('Diesel display 4,000 RPM',5810),('Diesel display 5,000 RPM',5811),
+                ('Diesel display 6,000 RPM',5812))):
+            element(actions, 'raAction', id=action)
+            element(settings, 'button', id=3800+index, text=label, action=action)
+        element(actions, 'hmiAction', id=219, target=219)
+        element(settings, 'button', id=3807, text='Gasoline target', action=219)
+        picker = element(element(states, 'hmiState', id=219, parentId=216, text='Gasoline target'), 'components')
         for index, rpm in enumerate(range(6000, 8001, 100)):
             action = 4700 + index
             nested = element(element(actions, 'combinedAction', id=action), 'actions')
@@ -151,6 +163,23 @@ for i, item in enumerate(catalog):
             model = 1400 + 20*i + j
             element(models, 'raDataModel', id=model, modelType='Richtext')
             geometry(element(components, 'label', id=1020 + 40*i + j, model=model), (x, y+53, 365, 65))
+            if item['id']=='BoostDeck':
+                caption_model=1840+j
+                element(models,'raDataModel',id=caption_model,modelType='Richtext')
+                components.find(f"label[@id='{1000+40*i+j}']").set('model',str(caption_model))
+    if item['id'] == 'WarmDeck':
+        for j in range(3):
+            model = 1400 + 20*i + 3 + j
+            element(models, 'raDataModel', id=model, modelType='Richtext')
+            geometry(element(components, 'label', id=1040 + 40*i + j, model=model),
+                     (28 + j*403, 180, 365, 55))
+        geometry(element(components, 'label', id=8000+i,
+                         text='App targets are advisory; follow vehicle guidance'), (28, 265, 1160, 55))
+    if item['id'] == 'ShiftDeck':
+        geometry(element(components, 'label', id=1894, model=1883), (28,180,1160,45))
+        geometry(element(components, 'label', id=1895, model=1884), (28,225,1160,45))
+        geometry(element(components, 'label', id=1896, model=1886,
+                         text='App target; follow vehicle guidance'), (28,275,1160,55))
     element(models, 'raDataModel', id=600+i, modelType='Richtext')
     geometry(element(components, 'label', id=460+i, model=600+i), (30, 365, 1110, 70))
 for index, (title, target) in enumerate((('Updates', 210), ('System', 211))):
@@ -191,6 +220,13 @@ element(models,'raDataModel',id=1899,modelType='Richtext')
 element(actions, 'raAction', id=5750)
 element(models, 'raDataModel', id=1880, modelType='Richtext')
 element(prefs, 'button', id=1880, action=5750, model=1880, text='DCT temperature')
+for model in (1830,1831):
+    element(models,'raDataModel',id=model,modelType='Richtext')
+element(prefs,'label',id=1897,model=1830)
+element(layout,'label',id=1898,model=1831)
+for index,(action,text) in enumerate(((5850,'Use detected diesel defaults'),(5851,'Use custom diesel layout'))):
+    element(actions,'raAction',id=action)
+    element(prefs,'button',id=960+index,action=action,text=text)
 
 def return_action(identifier, remote, target):
     group=element(element(actions,'combinedAction',id=identifier),'actions')
@@ -211,7 +247,7 @@ for row,(label,choices) in enumerate(BOOST_SETTINGS):
 
 signals = []
 for line in (root/'native/telemetry/common/boost_signals.def').read_text().splitlines():
-    match=re.match(r'SIGNAL\(([A-Z_]+),\s*"([^"]+)"',line)
+    match=re.match(r'SIGNAL\(([A-Z0-9_]+),\s*"([^"]+)"',line)
     if match:
         signals.append(match.groups())
 
@@ -270,7 +306,7 @@ with (output / 'modules.txt').open('w') as modules:
         if item['id'] == 'BoostDeck':
             selected.update((214, 215, 2180, *range(2160, 2170)))
         if item['id'] == 'ShiftDeck':
-            selected.add(216)
+            selected.update((216,219))
         if item['id'] == 'EngineCodes':
             selected.add(217)
         modules.write(f'{name} surface_{page_names[i]}\n')

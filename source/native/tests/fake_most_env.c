@@ -52,8 +52,21 @@ int most_fake_bind(void)
     if (!strcmp(mode, "no-server")) { fake_dme_start(FAKE_NO_SERVER); return 0; }
     if (strcmp(mode, "up") && strcmp(mode, "drop") && strcmp(mode, "mhd-refuse") &&
         strcmp(mode, "codes-512") && strcmp(mode, "codes-513") &&
-        strcmp(mode, "bm3-unknown") && strcmp(mode, "gauge-mismatch")) return -1;
+        strcmp(mode, "bm3-unknown") && strcmp(mode, "gauge-mismatch") && strcmp(mode,"egt-up") &&
+        strcmp(mode,"egr-up") && strcmp(mode,"pressure-up") && strcmp(mode,"reagent-up")) return -1;
     fake_dme_start(FAKE_UP);
+    if (!strcmp(mode,"reagent-up")) {
+        static const uint8_t pages[][6]={{0x41,0,8,0,0,1},{0x41,0x20,0,0,0,1},
+            {0x41,0x40,0,0,0,1},{0x41,0x60,0,0,0,1},{0x41,0x80,8,0,0,0}};
+        static const uint8_t reagent[]={0x41,0x85,15,1,0,0,200,128,1,0,0,1};
+        static const uint8_t coolant[]={0x41,5,122};
+        for (i=0;i<5;++i) {
+            char key[5];snprintf(key,sizeof key,"01%02X",i*0x20);
+            fake_dme_raw(key,pages[i],sizeof pages[i]);
+        }
+        fake_dme_raw("0185",reagent,sizeof reagent);fake_dme_raw("0105",coolant,sizeof coolant);
+        return 0;
+    }
     if (delay && atoi(delay) > 0 && atoi(delay) <= 2000) fake_dme_hold_ms(atoi(delay));
     if (!strcmp(mode, "drop")) fake_dme_drop_link_after(5);
     if (!strcmp(mode, "mhd-refuse")) fake_dme_refuse("2F", 0x31, 0);
@@ -95,5 +108,33 @@ int most_fake_bind(void)
     }
     fake_dme_raw("1902AF", codes, sizeof codes);
     fake_dme_raw("14FFFFFF", cleared, sizeof cleared);
+    if (!strcmp(mode,"egt-up")) {
+        static const uint8_t first[]={0x41,0,0,0,0,1}, second[]={0x41,0x20,0,0,0,1};
+        static const uint8_t third[]={0x41,0x40,0,0,0,1}, fourth[]={0x41,0x60,0,0,1,0x80};
+        static const uint8_t bank1[]={0x41,0x78,5,0x19,0x05,0,0,0x1c,0xed,0,0};
+        static const uint8_t bank2[]={0x41,0x79,8,0,0,0,0,0,0,0x20,0xd5};
+        fake_dme_raw("0100",first,sizeof first); fake_dme_raw("0120",second,sizeof second);
+        fake_dme_raw("0140",third,sizeof third); fake_dme_raw("0160",fourth,sizeof fourth);
+        fake_dme_raw("0178",bank1,sizeof bank1); fake_dme_raw("0179",bank2,sizeof bank2);
+    }
+    if (!strcmp(mode,"egr-up")) {
+        static const uint8_t first[]={0x41,0,0,0,0,1}, second[]={0x41,0x20,0,0x18,0,1};
+        static const uint8_t third[]={0x41,0x40,0,0,0,1}, fourth[]={0x41,0x60,0,0x80,0,0};
+        static const uint8_t command[]={0x41,0x2c,0x80}, error[]={0x41,0x2d,0};
+        static const uint8_t grouped[]={0x41,0x69,0x22,0,0xff,0,0,0,0x80};
+        fake_dme_raw("0100",first,sizeof first); fake_dme_raw("0120",second,sizeof second);
+        fake_dme_raw("0140",third,sizeof third); fake_dme_raw("0160",fourth,sizeof fourth);
+        fake_dme_raw("012C",command,sizeof command); fake_dme_raw("012D",error,sizeof error);
+        fake_dme_raw("0169",grouped,sizeof grouped);
+    }
+    if (!strcmp(mode,"pressure-up")) {
+        static const uint8_t first[]={0x41,0,0,0,0,1}, second[]={0x41,0x20,0,0,0,1};
+        static const uint8_t third[]={0x41,0x40,0,0,0,1}, fourth[]={0x41,0x60,0,9,0,0};
+        static const uint8_t rail[]={0x41,0x6d,0x12,0,0,0x27,0x10,0xff,0,0,0,0,0xff};
+        static const uint8_t boost[]={0x41,0x70,0x12,0,0,0x19,0,0,0,0,0,0xff};
+        fake_dme_raw("0100",first,sizeof first); fake_dme_raw("0120",second,sizeof second);
+        fake_dme_raw("0140",third,sizeof third); fake_dme_raw("0160",fourth,sizeof fourth);
+        fake_dme_raw("016D",rail,sizeof rail); fake_dme_raw("0170",boost,sizeof boost);
+    }
     return 0;
 }

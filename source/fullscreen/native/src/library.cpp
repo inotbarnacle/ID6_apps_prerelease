@@ -6,12 +6,16 @@
 #include "drive_frame.h"
 #include "boost_layout.h"
 #include "boost_files.h"
+#include "boost_state.h"
 #include "boost_settings_assets.h"
 #include "gauge_core.h"
 #include "warm_frame.h"
 #include "road_jet_frame.h"
 #include "launch_records.h"
 #include "surface_session.h"
+#include "warm_state.h"
+#include "shift_state.h"
+#include "gauge_coexistence.h"
 #ifdef ID6_EMULATOR
 #include "emulator_telemetry.h"
 #include "surface_assets.h"
@@ -27,19 +31,27 @@ enum { boost = surface_boost, shift = surface_shift, mhd = surface_mhd, codes = 
        warm = surface_warm, home = surface_home,
        updates = surface_updates, systemPage = surface_system,
        updateConfirm = surface_update_confirm, installConfirm = surface_install_confirm, inactive = surface_hidden,
-       boostSettings, shiftSettings, codesConfirm, poll_key = 0x4944364cu };
+       boostSettings, shiftSettings, codesConfirm, shiftGasSettings, poll_key = 0x4944364cu };
 enum { live_poll_ms = 16, menu_poll_ms = 40 };
 const unsigned kEntryPage = ID6_ENTRY_PAGE;
-enum { shift_target_min=6000, shift_target_step=100, shift_target_count=21 };
+enum { shift_target_count=ShiftPreferences::GASOLINE_TARGETS };
 #ifdef ID6_EMULATOR
 const char kShiftPreferences[] = "/dev/shmem/ID6FullShiftDeck.prefs";
+const char kShiftProfile[] = "/dev/shmem/ID6FullShiftDeck.diesel.prefs";
 #else
 const char kShiftPreferences[] = "/var/opt/hmi/data/ID5/ID6FullShiftDeck.prefs";
+const char kShiftProfile[] = "/var/opt/hmi/data/ID5/ID6FullShiftDeck.diesel.prefs";
 #endif
 const char kLaunchPreferences[] = "/var/opt/hmi/data/ID5/ID6LibraryLab.launch.prefs";
 const char kBoostPrefs[] = ID6_BOOST_PREFS;
 const char kBoostLayout[] = ID6_BOOST_LAYOUT;
+const char kBoostDefaults[] = ID6_BOOST_DEFAULTS;
 const unsigned kAlertSignals[] = {BD_COOLANT, BD_OIL_TEMP, BD_OIL};
+const char* const kBoostCaptions[][2] = {
+#define SIGNAL(id, name, lo, hi, unit, wide, narrow) {wide,narrow},
+#include "boost_signals.def"
+#undef SIGNAL
+};
 const char kRoot[] = "/var/opt/hmi/data/ID5/Plugins/ID6LibraryLab";
 const char *worker(unsigned page) {
     switch (page) {
@@ -73,8 +85,14 @@ class ID6LibraryLab : public bmw::PluginApp {
     char surfaceStatus_[96];
     BoostPreferences boostPrefs_;
     BoostLayout boostLayout_;
+    FullBoostDefaultsMode boostMode_;
+    FullBoostState boostState_;
+    const char *boostPreferences_,*boostAssignments_,*boostDefaults_;
+    uint64_t boostToken_;
+    bool boostSaved_;
     BoostAlerts boostAlerts_;
     uint16_t boostLevels_[9];
+    uint8_t boostCaptions_[9];
 #ifdef ID6_EMULATOR
     unsigned boostFiles_;
 #endif
@@ -82,9 +100,12 @@ class ID6LibraryLab : public bmw::PluginApp {
     pid_t tone_;
     uint64_t lastTone_;
     SurfaceSession surface_;
-    unsigned shiftTarget_;
-    bool shiftMph_;
+    FullShiftPreferences shiftPrefs_;
+    FullShiftState shiftState_;
+    const char *shiftPreferences_, *shiftProfile_;
+    bool shiftSaved_;
     bool warmFahrenheit_;
+    FullWarmState warmState_;
     launch_timer timer_;
     lt_mode launchMode_;
     LaunchRecords records_;
@@ -105,10 +126,34 @@ class ID6LibraryLab : public bmw::PluginApp {
     bool roadHasScene_, codesClearPending_;
 
     void loadBoostConfiguration() {
-        boostPrefs_.load(access(kBoostPrefs,F_OK)==0 ? kBoostPrefs :
+        const bool legacy=!strcmp(boostPreferences_,kBoostPrefs) && !strcmp(boostAssignments_,kBoostLayout);
+        boostPrefs_.load(access(boostPreferences_,F_OK)==0 || !legacy ? boostPreferences_ :
                          "/var/opt/hmi/data/ID5/BoostDeck.prefs",9);
-        if (!boostLayout_.load(kBoostLayout))
-            boostLayout_.load("/var/opt/hmi/data/ID5/BoostDeck.signals");
+        bool loaded=boostLayout_.load(boostAssignments_);
+        if (!loaded && legacy) loaded=boostLayout_.load("/var/opt/hmi/data/ID5/BoostDeck.signals");
+        boostMode_.automatic=!loaded; // Existing valid layouts stay Custom.
+        boostMode_.load(boostDefaults_);
+    }
+
+    bool automaticBoost() const { return boostLayout_.diesel && boostMode_.automatic; }
+    unsigned boostSignal(unsigned slot) const {
+        return automaticBoost() ? boostState_.automaticSignal(slot) : boostLayout_.signal[boostLayout_.diesel][slot];
+    }
+
+    void resetBoostState() {
+        const uint64_t now=bd_mono_ms();
+        boostToken_=now>boostToken_ ? now : boostToken_+1;
+        if (!boostToken_) ++boostToken_;
+        boostState_.reset(now);
+    }
+
+    void boostAssignmentsChanged() {
+        stopWorker();
+        resetBoostState();
+        received_=false;
+        for (unsigned i=0;i<3;++i) boostAlerts_.reset(i);
+        refreshBoostSettings();
+        if (page_==boost) refreshBoost(bd_mono_ms());
     }
 
     void refreshBoostSettings() {
@@ -123,11 +168,24 @@ class ID6LibraryLab : public bmw::PluginApp {
             snprintf(label,sizeof label,"Gauge %u: %s",i+1,bd_name(boostLayout_.signal[boostLayout_.diesel][i]));
             updateModel(1820u+i,bmw::BasicString<char>(label));
         }
+        updateModel(1830u,bmw::BasicString<char>(boostMode_.automatic ?
+                    "Diesel gauges: Detected defaults" : "Diesel gauges: Custom layout"));
+        updateModel(1831u,bmw::BasicString<char>(automaticBoost() ?
+                    "Detected defaults are active; custom choices remain saved" :
+                    "Custom choices are saved separately for each profile"));
     }
 
     bool boostSaveError() {
+        boostSaved_=false;
         updateModel(1899u,bmw::BasicString<char>("Could not save BoostDeck settings"));
+        if (page_==boost) { refreshBoost(bd_mono_ms());syncSurface(); }
         return true;
+    }
+
+    bool saveBoostLayout(const BoostLayout& next) {
+        // Preserve the current mode when the first layout makes a new install
+        // indistinguishable from an older custom layout on the next load.
+        return boostMode_.save(boostDefaults_) && next.save(boostAssignments_);
     }
 
     template<unsigned Setting, unsigned Choice> bool boostOption(const bmw::Parcel&) {
@@ -138,17 +196,31 @@ class ID6LibraryLab : public bmw::PluginApp {
         if (setting==9) {
             BoostLayout next=boostLayout_;
             next.diesel=choice!=0;
-            if (!next.save(kBoostLayout)) return boostSaveError();
+            if (!saveBoostLayout(next)) return boostSaveError();
             boostLayout_=next;
+            boostAssignmentsChanged();
         } else {
             BoostPreferences next=boostPrefs_;
             if (setting==8) next.color=choice;
             else next.choice[setting]=choice;
-            if (!next.save(kBoostPrefs)) return boostSaveError();
+            if (!next.save(boostPreferences_)) return boostSaveError();
             boostPrefs_=next;
+            if (setting>=BOOST_COOLANT_ALERT && setting<BOOST_SETTING_COUNT) boostAssignmentsChanged();
         }
+        boostSaved_=true;
         updateModel(1899u,bmw::BasicString<char>(""));
         refreshBoostSettings();
+        if (page_==boost) { refreshBoost(bd_mono_ms());syncSurface(); }
+        return true;
+    }
+
+    template<bool Automatic> bool setBoostDefaults(const bmw::Parcel&) {
+        FullBoostDefaultsMode next=boostMode_;next.automatic=Automatic;
+        if (!next.save(boostDefaults_)) return boostSaveError();
+        boostMode_=next;boostSaved_=true;
+        if (boostLayout_.diesel) boostAssignmentsChanged();
+        updateModel(1899u,bmw::BasicString<char>(""));refreshBoostSettings();
+        if (page_==boost) { refreshBoost(bd_mono_ms());syncSurface(); }
         return true;
     }
 
@@ -164,8 +236,10 @@ class ID6LibraryLab : public bmw::PluginApp {
         if (boostSlot_>=9) return true;
         BoostLayout next=boostLayout_;
         next.signal[next.diesel][boostSlot_]=Signal;
-        if (!next.save(kBoostLayout)) return boostSaveError();
+        if (!saveBoostLayout(next)) return boostSaveError();
         boostLayout_=next;
+        boostSaved_=true;
+        if (!automaticBoost()) boostAssignmentsChanged();
         updateModel(1899u,bmw::BasicString<char>(""));
         refreshBoostSettings();
         return true;
@@ -179,15 +253,14 @@ class ID6LibraryLab : public bmw::PluginApp {
 
     void checkBoostAlerts(const bd_frame& data, uint64_t now) {
         static const char* const warnings[]={"Coolant high","Oil temperature high","Oil pressure low"};
-        const uint64_t elapsed=now-data.sent_ms;
         bool chime=false;
         char warning[96]="";
         for (unsigned i=0;i<3;++i) {
             const unsigned option=boostPrefs_.choice[BOOST_COOLANT_ALERT+i];
             const unsigned signal=kAlertSignals[i];
-            const bool rpmValid=bd_is_fresh(&data,BD_RPM,elapsed);
+            const bool rpmValid=boostState_.fresh(BD_RPM,now);
             if (i==2 && rpmValid && data.value[BD_RPM]<600) boostAlerts_.reset(i);
-            const bool valid=bd_is_fresh(&data,signal,elapsed) &&
+            const bool valid=boostState_.fresh(signal,now) &&
                              (i!=2 || (rpmValid && data.value[BD_RPM]>=600));
             const uint64_t sampled=valid && data.sent_ms>data.age_ms[signal] ?
                                    data.sent_ms-data.age_ms[signal] : 0;
@@ -467,7 +540,7 @@ class ID6LibraryLab : public bmw::PluginApp {
         state.road_lane = roadLane_;
         state.road_altitude = roadAltitude_;
         state.road_has_scene = roadHasScene_;
-        state.shift_target = shift_target_min + shiftTarget_ * shift_target_step;
+        state.shift_target = shiftPrefs_.valid() ? shiftPrefs_.targetRpm() : 0;
         state.warm_fahrenheit = warmFahrenheit_;
         state.launch_mode = launchMode_;
         if (page_ < home || usbPage(page_)) {
@@ -476,10 +549,23 @@ class ID6LibraryLab : public bmw::PluginApp {
                 snprintf(state.values[i],sizeof state.values[i],"%s",last_[i]);
         }
         if (page_ == boost) {
-            memcpy(state.boost_signal,boostLayout_.signal[boostLayout_.diesel],sizeof state.boost_signal);
+            for (unsigned i=0;i<9;++i) state.boost_signal[i]=static_cast<uint8_t>(boostSignal(i));
             memcpy(state.boost_level,boostLevels_,sizeof state.boost_level);
             state.boost_color=boostPrefs_.color;
             state.boost_style=boostPrefs_.choice[BOOST_STYLE];
+        }
+        if (page_ == warm) {
+            for (unsigned i=0;i<WARM_COUNT;++i) {
+                state.boost_signal[i]=static_cast<uint8_t>(warmState_.target(i));
+                state.boost_level[i]=static_cast<uint16_t>(warmState_.level(i));
+            }
+        }
+        if (page_ == shift && shiftPrefs_.valid()) {
+            const int rpm=shiftState_.rpm(bd_mono_ms());
+            state.boost_level[0]=static_cast<uint16_t>(shiftPrefs_.scaleRpm());
+            state.boost_level[1]=rpm>=0 ? static_cast<uint16_t>(rpm+1) : 0;
+            state.boost_signal[0]=shiftPrefs_.diesel ? 1 : 0;
+            state.boost_signal[1]=shiftSaved_ ? 0 : 1;
         }
         if (page_ == launchPage) state.launch_run_state=timer_.state;
         if (page_==codesConfirm) {
@@ -508,8 +594,93 @@ class ID6LibraryLab : public bmw::PluginApp {
         snprintf(last_[index], sizeof last_[index], "%s", text);
         updateModel(1400u + page * 20u + index, bmw::BasicString<char>(text));
     }
+    void refreshWarm(uint64_t now) {
+        warmState_.update(now);
+        char label[80];
+        for (unsigned i=0;i<WARM_COUNT;++i) {
+            const unsigned target=warmState_.target(i);
+            if (target==surface_warm_unknown) strcpy(label,"--");
+            else snprintf(label,sizeof label,"%.1f %c",
+                          warm_display_temperature(warmState_.celsius(i),warmFahrenheit_),
+                          warmFahrenheit_ ? 'F' : 'C');
+            display(warm,i,label);
+            snprintf(label,sizeof label,"%.0f %c target: %s",
+                     warm_display_temperature(kWarmTarget[i],warmFahrenheit_),warmFahrenheit_ ? 'F' : 'C',
+                     target==surface_warm_unknown ? "unknown" : target==surface_warm_met ? "met" : "pending");
+            display(warm,i+3,label);
+        }
+        if (telemetryFailed_ || surfaceFailed_) return;
+        const unsigned valid=warmState_.valid();
+        const int eta=warmState_.eta();
+        if (!valid) strcpy(label,"Waiting for temperature readings");
+        else if (valid!=(1u<<WARM_COUNT)-1) strcpy(label,"Waiting for all three temperatures");
+        else if (!eta) strcpy(label,"App temperature targets met");
+        else if (eta<0) strcpy(label,"Measuring warm-up trend");
+        else snprintf(label,sizeof label,"Estimated time to app targets  %d:%02d",eta/60,eta%60);
+#ifdef ID6_EMULATOR
+        char simulated[96];
+        snprintf(simulated,sizeof simulated,"IDEmu simulated: %.78s",label);
+        status(warm,simulated);
+#else
+        status(warm,label);
+#endif
+    }
+    void refreshShift(uint64_t now) {
+        char value[36];
+        const int rpm=shiftState_.rpm(now), kph=shiftState_.kph(now);
+        if (kph>=0) snprintf(value,sizeof value,"%d %s",
+            shiftPrefs_.metric ? kph : (kph*621371+500000)/1000000,shiftPrefs_.metric ? "km/h" : "mph");
+        else strcpy(value,"--");
+        display(shift,0,value);
+        if (rpm>=0) snprintf(value,sizeof value,"%d rpm",rpm);
+        else strcpy(value,"--");
+        display(shift,1,value);
+    }
+    void refreshBoost(uint64_t now) {
+        char value[36];bool any=false;
+        for (unsigned i=0;i<9;++i) {
+            const unsigned signal=boostSignal(i);
+            if (boostCaptions_[i]!=signal) {
+                updateModel(1840u+i,bmw::BasicString<char>(signal<BD_COUNT ? kBoostCaptions[signal][i==8] : "--"));
+                boostCaptions_[i]=static_cast<uint8_t>(signal);
+            }
+            if (boostState_.fresh(signal,now)) {
+                any=true;
+                const unsigned units=boostPrefs_.units(signal);
+                const bool rate=signal==BD_REAGENT_AVERAGE || signal==BD_REAGENT_DEMAND;
+                const char* unit=rate && i==8 ? "" : bd_unit_selected(signal,units);
+                const int digits=rate && i!=8 ? 3 : signal==BD_BATTERY || signal==BD_LAMBDA_TARGET ? 2 :
+                    signal==BD_RPM || signal==BD_RAIL || signal==BD_ETHANOL ? 0 : 1;
+                const double raw=boostState_.frame().value[signal];
+                snprintf(value,sizeof value,"%.*f%s%s",digits,bd_display_selected(signal,raw,units),
+                         *unit && *unit!='%' ? " " : "",unit);
+                boostLevels_[i]=static_cast<uint16_t>(bd_bar(signal,raw));
+            } else { strcpy(value,"--");boostLevels_[i]=0; }
+            display(boost,i,value);
+        }
+        if (telemetryFailed_ || surfaceFailed_) return;
+        checkBoostAlerts(boostState_.frame(),now);
+        if (!boostSaved_) status(boost,"Settings not saved; check storage and reselect");
+        else if (!any) status(boost,"Waiting for valid telemetry");
+    }
     void clear(unsigned page) {
         memset(last_, 0, sizeof last_);
+        if (page==boost) {
+            resetBoostState();
+            refreshBoost(bd_mono_ms());
+            return;
+        }
+        if (page==shift) {
+            shiftState_.reset(bd_mono_ms());
+            refreshShift(bd_mono_ms());
+            display(shift,2,"--");
+            return;
+        }
+        if (page==warm) {
+            warmState_.reset(bd_mono_ms());
+            refreshWarm(bd_mono_ms());
+            return;
+        }
         for (unsigned i = 0; i < fields(page); ++i) display(page, i, "--");
     }
     void reap() {
@@ -540,6 +711,10 @@ class ID6LibraryLab : public bmw::PluginApp {
         if (saved) warmFahrenheit_=!warmFahrenheit_;
         updateModel(1882u,bmw::BasicString<char>(saved ? warmUnitsLabel(warmFahrenheit_) :
                                                 "Could not save temperature units"));
+        if (saved && page_==warm) {
+            refreshWarm(bd_mono_ms());
+            syncSurface();
+        }
         return true;
     }
     void schedule() {
@@ -550,6 +725,9 @@ class ID6LibraryLab : public bmw::PluginApp {
         post(bmw::Message(0x40000003u, event), usesWorker(page_) ? live_poll_ms : menu_poll_ms);
     }
     void finishPoll() {
+        if (page_==boost) refreshBoost(bd_mono_ms());
+        if (page_==warm) refreshWarm(bd_mono_ms());
+        if (page_==shift) refreshShift(bd_mono_ms());
         syncSurface();
         schedule();
     }
@@ -569,27 +747,32 @@ class ID6LibraryLab : public bmw::PluginApp {
             stopWorker();
             return false;
         }
-        char path[176], gatewayPath[176], udp[12], mask[16];
+        char path[176], gatewayPath[176], udp[12], mask[24],token[32];
         snprintf(path, sizeof path, "%s/%s", kRoot, worker(page_));
         snprintf(gatewayPath, sizeof gatewayPath, "%s/gateway-ip.txt", kRoot);
         snprintf(udp, sizeof udp, "%u", port(page_));
         char gateway[16] = "auto";
         if (!readDiagnosticGateway(gatewayPath, gateway))
             readDiagnosticGateway(ID6_GATEWAY_SETTINGS, gateway);
-        unsigned selected=0;
-        for (unsigned i=0;i<9;++i) selected|=1u<<boostLayout_.signal[boostLayout_.diesel][i];
+        bd_mask selected=0;
+        for (unsigned i=0;i<9;++i) selected|=BD_BIT(boostLayout_.signal[boostLayout_.diesel][i]);
         for (unsigned i=0;i<3;++i)
-            if (boostPrefs_.choice[BOOST_COOLANT_ALERT+i]) selected|=1u<<kAlertSignals[i];
-        if (boostPrefs_.choice[BOOST_OIL_PRESSURE_ALERT]) selected|=1u<<BD_RPM;
-        snprintf(mask,sizeof mask,"%u",selected);
+            if (boostPrefs_.choice[BOOST_COOLANT_ALERT+i]) selected|=BD_BIT(kAlertSignals[i]);
+        if (boostPrefs_.choice[BOOST_OIL_PRESSURE_ALERT]) selected|=BD_BIT(BD_RPM);
+        snprintf(mask,sizeof mask,"%llu",static_cast<unsigned long long>(selected));
+        if (page_==boost) {
+            resetBoostState();
+        }
+        snprintf(token,sizeof token,"%llu",static_cast<unsigned long long>(boostToken_));
         const char *base[] = {path, "--host", gateway, "--udp-port", udp, 0};
         const char *launchArgs[] = {path, "--host", gateway, "--udp-port", udp, "--speed-only", 0};
         const char *roadArgs[] = {path, "--host", gateway, 0};
         const char *boostArgs[] = {path, "--host", gateway, "--udp-port", udp,
-                                  "--session", "--signals", mask, 0, 0, 0};
+                                  "--session", automaticBoost() ? "--auto-diesel" : "--signals",
+                                  automaticBoost() ? token : mask, 0, 0, 0};
         unsigned next=8;
-        if (selected&(1u<<BD_ETHANOL)) boostArgs[next++]="--ethanol";
-        if (boostLayout_.diesel) boostArgs[next]="--diesel";
+        if (!automaticBoost() && (selected&BD_BIT(BD_ETHANOL))) boostArgs[next++]="--ethanol";
+        if (!automaticBoost() && boostLayout_.diesel) boostArgs[next]="--diesel";
         child_ = launch(page_ == boost ? boostArgs : page_ == launchPage ? launchArgs : page_ == road ? roadArgs : base, -1);
         if (child_ <= 0) { stopWorker(); return false; }
         workerPage_ = page_;
@@ -608,32 +791,25 @@ class ID6LibraryLab : public bmw::PluginApp {
             return;
         }
         if (page_ == boost) {
-            bd_frame frame;
-            if (!bd_parse(bytes, size, &frame) || frame.demo ||
-                !fresh(now, frame.sent_ms, BD_STALE_MS)) return;
-            for (unsigned i=0;i<9;++i) {
-                const unsigned signal=boostLayout_.signal[boostLayout_.diesel][i];
-                if (bd_is_fresh(&frame,signal,now-frame.sent_ms)) {
-                    const unsigned units=boostPrefs_.units(signal);
-                    const char* unit=bd_unit_selected(signal,units);
-                    const int digits=signal==BD_BATTERY || signal==BD_LAMBDA_TARGET ? 2 :
-                                     signal==BD_RPM || signal==BD_RAIL || signal==BD_ETHANOL ? 0 : 1;
-                    snprintf(value,sizeof value,"%.*f%s%s",digits,bd_display_selected(signal,frame.value[signal],units),
-                             *unit && *unit!='%' ? " " : "",unit);
-                    boostLevels_[i]=bd_bar(signal,frame.value[signal]);
-                } else {
-                    strcpy(value,"--");
-                    boostLevels_[i]=0;
-                }
-                display(boost,i,value);
-            }
-            checkBoostAlerts(frame,now);
-        } else if (page_ == shift || page_ == launchPage) {
+#ifdef ID6_EMULATOR
+            const pid_t owner=1; // Explicitly synthetic local feed; never a vehicle worker.
+#else
+            const pid_t owner=child_;
+#endif
+            if (!boostState_.accept(bytes,size,now,automaticBoost(),boostToken_,owner)) return;
+            refreshBoost(now);
+        } else if (page_ == shift) {
+            drive_frame frame;
+            if (size!=sizeof frame) return;
+            memcpy(&frame,bytes,sizeof frame);
+            if (!shiftState_.accept(frame,now)) return;
+            refreshShift(now);
+        } else if (page_ == launchPage) {
             drive_frame frame;
             if (size != sizeof frame) return;
             memcpy(&frame, bytes, sizeof frame);
             if (!fresh(now, frame.sampled_ms, DRIVE_STALE_MS)) return;
-            const bool mph = page_ == shift ? shiftMph_ : launchMode_ < LT_0_100;
+            const bool mph = launchMode_ < LT_0_100;
             if (frame.kph >= 0)
                 snprintf(value,sizeof value,"%d %s",mph ? (int(frame.kph)*621371+500000)/1000000 : int(frame.kph),
                          mph ? "mph" : "km/h");
@@ -660,24 +836,14 @@ class ID6LibraryLab : public bmw::PluginApp {
                 lastPacket_=now;
                 return;
             }
-            if (frame.rpm >= 0) snprintf(value, sizeof value, "%d rpm", int(frame.rpm));
-            else strcpy(value, "--");
-            display(page_, 1, value);
         } else {
             warm_frame frame;
             if (size != sizeof frame) return;
             memcpy(&frame, bytes, sizeof frame);
-            for (unsigned i = 0; i < WARM_COUNT; ++i) {
-                if (fresh(now, frame.sample[i], WARM_STALE_MS) &&
-                    frame.celsius[i]>=-48 && frame.celsius[i]<=180)
-                    snprintf(value, sizeof value, "%.1f %c",
-                             warm_display_temperature(frame.celsius[i],warmFahrenheit_),
-                             warmFahrenheit_ ? 'F' : 'C');
-                else strcpy(value, "--");
-                display(page_, i, value);
-            }
+            warmState_.accept(frame,now);
+            refreshWarm(now);
         }
-        if (!received_) { if (page_!=boost) status(page_, "Worker connected"); received_ = true; }
+        if (!received_) { if (page_!=boost && page_!=warm) status(page_, "Worker connected"); received_ = true; }
         lastPacket_ = now;
     }
 #ifdef ID6_EMULATOR
@@ -726,10 +892,15 @@ class ID6LibraryLab : public bmw::PluginApp {
             frame.value[BD_MAF]=rpm/45.0;
             frame.value[BD_MAP]=100+frame.value[BD_BOOST]*6.89476;
             char packet[BD_MAX_PACKET];
-            int length = bd_encode(&frame,packet,sizeof packet);
+            int length;
+            if (automaticBoost()) {
+                const bd_cap_frame caps={boostToken_,sample.sampled_ms,1,
+                    bd_diesel_candidates(),frame.valid & bd_diesel_candidates()};
+                length=bd_auto_encode(&caps,&frame,packet,sizeof packet);
+            } else length=bd_encode(&frame,packet,sizeof packet);
             if (length > 0) render(packet,unsigned(length),now);
         } else if (page_ == shift || page_ == launchPage) {
-            const drive_frame frame = {sample.sampled_ms,rpm,sample.kph};
+            const drive_frame frame = {sample.sampled_ms,rpm,sample.kph,sample.sampled_ms};
             render(reinterpret_cast<const char*>(&frame),sizeof frame,now);
             if (page_ == shift) {
                 const char gear[] = {"PRND"[sample.gear],0};
@@ -749,7 +920,7 @@ class ID6LibraryLab : public bmw::PluginApp {
         }
         lastPacket_ = sample.sampled_ms;
         received_ = true;
-        if (page_ != road && page_ != boost) status(page_,"IDEmu simulated telemetry");
+        if (page_ != road && page_ != boost && page_ != warm) status(page_,"IDEmu simulated telemetry");
     }
 #endif
     const char* recordPath() const {
@@ -872,7 +1043,7 @@ class ID6LibraryLab : public bmw::PluginApp {
         // They must never open pages, start a worker, or take over the display.
         if (!payload.readBool(visible) || !visible) return true;
         if (page_ == boost && Page == boostSettings) controlFocus_ = 214;
-        else if (page_ == shift && Page == shiftSettings) controlFocus_ = 216;
+        else if (page_ == shift && (Page == shiftSettings || Page == shiftGasSettings)) controlFocus_ = 216;
         else if (page_ == updates && Page == updateConfirm) controlFocus_ = 260;
         else if (page_ == updates && Page == installConfirm) controlFocus_ = 261;
         else if (Page >= home && Page <= systemPage && Page != page_ &&
@@ -967,41 +1138,61 @@ class ID6LibraryLab : public bmw::PluginApp {
         addHandler(state, 11u, action);
     }
 
-    bool saveShiftSettings(unsigned target, bool mph) {
-        const unsigned char value[] = {'G', 1, static_cast<unsigned char>(target), static_cast<unsigned char>(mph)};
-#ifdef ID6_EMULATOR
-        // QNX shared memory does not provide an atomic rename.
-        FILE* file = fopen(kShiftPreferences, "wb");
-        if (!file) return false;
-        const bool saved = fwrite(value, 1, sizeof value, file) == sizeof value;
-        return fclose(file) == 0 && saved;
-#else
-        return savePersistentBytes(kShiftPreferences, value, sizeof value);
-#endif
-    }
-
     template<unsigned Target> bool saveShiftTarget(const bmw::Parcel&) {
-        if (saveShiftSettings(Target, shiftMph_)) shiftTarget_ = Target;
+        FullShiftPreferences next=shiftPrefs_;
+        next.gasoline_target=Target;next.diesel=false;
+        commitShiftSettings(next,true,true);
         return true;
     }
 
-    void showShiftUnits(bool saved) {
-        updateModel(1881u,bmw::BasicString<char>(!saved ? "Could not save speed units" :
-                    shiftMph_ ? "Speed units: mph" : "Speed units: km/h"));
+    void showShiftSettings(bool saved,bool units_change=false) {
+        updateModel(1881u,bmw::BasicString<char>(!saved && units_change ? "Could not save speed units" :
+                    shiftPrefs_.metric ? "Speed units: km/h" : "Speed units: mph"));
+        char label[128];
+        snprintf(label,sizeof label,"Engine profile: %s",shiftPrefs_.diesel ? "Diesel" : "Gasoline");
+        updateModel(1883u,bmw::BasicString<char>(label));
+        snprintf(label,sizeof label,"Shift light target: %u RPM",shiftPrefs_.targetRpm());
+        updateModel(1884u,bmw::BasicString<char>(label));
+        snprintf(label,sizeof label,"Diesel: target %u RPM, display %u RPM%s",shiftPrefs_.diesel_target,
+                 4000+shiftPrefs_.diesel_scale*1000,shiftPrefs_.diesel ? "" : " (inactive)");
+        updateModel(1885u,bmw::BasicString<char>(label));
+        updateModel(1886u,bmw::BasicString<char>(saved ? "App choices; follow vehicle guidance" :
+                    "Settings not saved; files may be partially updated"));
+    }
+
+    void commitShiftSettings(const FullShiftPreferences& next,bool gasoline,bool profile) {
+        bool saved=true;
+        if (gasoline) saved=next.saveGasoline(shiftPreferences_);
+        if (profile) saved=next.saveProfile(shiftProfile_) && saved;
+        if (saved) shiftPrefs_=next;
+        shiftSaved_=saved;
+        showShiftSettings(saved,gasoline && !profile);
+        refreshShift(bd_mono_ms());
+        syncSurface();
     }
 
     bool toggleShiftUnits(const bmw::Parcel&) {
-        const bool saved = saveShiftSettings(shiftTarget_, !shiftMph_);
-        if (saved) {
-            shiftMph_ = !shiftMph_;
-            display(shift,0,"--");
-        }
-        showShiftUnits(saved);
+        FullShiftPreferences next=shiftPrefs_;next.metric=!next.metric;
+        commitShiftSettings(next,true,false);
         return true;
+    }
+
+    template<bool Diesel> bool setShiftProfile(const bmw::Parcel&) {
+        FullShiftPreferences next=shiftPrefs_;next.diesel=Diesel;
+        commitShiftSettings(next,false,true);return true;
+    }
+    template<bool Increase> bool adjustShiftTarget(const bmw::Parcel&) {
+        FullShiftPreferences next=shiftPrefs_;next.adjustDiesel(Increase);
+        commitShiftSettings(next,false,true);return true;
+    }
+    template<unsigned Scale> bool setShiftScale(const bmw::Parcel&) {
+        FullShiftPreferences next=shiftPrefs_;next.setDieselScale(Scale);
+        commitShiftSettings(next,false,true);return true;
     }
 
     void registerShiftMenu() {
         registerPage<shiftSettings>(216);
+        registerPage<shiftGasSettings>(219);
         typedef bmw::Delegate<bool,const bmw::Parcel&> Action;
         typedef bool (*Handler)(void*,const bmw::Parcel&);
         Action action;
@@ -1019,7 +1210,14 @@ class ID6LibraryLab : public bmw::PluginApp {
         }
         action.m_exec=&Action::execImpl<ID6LibraryLab,&ID6LibraryLab::toggleShiftUnits>;
         addHandler(5751u,action);
-        showShiftUnits(true);
+        action.m_exec=&Action::execImpl<ID6LibraryLab,&ID6LibraryLab::setShiftProfile<false> >;addHandler(5800u,action);
+        action.m_exec=&Action::execImpl<ID6LibraryLab,&ID6LibraryLab::setShiftProfile<true> >;addHandler(5801u,action);
+        action.m_exec=&Action::execImpl<ID6LibraryLab,&ID6LibraryLab::setShiftScale<0> >;addHandler(5810u,action);
+        action.m_exec=&Action::execImpl<ID6LibraryLab,&ID6LibraryLab::setShiftScale<1> >;addHandler(5811u,action);
+        action.m_exec=&Action::execImpl<ID6LibraryLab,&ID6LibraryLab::setShiftScale<2> >;addHandler(5812u,action);
+        action.m_exec=&Action::execImpl<ID6LibraryLab,&ID6LibraryLab::adjustShiftTarget<false> >;addHandler(5820u,action);
+        action.m_exec=&Action::execImpl<ID6LibraryLab,&ID6LibraryLab::adjustShiftTarget<true> >;addHandler(5821u,action);
+        showShiftSettings(true);
     }
 
     void registerBoostMenu() {
@@ -1031,6 +1229,10 @@ class ID6LibraryLab : public bmw::PluginApp {
         typedef bool (*Handler)(void*,const bmw::Parcel&);
         Action action;
         action.m_obj=this;
+        action.m_exec=&Action::execImpl<ID6LibraryLab,&ID6LibraryLab::setBoostDefaults<true> >;
+        addHandler(5850u,action);
+        action.m_exec=&Action::execImpl<ID6LibraryLab,&ID6LibraryLab::setBoostDefaults<false> >;
+        addHandler(5851u,action);
 #define G(index) &Action::execImpl<ID6LibraryLab,&ID6LibraryLab::boostPicker<index> >
         const Handler pickers[]={G(0),G(1),G(2),G(3),G(4),G(5),G(6),G(7),G(8)};
 #undef G
@@ -1071,15 +1273,20 @@ class ID6LibraryLab : public bmw::PluginApp {
 public:
     ID6LibraryLab(bmw::IDispatcher& dispatcher, bmw::BasicString<char> name,
                   unsigned major, unsigned minor, bmw::RHMIInterfaceVersion version,
-                  const bmw::Bundle& cfg, const bmw::Bundle& res)
+                  const bmw::Bundle& cfg, const bmw::Bundle& res,
+                  const char* shift_preferences=kShiftPreferences,const char* shift_profile=kShiftProfile,
+                  const char* boost_preferences=kBoostPrefs,const char* boost_assignments=kBoostLayout,
+                  const char* boost_defaults=kBoostDefaults)
         : bmw::PluginApp(dispatcher, name, major, minor, version, cfg, res),
           page_(inactive), workerPage_(inactive), socket_(-1), child_(-1),
           queued_(false), childStopping_(false), received_(false), telemetryFailed_(false), lastPacket_(0),
-  #ifdef ID6_EMULATOR
+          boostPreferences_(boost_preferences),boostAssignments_(boost_assignments),boostDefaults_(boost_defaults),
+          boostToken_(0),boostSaved_(true),
+#ifdef ID6_EMULATOR
           boostFiles_(0),
 #endif
           boostSlot_(9), tone_(-1), lastTone_(0),
-          shiftTarget_(5), shiftMph_(false), warmFahrenheit_(false), launchMode_(LT_0_100), surfaceFailed_(false), codesStarted_(false),
+          shiftPreferences_(shift_preferences), shiftProfile_(shift_profile), shiftSaved_(true), warmFahrenheit_(false), launchMode_(LT_0_100), surfaceFailed_(false), codesStarted_(false),
           codeSize_(0), codeOffset_(0), controlFocus_(0), lamps_(0), map_(0),
           controlUsed_(0), cooling_(-1), usbChild_(-1), usbRead_(-1), usbUsed_(0), roadSample_(0), roadMode_(ROAD_JET_WAITING),
           roadDistance_(0), roadLane_(2), roadAltitude_(0), roadHasScene_(false), codesClearPending_(false) {
@@ -1087,6 +1294,7 @@ public:
         surfaceStatus_[0]=0;
         usbReply_[0] = 0;
         memset(boostLevels_,0,sizeof boostLevels_);
+        memset(boostCaptions_,0xfe,sizeof boostCaptions_);
         lt_init(&timer_);
     }
     virtual ~ID6LibraryLab() { stopWorker(); if (usbRead_ >= 0) close(usbRead_); }
@@ -1125,7 +1333,7 @@ public:
             }
         }
         if (kEntryPage == shift) {
-            loadGaugePreferences(kShiftPreferences,shift_target_count,shiftTarget_,shiftMph_);
+            shiftPrefs_.load(shiftPreferences_,shiftProfile_);
             registerShiftMenu();
             registerSelection<shift,216>();
         }
@@ -1176,12 +1384,14 @@ public:
         pollUsb();
         reapTone();
 #ifdef ID6_EMULATOR
-        if (kEntryPage == boost && boostFiles_ != 3) {
-            const unsigned found=(access(kBoostPrefs,F_OK)==0 ? 1u : 0u) |
-                                 (access(kBoostLayout,F_OK)==0 ? 2u : 0u);
+        if (kEntryPage == boost && boostFiles_ != 7) {
+            const unsigned found=(access(boostPreferences_,F_OK)==0 ? 1u : 0u) |
+                                 (access(boostAssignments_,F_OK)==0 ? 2u : 0u) |
+                                 (access(boostDefaults_,F_OK)==0 ? 4u : 0u);
             if (boostFiles_!=found) {
                 boostFiles_=found;
                 loadBoostConfiguration();
+                boostAssignmentsChanged();
                 refreshBoostSettings();
             }
         }
@@ -1197,10 +1407,10 @@ public:
         if (!usesWorker(page_) || telemetryFailed_) { finishPoll(); return true; }
         if (child_ < 0 && wasRunning) {
             stopWorker();
+            telemetryFailed_ = true;
             status(page_, "Worker stopped. Reopen the page to retry.");
             if (page_ == road) roadMode_ = ROAD_JET_WAITING;
             else clear(page_);
-            telemetryFailed_ = true;
             finishPoll();
             return true;
         }
@@ -1211,11 +1421,23 @@ public:
             return true;
         }
         if (socket_ >= 0 && workerPage_ == page_) {
-            char packet[BD_MAX_PACKET];
+            char packet[BD_AUTO_PACKET];
             const uint64_t now = bd_mono_ms();
             for (unsigned i = 0; i < 8; ++i) {
-                const ssize_t got = recv(socket_, packet, sizeof packet, 0);
+                struct sockaddr_in sender;
+                socklen_t senderSize=sizeof sender;
+                const ssize_t got = recvfrom(socket_, packet, sizeof packet, 0,
+                    reinterpret_cast<struct sockaddr*>(&sender),&senderSize);
                 if (got <= 0) break;
+                if (page_==warm && (childStopping_ || senderSize!=sizeof sender ||
+                    sender.sin_family!=AF_INET || sender.sin_addr.s_addr!=htonl(INADDR_LOOPBACK) ||
+                    ntohs(sender.sin_port)!=WARM_ACTIVE_PORT)) continue;
+                if (page_==shift && (childStopping_ || senderSize!=sizeof sender ||
+                    sender.sin_family!=AF_INET || sender.sin_addr.s_addr!=htonl(INADDR_LOOPBACK) ||
+                    ntohs(sender.sin_port)!=SHIFT_ACTIVE_PORT)) continue;
+                if (page_==boost && (childStopping_ || senderSize!=sizeof sender ||
+                    sender.sin_family!=AF_INET || sender.sin_addr.s_addr!=htonl(INADDR_LOOPBACK) ||
+                    ntohs(sender.sin_port)!=BOOST_ACTIVE_PORT)) continue;
                 render(packet, static_cast<unsigned>(got), now);
             }
             if (page_ == road) {
@@ -1225,7 +1447,7 @@ public:
             }
             if (!fresh(now, lastPacket_, page_ == warm ? unsigned(WARM_STALE_MS) : unsigned(BD_STALE_MS))) {
                 if (received_) {
-                    clear(page_);
+                    if (page_!=boost) clear(page_);
                     if (page_ == launchPage) lt_set_mode(&timer_,launchMode_);
                     received_ = false;
                 }

@@ -33,6 +33,15 @@
       <hmiAction id="48" target="102" />
       <raAction id="46" />
       <raAction id="47" />
+      <raAction id="600" />
+      <raAction id="601" />
+      <raAction id="602" />
+      <raAction id="603" />
+      <raAction id="604" />
+      <raAction id="605" />
+      <raAction id="606" />
+      <hmiAction id="55" target="103" />
+      <hmiAction id="56" target="104" />
     </actions>
     <models>
       <raDataModel id="53" modelType="Richtext" />
@@ -53,12 +62,15 @@
       <imageIdModel id="70" imageId="55901" />
       <imageIdModel id="71" imageId="55901" />
       <imageIdModel id="72" imageId="55900" />
+      <raDataModel id="81" modelType="Richtext" />
+      <raDataModel id="82" modelType="Richtext" />
     </models>
     <hmiStates>
       <hmiState id="100" text="ShiftDeck">
         <optionComponents>
-          <button id="30" action="40" text="Shift light setting" />
+          <button id="30" action="40" text="Gasoline shift presets" />
           <button id="31" action="48" text="Speed" />
+          <button id="412" action="55" text="Engine profile" />
         </optionComponents>
         <components>
           <image id="200" model="54">
@@ -223,7 +235,7 @@
           </image>
         </components>
       </hmiState>
-      <hmiState id="101" parentId="100" text="Shift light setting">
+      <hmiState id="101" parentId="100" text="Gasoline shift presets">
         <components>
           <label id="300" model="53" />
           <button id="301" action="400" text="6,000 RPM" />
@@ -254,6 +266,26 @@
           <label id="310" model="58" />
           <button id="311" action="46" text="MPH" />
           <button id="312" action="47" text="km/h" />
+        </components>
+      </hmiState>
+      <hmiState id="103" parentId="100" text="Engine profile">
+        <components>
+          <label id="420" model="81" />
+          <label id="421" text="Advisory light only. Choose a target for your engine." />
+          <button id="422" action="600" text="Use gasoline profile" />
+          <button id="423" action="601" text="Use diesel profile" />
+          <button id="424" action="56" text="Configure diesel target and display" />
+        </components>
+      </hmiState>
+      <hmiState id="104" parentId="103" text="Diesel settings">
+        <components>
+          <label id="430" model="82" />
+          <label id="431" text="Display range and shift light are not an engine redline." />
+          <button id="432" action="602" text="Target -100 RPM" />
+          <button id="433" action="603" text="Target +100 RPM" />
+          <button id="434" action="604" text="Display 0-4,000 RPM" />
+          <button id="435" action="605" text="Display 0-5,000 RPM" />
+          <button id="436" action="606" text="Display 0-6,000 RPM" />
         </components>
       </hmiState>
     </hmiStates>

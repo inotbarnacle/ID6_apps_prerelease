@@ -6,6 +6,8 @@
 #include "diagnostic_worker.h"
 #include "diagnostic_gateway.h"
 #include "boost_preferences.h"
+#include "boost_defaults.h"
+#include "boost_defaults_mode.h"
 #include "dct_settings.h"
 #include <arpa/inet.h>
 #include <errno.h>
@@ -74,6 +76,13 @@ const char kAssignments[] = "/var/opt/hmi/data/ID5/BoostDeck.signals";
 }
 
 class BoostDeck : public bmw::PluginApp {
+    const char* preferences_path_;
+    const char* assignments_path_;
+    char defaults_path_[160];
+    BoostDefaultsMode defaults_mode_;
+    unsigned char automatic_slots_[BD_DEFAULT_SLOTS];
+    uint64_t capability_token_;
+    bd_mask capability_known_, capability_supported_;
     int fd_;
     unsigned poll_generation_;
     bd_frame frame_;
@@ -103,13 +112,27 @@ class BoostDeck : public bmw::PluginApp {
     char labels_[kBarCount][128];
     unsigned images_[kBarCount], dials_[kBarCount];
     void postPoll();
+    bool automaticDiesel() const { return diesel_ && defaults_mode_.automatic; }
+    unsigned displaySignal(unsigned slot) const {
+        return automaticDiesel() ? automatic_slots_[slot] : signals_[diesel_][slot];
+    }
+    void clearCapabilities() {
+        capability_known_=capability_supported_=0;
+        bd_diesel_slots(0,automatic_slots_);
+    }
+    bool acceptPacket(const char*, size_t);
 public:
     BoostDeck(bmw::IDispatcher& d, bmw::BasicString<char> name, unsigned maj, unsigned mn,
-              bmw::RHMIInterfaceVersion rhmi, const bmw::Bundle& cfg, const bmw::Bundle& res)
-        : bmw::PluginApp(d,name,maj,mn,rhmi,cfg,res), fd_(-1), poll_generation_(0),
+              bmw::RHMIInterfaceVersion rhmi, const bmw::Bundle& cfg, const bmw::Bundle& res,
+              const char* preferences=kPreferences, const char* assignments=kAssignments)
+        : bmw::PluginApp(d,name,maj,mn,rhmi,cfg,res),
+          preferences_path_(preferences), assignments_path_(assignments), capability_token_(0),
+          capability_known_(0), capability_supported_(0), fd_(-1), poll_generation_(0),
           received_(0), collector_(-1), stopping_(false), gauges_visible_(false),
           tone_(-1), last_tone_(0), alert_mask_(0),
           retry_at_(0), diesel_(false), editing_(kBarCount) {
+        const int length=snprintf(defaults_path_,sizeof defaults_path_,"%s.defaults",assignments_path_);
+        if (length<0 || static_cast<unsigned>(length)>=sizeof defaults_path_) defaults_path_[0]=0;
         resetDisplay();
     }
     virtual ~BoostDeck() { shutdown(); }
@@ -127,7 +150,7 @@ public:
     template <unsigned Color> bool changeColor(const bmw::Parcel&) {
         BoostPreferences changed=preferences_;
         changed.color=Color;
-        if (changed.save(kPreferences)) {
+        if (changed.save(preferences_path_)) {
             preferences_=changed;
             updateModel(118u,bmw::BasicString<char>(""));
         } else updateModel(118u,bmw::BasicString<char>("Could not save settings"));
@@ -139,7 +162,7 @@ public:
         if (preferences_.choice[Row]==Choice) return true;
         BoostPreferences changed=preferences_;
         changed.choice[Row]=Choice;
-        if (!changed.save(kPreferences)) {
+        if (!changed.save(preferences_path_)) {
             updateModel(118u,bmw::BasicString<char>("Could not save settings"));
             return true;
         }
@@ -151,6 +174,18 @@ public:
         updateModel(118u,bmw::BasicString<char>(""));
         updateSettings();
         refresh();
+        return true;
+    }
+    template <bool Automatic> bool changeDefaultsMode(const bmw::Parcel&) {
+        BoostDefaultsMode changed=defaults_mode_;
+        changed.automatic=Automatic;
+        if (!changed.save(defaults_path_)) {
+            updateModel(361u,bmw::BasicString<char>("Could not save diesel gauge mode"));
+            return true;
+        }
+        defaults_mode_=changed;
+        if (diesel_) assignmentsChanged();
+        else updateAssignments();
         return true;
     }
     template <unsigned Slot> bool editGauge(const bmw::Parcel& event) {
@@ -211,6 +246,7 @@ public:
         if (fd_>=0) { close(fd_); fd_=-1; }
     }
     void resetDisplay() {
+        clearCapabilities();
         memset(&frame_,0,sizeof frame_); memset(labels_,0,sizeof labels_);
         memset(images_,0,sizeof images_);
         memset(dials_,0,sizeof dials_);
@@ -224,6 +260,7 @@ bool BoostDeck::onInit() {
     shutdown();
     resetDisplay();
     loadAssignments();
+    defaults_mode_.load(defaults_path_);
     struct sockaddr_in a;
     fd_=socket(AF_INET,SOCK_DGRAM,0);
     memset(&a,0,sizeof a); a.sin_family=AF_INET; a.sin_port=htons(BD_UDP_PORT);
@@ -283,6 +320,10 @@ bool BoostDeck::onInit() {
     addHandler(502u,action);
     action.m_exec=&Action::execImpl<BoostDeck,&BoostDeck::changeProfile<true> >;
     addHandler(503u,action);
+    action.m_exec=&Action::execImpl<BoostDeck,&BoostDeck::changeDefaultsMode<true> >;
+    addHandler(506u,action);
+    action.m_exec=&Action::execImpl<BoostDeck,&BoostDeck::changeDefaultsMode<false> >;
+    addHandler(507u,action);
     static const Handler editors[] = {
 #define EDIT(slot) &Action::execImpl<BoostDeck,&BoostDeck::editGauge<slot> >
         EDIT(0), EDIT(1), EDIT(2), EDIT(3), EDIT(4), EDIT(5),
@@ -302,7 +343,7 @@ bool BoostDeck::onInit() {
         action.m_exec=changes[i];
         addHandler(600u+i,action);
     }
-    preferences_.load(kPreferences, sizeof kColorNames / sizeof kColorNames[0]);
+    preferences_.load(preferences_path_, sizeof kColorNames / sizeof kColorNames[0]);
     updateSettings();
     updateAssignments();
     if (fd_>=0) {
@@ -334,18 +375,29 @@ void BoostDeck::startVisibleCollector() {
     if (!gauges_visible_ || collector_>0 || fd_<0 ||
         bd_mono_ms()<retry_at_) return;
     const DiagnosticGateway gateway("/var/opt/hmi/data/ID5/Plugins/" "BoostDeck" "/gateway-ip.txt");
-    unsigned mask=0;
-    for (unsigned i=0;i<kBarCount;++i) mask |= 1u << signals_[diesel_][i];
+    bd_mask mask=0;
+    for (unsigned i=0;i<kBarCount;++i) mask |= UINT64_C(1) << signals_[diesel_][i];
     for (unsigned i=0;i<3;++i)
-        if (preferences_.choice[BOOST_COOLANT_ALERT+i]) mask |= 1u<<kAlertSignals[i];
-    if (preferences_.choice[BOOST_OIL_PRESSURE_ALERT]) mask |= 1u<<BD_RPM;
-    char selected[16];
-    snprintf(selected,sizeof selected,"%u",mask);
-    const char *args[]={kCollector,"--host",gateway.host(),"--session","--signals",selected,
+        if (preferences_.choice[BOOST_COOLANT_ALERT+i]) mask |= UINT64_C(1)<<kAlertSignals[i];
+    if (preferences_.choice[BOOST_OIL_PRESSURE_ALERT]) mask |= UINT64_C(1)<<BD_RPM;
+    char selected[24];
+    char token[32];
+    snprintf(selected,sizeof selected,"%llu",static_cast<unsigned long long>(mask));
+    const uint64_t now=bd_mono_ms();
+    capability_token_=now>capability_token_ ? now : capability_token_+1;
+    if (!capability_token_) ++capability_token_;
+    snprintf(token,sizeof token,"%llu",static_cast<unsigned long long>(capability_token_));
+    if (automaticDiesel()) {
+        clearCapabilities(); received_=0; memset(&frame_,0,sizeof frame_);
+        updateAssignments();
+    }
+    const char *args[]={kCollector,"--host",gateway.host(),"--session",
+                       automaticDiesel() ? "--auto-diesel" : "--signals",
+                       automaticDiesel() ? token : selected,
                        0,0,0};
     unsigned next=6;
-    if (mask & (1u<<BD_ETHANOL)) args[next++]="--ethanol";
-    if (diesel_) args[next]="--diesel";
+    if (!automaticDiesel() && (mask & (UINT64_C(1)<<BD_ETHANOL))) args[next++]="--ethanol";
+    if (diesel_ && !automaticDiesel()) args[next]="--diesel";
     collector_=launch(args,-1);
     retry_at_=bd_mono_ms()+2000;
 }
@@ -445,19 +497,36 @@ void BoostDeck::poll() {
     reapCollector();
     reapTone();
     startVisibleCollector();
-    // A bounded non-blocking drain: at most 8 * 512 bytes per UI tick.
-    char data[BD_MAX_PACKET];
+    // A bounded non-blocking drain, including automatic capability envelopes.
+    char data[BD_AUTO_PACKET];
     for (unsigned n=0;fd_>=0 && n<8;++n) {
         ssize_t k=recv(fd_,data,sizeof data,0);
         if (k<=0) break;
-        bd_frame next;
-        if (gauges_visible_ && !stopping_ && bd_parse(data,static_cast<size_t>(k),&next) &&
-            !next.demo && next.sent_ms && next.sent_ms<=bd_mono_ms() &&
-            (!received_ || next.sent_ms>=received_)) {
-            frame_=next; received_=next.sent_ms; // queued UDP does not reset sample age
-        }
+        (void)acceptPacket(data,static_cast<size_t>(k));
     }
     refresh();
+}
+
+bool BoostDeck::acceptPacket(const char* data, size_t length) {
+    if (!gauges_visible_ || stopping_) return false;
+    bd_frame next;
+    bd_cap_frame report;
+    if (automaticDiesel()) {
+        if (collector_<=0 || !bd_auto_parse(data,length,&report,&next) ||
+            report.token!=capability_token_ || report.worker_pid!=static_cast<unsigned>(collector_)) return false;
+        if ((capability_known_ & ~report.known) ||
+            ((capability_supported_ ^ report.supported) & capability_known_)) return false;
+    } else if (!bd_parse(data,length,&next)) return false;
+    const uint64_t now=bd_mono_ms();
+    if (next.demo || !next.sent_ms || next.sent_ms>now || (received_ && next.sent_ms<received_) ||
+        (automaticDiesel() && now-next.sent_ms>=BD_STALE_MS)) return false;
+    frame_=next; received_=next.sent_ms;
+    if (automaticDiesel() && (capability_known_!=report.known || capability_supported_!=report.supported)) {
+        capability_known_=report.known; capability_supported_=report.supported;
+        bd_diesel_slots(report.supported,automatic_slots_);
+        updateAssignments();
+    }
+    return true;
 }
 
 void BoostDeck::loadAssignments() {
@@ -466,9 +535,10 @@ void BoostDeck::loadAssignments() {
         BD_MAF, BD_COOLANT, BD_MAP
     };
     diesel_=false;
+    defaults_mode_.automatic=true;
     for (unsigned i=0;i<kBarCount;++i) signals_[0][i]=static_cast<unsigned char>(i);
     memcpy(signals_[1],dieselDefaults,sizeof dieselDefaults);
-    FILE* file=fopen(kAssignments,"rb");
+    FILE* file=fopen(assignments_path_,"rb");
     if (!file) return;
     const unsigned previousSlots=11;
     unsigned char data[3+2*previousSlots];
@@ -477,13 +547,18 @@ void BoostDeck::loadAssignments() {
     fclose(file);
     if (!complete || length<3 || data[0]!='B' || data[2]>1) return;
     unsigned stride=0;
-    if (data[1]==2 && length==3+sizeof signals_) stride=kBarCount;
+    if ((data[1]==2 || data[1]==3 || data[1]==4 || data[1]==5 || data[1]==6) && length==3+sizeof signals_) stride=kBarCount;
     if (data[1]==1 && length==3+2*previousSlots) stride=previousSlots;
     if (!stride) return;
+    const unsigned channels=data[1]==6 ? static_cast<unsigned>(BD_WIRE11_COUNT) :
+        data[1]==5 ? static_cast<unsigned>(BD_WIRE10_COUNT) :
+        data[1]==4 ? static_cast<unsigned>(BD_WIRE9_COUNT) :
+        data[1]==3 ? static_cast<unsigned>(BD_WIRE8_COUNT) : static_cast<unsigned>(BD_LEGACY_COUNT);
     for (unsigned profile=0;profile<2;++profile)
         for (unsigned i=0;i<kBarCount;++i)
-            if (data[3+profile*stride+i]>=BD_COUNT) return;
+            if (data[3+profile*stride+i]>=channels) return;
     diesel_=data[2]!=0;
+    defaults_mode_.automatic=false; // preserve every valid legacy/custom layout
     for (unsigned profile=0;profile<2;++profile)
         memcpy(signals_[profile],data+3+profile*stride,kBarCount);
 }
@@ -493,24 +568,38 @@ void BoostDeck::updateAssignments() {
         char name[64];
         snprintf(name,sizeof name,"Gauge %u: %s",i+1,bd_name(signals_[diesel_][i]));
         updateModel(340u+i,bmw::BasicString<char>(name));
-        const unsigned signal=signals_[diesel_][i];
-        const char* caption=kGaugeCaptions[signal][i==kVerticalSlot];
+        const unsigned signal=displaySignal(i);
+        const char* caption=signal<BD_COUNT ? kGaugeCaptions[signal][i==kVerticalSlot] : "";
         updateModel(370u+i,bmw::BasicString<char>(caption));
     }
     updateModel(360u,bmw::BasicString<char>(diesel_ ? "Engine profile: Diesel" : "Engine profile: Gasoline"));
     updateModel(5210u,!diesel_);
     updateModel(5211u,diesel_);
+    updateModel(361u,bmw::BasicString<char>(defaults_mode_.automatic ? "Diesel gauges: Detected defaults" : "Diesel gauges: Custom layout"));
+    updateModel(362u,bmw::BasicString<char>(automaticDiesel() ? "Detected defaults are active. Select Custom layout to use these saved gauges." :
+                                         "Custom gauge selections are saved for each engine profile."));
+    updateModel(5212u,defaults_mode_.automatic);
+    updateModel(5213u,!defaults_mode_.automatic);
     refresh();
 }
 
 bool BoostDeck::saveAssignments() {
-    unsigned char data[3+sizeof signals_]={'B',2,static_cast<unsigned char>(diesel_)};
+    if (!defaults_mode_.save(defaults_path_)) return false;
+    unsigned char revision=2;
+    for (unsigned profile=0;profile<2;++profile)
+        for (unsigned i=0;i<kBarCount;++i)
+            if (signals_[profile][i]>=BD_WIRE10_COUNT) revision=6;
+            else if (signals_[profile][i]>=BD_WIRE9_COUNT && revision<5) revision=5;
+            else if (signals_[profile][i]>=BD_WIRE8_COUNT && revision<4) revision=4;
+            else if (signals_[profile][i]>=BD_LEGACY_COUNT && revision<3) revision=3;
+    unsigned char data[3+sizeof signals_]={'B',revision,static_cast<unsigned char>(diesel_)};
     memcpy(data+3,signals_,sizeof signals_);
-    return savePersistentBytes(kAssignments,data,sizeof data);
+    return savePersistentBytes(assignments_path_,data,sizeof data);
 }
 
 void BoostDeck::restartCollector() {
     stopCollector();
+    clearCapabilities();
     received_=0;
     memset(&frame_,0,sizeof frame_);
     retry_at_=0;
@@ -528,7 +617,7 @@ void BoostDeck::refresh() {
     updateAlerts(now,elapsed);
     const bool circular=preferences_.choice[BOOST_STYLE]!=0;
     for (unsigned i=0;i<kBarCount;++i) {
-        const unsigned signal=signals_[diesel_][i];
+        const unsigned signal=displaySignal(i);
         char label[128];
         const bool vertical=i==kVerticalSlot;
         const unsigned steps=vertical ? kVerticalSteps : kDialSteps;
@@ -537,10 +626,11 @@ void BoostDeck::refresh() {
         if (received_ && bd_is_fresh(&frame_,signal,elapsed)) {
             const double value=frame_.value[signal];
             const unsigned units=preferences_.units(signal);
-            const char *unit=bd_unit_selected(signal,units);
+            const bool reagent_rate=signal==BD_REAGENT_AVERAGE || signal==BD_REAGENT_DEMAND;
+            const char *unit=reagent_rate && vertical ? "" : bd_unit_selected(signal,units);
             double reading=bd_display_selected(signal,value,units);
             if (signal==BD_BOOST && fabs(reading)<0.05) reading=0;
-            const int decimals=signal==BD_BATTERY || signal==BD_LAMBDA_TARGET ? 2 :
+            const int decimals=reagent_rate && !vertical ? 3 : signal==BD_BATTERY || signal==BD_LAMBDA_TARGET ? 2 :
                 signal==BD_RPM || signal==BD_RAIL || signal==BD_ETHANOL ? 0 : 1;
             snprintf(label,sizeof label,"%.*f%s%s",decimals,reading,
                      *unit && *unit!='%' ? " " : "",unit);

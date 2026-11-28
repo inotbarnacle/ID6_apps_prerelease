@@ -52,6 +52,12 @@ int bd_decode_obd(unsigned pid, const unsigned char *p, size_t n, double *out) {
     double x, lo, hi;
     if (!p || !out) return 0;
     switch (pid) {
+    case 0x2c:
+        if (n != 1) return 0;
+        x = p[0]*100.0/255; lo = 0; hi = 100; break;
+    case 0x2d:
+        if (n != 1) return 0;
+        x = ((int)p[0]-128)*(100.0/128); lo = -100; hi = 99.21875; break;
     case 0x04: case 0x11: case 0x2f: case 0x49: case 0x4c:
         if (n != 1) return 0;
         x = p[0] * (100.0 / 255); lo = 0; hi = 100; break;
@@ -129,14 +135,24 @@ int bd_encode(const bd_frame *f, char *out, size_t len) {
     size_t used;
     unsigned i;
     char radix[NUMERIC_RADIX_SIZE], number[BD_MAX_PACKET];
-    if (!f || !out || !len || !numeric_radix(radix)) return -1;
-    const char *version = "NBG7";
-    n = snprintf(out, len, "%s %lu %u %u %llu", version,
-                 (unsigned long)f->seq, f->demo, f->valid,
+    if (!f || !out || !len || (f->valid & ~BD_ALL_MASK) || !numeric_radix(radix)) return -1;
+    const unsigned fields=(f->valid & ~BD_WIRE10_MASK) ? BD_WIRE11_COUNT :
+                          (f->valid & ~BD_WIRE9_MASK) ? BD_WIRE10_COUNT :
+                          (f->valid & ~BD_WIRE8_MASK) ? BD_WIRE9_COUNT :
+                          (f->valid & ~BD_LEGACY_MASK) ? BD_WIRE8_COUNT : BD_LEGACY_COUNT;
+    const char *version = fields==BD_LEGACY_COUNT ? "NBG7" : fields==BD_WIRE8_COUNT ? "NBG8" :
+                          fields==BD_WIRE9_COUNT ? "NBG9" : fields==BD_WIRE10_COUNT ? "NBG10" : "NBG11";
+    if (len>BD_MAX_PACKET) len=BD_MAX_PACKET;
+    if (fields==BD_LEGACY_COUNT && len>BD_LEGACY_PACKET) len=BD_LEGACY_PACKET;
+    if (fields==BD_WIRE8_COUNT && len>BD_WIRE8_PACKET) len=BD_WIRE8_PACKET;
+    if (fields==BD_WIRE9_COUNT && len>BD_WIRE9_PACKET) len=BD_WIRE9_PACKET;
+    if (fields==BD_WIRE10_COUNT && len>BD_WIRE10_PACKET) len=BD_WIRE10_PACKET;
+    n = snprintf(out, len, "%s %lu %u %llu %llu", version,
+                 (unsigned long)f->seq, f->demo, (unsigned long long)f->valid,
                  (unsigned long long)f->sent_ms);
     if (n < 0 || (size_t)n >= len) return -1;
     used = (size_t)n;
-    for (i = 0; i < BD_COUNT; ++i) {
+    for (i = 0; i < fields; ++i) {
         if (!fixed_decimal(f->value[i],radix,number,sizeof number)) return -1;
         n = snprintf(out+used, len-used, " %s %u", number, f->age_ms[i]);
         if (n < 0 || (size_t)n >= len-used) return -1;
@@ -191,32 +207,51 @@ int bd_parse(const char *data, size_t len, bd_frame *out) {
     char *cursor;
     bd_frame f;
     uint64_t integer;
-    unsigned i, fields;
+    unsigned i, fields, tag_length=4;
     if (!data || !out || len == 0 || len >= sizeof b || memchr(data, 0, len) ||
         !numeric_radix(radix)) return 0;
     memcpy(b, data, len); b[len] = 0;
     memset(&f, 0, sizeof f);
-    if (len<5 || !isspace((unsigned char)b[4])) return 0;
-    if (!memcmp(b,"NBG7",4)) fields=BD_COUNT;
-    else if (!memcmp(b,"NBG6",4)) fields=22;
-    else if (!memcmp(b,"NBG5",4)) fields=11;
-    else if (!memcmp(b,"NBG4",4)) fields=9;
-    else
-    if (!memcmp(b,"NBG3",4)) fields=8;
-    else if (!memcmp(b,"NBG2",4)) fields=5;
-    else return 0;
-    cursor=b+4;
+    if (len>=6 && (!memcmp(b,"NBG10",5) || !memcmp(b,"NBG11",5)) && isspace((unsigned char)b[5])) {
+        fields=b[4]=='0' ? BD_WIRE10_COUNT : BD_WIRE11_COUNT; tag_length=5;
+    } else {
+        if (len<5 || !isspace((unsigned char)b[4])) return 0;
+        if (!memcmp(b,"NBG9",4)) fields=BD_WIRE9_COUNT;
+        else if (!memcmp(b,"NBG8",4)) fields=BD_WIRE8_COUNT;
+        else if (!memcmp(b,"NBG7",4)) fields=BD_LEGACY_COUNT;
+        else if (!memcmp(b,"NBG6",4)) fields=22;
+        else if (!memcmp(b,"NBG5",4)) fields=11;
+        else if (!memcmp(b,"NBG4",4)) fields=9;
+        else
+        if (!memcmp(b,"NBG3",4)) fields=8;
+        else if (!memcmp(b,"NBG2",4)) fields=5;
+        else return 0;
+    }
+    if (fields<=BD_LEGACY_COUNT && len>=BD_LEGACY_PACKET) return 0;
+    if (fields==BD_WIRE8_COUNT && len>=BD_WIRE8_PACKET) return 0;
+    if (fields==BD_WIRE9_COUNT && len>=BD_WIRE9_PACKET) return 0;
+    if (fields==BD_WIRE10_COUNT && len>=BD_WIRE10_PACKET) return 0;
+    if (fields>=BD_WIRE8_COUNT && data[len-1]!='\n') return 0;
+    cursor=b+tag_length;
     if (!unsigned_field(&cursor,UINT32_MAX,&integer)) return 0;
     f.seq=(uint32_t)integer;
     if (!unsigned_field(&cursor,1,&integer)) return 0;
     f.demo=(unsigned)integer;
-    if (!unsigned_field(&cursor,(1u<<fields)-1,&integer)) return 0;
-    f.valid=(unsigned)integer;
+    if (!unsigned_field(&cursor,BD_BIT(fields)-1,&integer)) return 0;
+    f.valid=integer;
     if (!unsigned_field(&cursor,UINT64_MAX,&f.sent_ms)) return 0;
     for (i = 0; i < fields; ++i) {
         double limit=20000;
         if (i==BD_ABS_LOAD) limit=25700;
         if (!double_field(&cursor,&f.value[i],limit,radix) || !unsigned_field(&cursor,999999,&integer)) return 0;
+        if (i>=BD_EGR_REQUEST && i<=BD_EGR_B_ERROR && (f.valid & BD_BIT(i))) {
+            const int error=i==BD_EGR_ERROR || i==BD_EGR_A_ERROR || i==BD_EGR_B_ERROR;
+            if (f.value[i]<(error ? -100 : 0) || f.value[i]>(error ? 99.21875 : 100)) return 0;
+        }
+        if (i>=BD_RAIL_A_REQUEST && i<=BD_BOOST_B_ACTUAL && (f.valid & BD_BIT(i)) &&
+            (f.value[i]<0 || f.value[i]>(i<=BD_RAIL_B_ACTUAL ? 6553.5 : 2047.96875))) return 0;
+        if (i>=BD_REAGENT_LEVEL && (f.valid & BD_BIT(i)) &&
+            (f.value[i]<0 || f.value[i]>(i==BD_REAGENT_LEVEL ? 100 : 327.675))) return 0;
         f.age_ms[i]=(unsigned)integer;
     }
     while (isspace((unsigned char)*cursor)) ++cursor;
@@ -230,7 +265,7 @@ int bd_is_fresh(const bd_frame *f, unsigned i, uint64_t elapsed) {
                    : BD_STALE_MS;
     if (i == BD_ETHANOL) limit = 6500;
     if (i >= BD_OIL_TEMP) limit = BD_TEMP_STALE_MS;
-    return i < BD_COUNT && (f->valid & (1u << i)) &&
+    return i < BD_COUNT && (f->valid & BD_BIT(i)) &&
         elapsed < limit && f->age_ms[i] < limit - elapsed;
 }
 

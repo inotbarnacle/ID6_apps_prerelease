@@ -21,13 +21,14 @@ ntoarm-gcc -dumpmachine
 c() { qcc -V4.4.2,gcc_ntoarmv7le -Wc,-std=c99 -include stddef.h -mno-unaligned-access -Wall -Wextra -Werror "$@"; }
 cxx() { qcc -V4.4.2,gcc_ntoarmv7le_gpp -lang-c++ -Wc,-std=gnu++98 -D_QNX_SOURCE -mno-unaligned-access -Wall -Wextra -Werror "$@"; }
 c -Isrc/common -O2 -fPIC -c src/common/gauge_core.c -o out/core.o
+c -Isrc/common -O2 -fPIC -c src/common/boost_defaults.c -o out/boost-defaults.o
 
 # Every worker carries the HSFZ-then-MOST link. dlopen and pthreads are in QNX libc; the DSI library is
 # opened only at run time, so nothing private is linked.
 worker() { c -Isrc/common -Isrc/ipc -Isrc/workers -O2 "$@" src/common/diag_link.c src/common/most/*.c -Lout -lm -lsocket; }
 
 # Workers
-worker src/workers/boost_deck_worker.c src/workers/boost_tone.c out/core.o -o out/boostdeck-collector-qnx
+worker src/workers/boost_deck_worker.c src/workers/boost_tone.c src/common/obd_capabilities.c src/common/obd_capabilities_extra.c out/core.o out/boost-defaults.o -o out/boostdeck-collector-qnx
 worker src/workers/mhd_maps_worker.c src/common/gauge_core.c -o out/mhd-maps-qnx
 worker src/workers/exhaust_flap_worker.c out/core.o -o out/exhaust-flap-worker-qnx
 worker src/workers/shift_deck_worker.c out/core.o -o out/shift-deck-qnx
@@ -39,13 +40,13 @@ worker src/workers/xdrive_control_worker.c out/core.o -o out/xdrive-control-qnx
 worker src/workers/beamer_worker.c out/core.o -o out/beamer-qnx
 worker src/workers/road_jet_worker.c out/core.o -o out/road-jet-qnx
 
-worker src/workers/warm_deck_worker.c out/core.o -o out/warmdeck-collector-qnx
+worker src/workers/warm_deck_worker.c src/common/obd_capabilities.c out/core.o -o out/warmdeck-collector-qnx
 
 # The desktop installer stages this static helper on the head unit.
 c -O2 -static fileops.c -o out/gaugedeck-fileops
 
 # Plugins
-cxx -Isrc/common -Isrc/ipc -Isdk -O2 -fno-strict-aliasing -fno-exceptions -fPIC -shared src/plugins/boost_deck.cpp out/core.o \
+cxx -Isrc/common -Isrc/ipc -Isdk -O2 -fno-strict-aliasing -fno-exceptions -fPIC -shared src/plugins/boost_deck.cpp out/core.o out/boost-defaults.o \
     "$frameworks/libAppFramework.A.so" "$frameworks/libCoreFramework.A.so" -Lout -lm -lsocket \
     -Wl,--allow-shlib-undefined -Wl,-soname,libBoostDeck.so -o out/libBoostDeck.so
 cxx -Isrc/common -Isrc/ipc -Isdk -O2 -fno-exceptions -fPIC -shared src/plugins/mhd_maps.cpp \

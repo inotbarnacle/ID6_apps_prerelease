@@ -82,6 +82,10 @@ class TransportTest(unittest.TestCase):
                             self.assertEqual(mode, "s55_coolant")
                             conn.sendall(frame(1, bytes.fromhex("12f441057a")))
                             continue
+                        if req in (bytes.fromhex("f4120100"),bytes.fromhex("f4120120")):
+                            self.assertIn(mode, ("fuel_supported","fuel_unsupported"))
+                            conn.sendall(frame(1, bytes.fromhex("12f441") + req[-1:] + bytes.fromhex("00000001")))
+                            continue
                         if req == bytes.fromhex("f4120140"):
                             self.assertIn(mode, ("fuel_supported","fuel_unsupported"))
                             mask = "00000004" if mode == "fuel_supported" else "00000000"

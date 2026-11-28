@@ -112,9 +112,14 @@ class DriveAppsTest(unittest.TestCase):
         with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as listener:
             listener.bind(("127.0.0.1",42862))
             listener.settimeout(2)
-            self.run_worker("warmdeck-collector", ["--cycles","1"], [
+            self.run_worker("warmdeck-collector", ["--cycles","3"], [
+                ("0100", ["410000000001"]), ("0105", ["7f0112"]), ("22da12", ["62da120058"]),
+                ("0120", ["412000000001"]), ("0105", ["7f0112"]), ("22da12", ["62da120058"]),
+                ("0140", ["414000000010"]),
                 ("015c", ["415c7d"]), ("0105", ["7f0112"]), ("22da12", ["62da120058"]),
-            ], targets=["12","12","18"])
+            ], targets=["12","12","18","12","12","18","12","12","12","18"],reconnect=True)
+            listener.recv(64)
+            listener.recv(64)
             oil, coolant, trans, oil_c, _, trans_c=struct.unpack("=QQQddd", listener.recv(64))
             self.assertGreater(oil,0)
             self.assertEqual(coolant,0)
@@ -126,9 +131,10 @@ class DriveAppsTest(unittest.TestCase):
             listener.settimeout(2)
             self.run_worker("warmdeck-collector",
                 ["--cycles","1","--dct-temp","--udp-port",str(listener.getsockname()[1])],
-                [("015c",["415c7d"]),("0105",["410573"]),("22de31",["62de31"+DCT_WARM_STATUS])],
+                [("0100",["410000000000"]),("0105",["410573"]),("22de31",["62de31"+DCT_WARM_STATUS])],
                 targets=["12","12","18"])
-            _, _, trans, _, _, trans_c=struct.unpack("=QQQddd",listener.recv(64))
+            oil, _, trans, _, _, trans_c=struct.unpack("=QQQddd",listener.recv(64))
+            self.assertEqual(oil,0)  # No oil support; the selected DCT source remains independent.
             self.assertGreater(trans,0)
             self.assertEqual(trans_c,73.0)
 

@@ -6,6 +6,8 @@ unsigned overlay_state_size(void)
     return sizeof(struct surface_state);
 }
 
+unsigned overlay_state_magic(void) { return surface_magic; }
+
 unsigned overlay_hidden_page(void) { return surface_hidden; }
 unsigned overlay_animation_size(void) { return sizeof(struct surface_animation); }
 

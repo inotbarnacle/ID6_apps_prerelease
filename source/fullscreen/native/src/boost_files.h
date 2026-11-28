@@ -8,5 +8,6 @@
 #endif
 #define ID6_BOOST_PREFS ID6_BOOST_DATA_DIR "ID6LibraryLab.boost.prefs"
 #define ID6_BOOST_LAYOUT ID6_BOOST_DATA_DIR "ID6LibraryLab.boost.signals"
+#define ID6_BOOST_DEFAULTS ID6_BOOST_LAYOUT ".defaults"
 
 #endif

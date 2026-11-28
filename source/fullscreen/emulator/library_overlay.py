@@ -12,6 +12,8 @@ class LibraryOverlay:
         self._client.connect(socket_path)
         self._renderer = ctypes.CDLL(renderer)
         self._renderer.overlay_state_size.restype = ctypes.c_uint
+        self._renderer.overlay_state_magic.restype = ctypes.c_uint
+        self._magic = self._renderer.overlay_state_magic()
         self._renderer.overlay_animation_size.restype = ctypes.c_uint
         self._renderer.overlay_hidden_page.restype = ctypes.c_uint
         self._renderer.overlay_frame.argtypes = (
@@ -35,7 +37,8 @@ class LibraryOverlay:
         self._sequence = 0
         self._image = None
         self._config = None if data_dir is None else (
-            Path(data_dir)/"library-boost.prefs", Path(data_dir)/"library-boost.signals"
+            Path(data_dir)/"library-boost.prefs", Path(data_dir)/"library-boost.signals",
+            Path(data_dir)/"library-boost.defaults"
         )
         threading.Thread(target=self._receive, daemon=True).start()
         self._stop = threading.Event()
@@ -53,7 +56,10 @@ class LibraryOverlay:
             if active and not sent_config and self._config:
                 for kind,path in enumerate(self._config):
                     try:
-                        data = path.read_bytes()
+                        with path.open('rb') as source:
+                            data=source.read(26)
+                        if not self._valid_config(kind,data):
+                            continue
                         self._client.sendall(f"ID6CONF {kind} {data.hex()}\n".encode("ascii"))
                     except FileNotFoundError:
                         pass
@@ -86,7 +92,7 @@ class LibraryOverlay:
                         if len(packet) != self._size:
                             continue
                         magic, page = struct.unpack_from("<II", packet)
-                        if magic != 0x49443653:
+                        if magic != self._magic:
                             continue
                     except ValueError:
                         continue
@@ -112,11 +118,10 @@ class LibraryOverlay:
         try:
             _, kind_text, encoded = line.decode("ascii").split()
             kind = int(kind_text)
-            if kind not in (0, 1):
+            if kind not in (0, 1, 2):
                 return
             data = bytes.fromhex(encoded)
-            size, prefix = ((11, b"G\x02"), (21, b"B\x02"))[kind]
-            if len(data) != size or not data.startswith(prefix):
+            if not self._valid_config(kind,data):
                 return
             path = self._config[kind]
             temporary = path.with_suffix(path.suffix + ".tmp")
@@ -124,6 +129,21 @@ class LibraryOverlay:
             temporary.replace(path)
         except (OSError, ValueError):
             return
+
+    @staticmethod
+    def _valid_config(kind,data):
+        if kind==0:
+            if len(data)==4: return data[:2]==b'G\x01' and data[2]<9 and data[3]<=1
+            choices=(3,2,2,2,2,10,10,13) # legacy beta oil floors are clamped by the loader
+            return len(data)==11 and data[:2]==b'G\x02' and data[2]<9 and all(
+                value<limit for value,limit in zip(data[3:],choices))
+        if kind==2: return len(data)==3 and data[:2]==b'D\x01' and data[2]<=1
+        if kind!=1 or len(data)<3 or data[0]!=ord('B') or not 1<=data[1]<=6 or data[2]>1:
+            return False
+        stride=11 if data[1]==1 else 9
+        limit=(0,31,31,39,47,55,58)[data[1]]
+        return len(data)==3+2*stride and all(data[3+profile*stride+i]<limit
+            for profile in range(2) for i in range(9))
 
     def close(self):
         self._stop.set()

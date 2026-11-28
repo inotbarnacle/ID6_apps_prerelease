@@ -3,6 +3,7 @@
 
 #include "gauge_preferences.h"
 #include "gauge_core.h"
+#include "fullscreen_preferences.h"
 
 enum BoostSetting {
     BOOST_PRESSURE, BOOST_SPEED, BOOST_TEMPERATURE, BOOST_STYLE,
@@ -25,7 +26,8 @@ struct BoostPreferences {
         if (!file) return;
         unsigned char data[3+BOOST_SETTING_COUNT];
         size_t length=fread(data,1,sizeof data,file);
-        bool complete=fgetc(file)==EOF && !ferror(file);
+        bool complete=!ferror(file);
+        if (complete && !feof(file)) complete=fgetc(file)==EOF && !ferror(file);
         fclose(file);
         if (!complete || length<4 || data[0]!='G' || data[2]>=colors) return;
         if (data[1]==1 && length==4 && data[3]<=1) {
@@ -46,7 +48,7 @@ struct BoostPreferences {
     bool save(const char* path) const {
         unsigned char data[3+BOOST_SETTING_COUNT]={'G',2,static_cast<unsigned char>(color)};
         for (unsigned i=0; i<BOOST_SETTING_COUNT; ++i) data[3+i]=choice[i];
-        return savePersistentBytes(path,data,sizeof data);
+        return saveFullScreenRecord(path,data,sizeof data);
     }
 
     int units(unsigned signal) const {

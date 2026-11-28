@@ -5,7 +5,23 @@ Run commands from `source/`. Host tests use a C compiler, Make, and Python 3. No
 ```sh
 make -C native test
 python3 tools/test_probe_signals.py
+python3 tools/test_capture_headunit.py
 ```
+
+The host CI runs these tests with GCC and Clang and checks the decoder and OBD
+capability cache with AddressSanitizer and UndefinedBehaviorSanitizer. Synthetic
+HSFZ/MOST responses do not establish QNX ABI or physical vehicle compatibility.
+
+`make -C native test-build-inputs` also exercises the native build script with
+temporary compiler recorders, checking for duplicate inputs, missing sources
+and objects used before compilation. It links the emitted WarmDeck worker
+inputs (and DPFDeck when present) with the real host compiler and fake MOST.
+These checks neither require private libraries nor compile QNX binaries.
+
+Host telemetry receivers use `tests/udp_test_socket.py` to avoid the project's
+IPC ports. Tests that exercise diagnostic leases or activity
+markers still bind those roles explicitly. The host suite forces both kinds
+of allocation and checks that rejected receiver sockets are closed.
 
 Run `make -C native test-launch-records` for the [LaunchDeck file and I/O checks](LAUNCH-RECORDS.md).
 The host suite uses [isolated UDP receivers](../native/tests/udp_test_socket.py) to avoid project IPC ports.
