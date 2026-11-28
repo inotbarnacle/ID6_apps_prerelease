@@ -133,7 +133,7 @@ branches still require 00 06. RPM and zero-speed checks also have to pass.
 | J16383I | One submitted capture reports a distinct pair. [Issue #86](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/86) | Capture-only |
 | O18184I | The submitted 1280 × 480 split-node capture matches the distinct pair. The owner reported a working installation. [Issue #115](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/115) | Installer profile |
 | T21424I | Both reported fingerprints match Y21432J. [Issue #129](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/129) | Installer profile |
-| W20204I | Both frameworks match V20153I. trulex submitted the installer profile. mohamaddude1 reported BoostDeck, ShiftDeck and Engine Fault Codes working on an F90. [PR #112](https://github.com/inotbarnacle/ID6_apps_prerelease/pull/112) · [Issue #104](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/104) | Exact-hash alias |
+| W20204I | Both frameworks match V20153I. trulex verified a manual v0.7.6 install on an F36 (1280 × 480). BoostDeck showed live readings, and ShiftDeck, Engine Fault Codes, and MHD+ Suite opened after a parked restart. mohamaddude1 reported BoostDeck, ShiftDeck and Engine Fault Codes working on an F90 (1440 × 540). [PR #112](https://github.com/inotbarnacle/ID6_apps_prerelease/pull/112) · [Issue #104](https://github.com/inotbarnacle/ID6_apps_prerelease/issues/104) | Exact-hash alias |
 
 On split-node units, the installer reads the firmware version from Jacinto first, as Trio Collector does. It checks the actual HMI framework files on OMAP and requires both hashes to match. The supplied Y22292I capture matches the existing profile at 1280 × 480.
 
