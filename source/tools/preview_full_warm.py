@@ -7,7 +7,7 @@ import struct
 from PIL import Image, ImageDraw, ImageFont
 
 
-def render(renderer, models, output, panel='1280x480'):
+def render(renderer, models, output, panel='1280x480', expected_page=7):
     if panel not in ('800x480','960x480','1280x480','1440x540','1920x720'):
         raise ValueError('unsupported display panel')
     width,height=map(int,panel.split('x'))
@@ -15,8 +15,8 @@ def render(renderer, models, output, panel='1280x480'):
     native.overlay_state_size.restype=ctypes.c_uint
     native.overlay_state_magic.restype=ctypes.c_uint
     raw=models.read_bytes()
-    if len(raw)!=native.overlay_state_size() or struct.unpack_from('<II',raw)!=(native.overlay_state_magic(),7):
-        raise ValueError('expected a matching full-screen WarmDeck state')
+    if len(raw)!=native.overlay_state_size() or struct.unpack_from('<II',raw)!=(native.overlay_state_magic(),expected_page):
+        raise ValueError('expected a matching full-screen dashboard state')
     native.overlay_render.argtypes=(ctypes.c_void_p,ctypes.c_void_p,ctypes.c_void_p,ctypes.c_int,ctypes.c_int)
     native.overlay_render.restype=None
     packet=ctypes.create_string_buffer(raw)

@@ -25,20 +25,33 @@ jobs:
       - name: Native host regressions and production plugin callbacks
         run: make -C source/native test CC=${{ matrix.cc }} CXX=${{ matrix.cxx }}
       - name: Production plugin syntax checks
-        run: ${{ matrix.cxx }} -std=gnu++98 -Wall -Wextra -Werror -Isource/native/sdk -Isource/native/src/common -Isource/native/src/ipc -fsyntax-only source/native/src/plugins/shift_deck.cpp
+        run: |
+          ${{ matrix.cxx }} -std=gnu++98 -Wall -Wextra -Werror -Isource/native/sdk -Isource/native/src/common -Isource/native/src/ipc -fsyntax-only source/native/src/plugins/shift_deck.cpp
+          for variant in '' '-DID6_EMULATOR'; do
+            ${{ matrix.cxx }} -std=gnu++98 -O2 -Wall -Wextra -Werror -fsyntax-only $variant '-DID6_PLUGIN_NAME="HostShift"' -DID6_ENTRY_PAGE=1 -Isource/fullscreen/native/sdk -Isource/fullscreen/native/src -Isource/fullscreen/native/generated -Isource/fullscreen/native/telemetry/common -Isource/fullscreen/native/telemetry/ipc source/fullscreen/native/src/library.cpp
+          done
+          clang++ --analyze -Xanalyzer -analyzer-output=text -std=gnu++98 '-DID6_PLUGIN_NAME="HostShift"' -DID6_ENTRY_PAGE=1 -Isource/fullscreen/native/sdk -Isource/fullscreen/native/src -Isource/fullscreen/native/generated -Isource/fullscreen/native/telemetry/common -Isource/fullscreen/native/telemetry/ipc source/fullscreen/native/src/library.cpp
+          clang --analyze -Xanalyzer -analyzer-output=text -std=c99 -DMOST_HOST -Isource/fullscreen/native/telemetry/common -Isource/fullscreen/native/telemetry/ipc source/fullscreen/native/telemetry/workers/shift_deck_worker.c
       - name: Asset generator dependencies
         run: python3 -m pip install -r source/tools/requirements-shift.txt
       - name: Verify generated layout and preserve gasoline artwork
-        run: python3 -B source/tools/test_shift_profiles.py
+        run: |
+          python3 -B source/tools/test_shift_profiles.py
+          python3 -B source/tools/test_full_shift_resources.py
+          python3 -B source/tools/test_full_warm_resources.py
       - name: Render synthetic host preview from production model updates
         run: |
           unzip -p packages/dashboard.zip ShiftDeck/ShiftDeck_ALL_Images.zip > source/native/build/shift-base.zip
           python3 source/tools/make_shift_profiles.py --base-images source/native/build/shift-base.zip
           python3 source/tools/preview_shift_profiles.py
+          make -C source/native build/full-warm-surface.so CC=${{ matrix.cc }}
+          python3 -B source/tools/preview_full_shift.py --renderer source/native/build/full-warm-surface.so --models source/native/build/full-shift-models/diesel-live.bin --out source/native/build/full-shift-host-synthetic.png
       - uses: actions/upload-artifact@v4
         with:
           name: shift-profiles-host-preview-${{ matrix.cc }}
-          path: source/native/build/shift-profiles-preview.png
+          path: |
+            source/native/build/shift-profiles-preview.png
+            source/native/build/full-shift-host-synthetic.png
   memory:
     runs-on: ubuntu-24.04
     steps:
@@ -47,4 +60,4 @@ jobs:
         env:
           UBSAN_OPTIONS: halt_on_error=1
           ASAN_OPTIONS: detect_leaks=1
-        run: make -C source/native test-shift-profiles CXX=clang++ CXXFLAGS='-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'
+        run: make -C source/native test-shift-profiles CC=clang CXX=clang++ CFLAGS='-O1 -g -std=c99 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer' CXXFLAGS='-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'

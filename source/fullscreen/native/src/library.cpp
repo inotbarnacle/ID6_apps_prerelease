@@ -13,6 +13,7 @@
 #include "launch_records.h"
 #include "surface_session.h"
 #include "warm_state.h"
+#include "shift_state.h"
 #include "gauge_coexistence.h"
 #ifdef ID6_EMULATOR
 #include "emulator_telemetry.h"
@@ -29,14 +30,16 @@ enum { boost = surface_boost, shift = surface_shift, mhd = surface_mhd, codes = 
        warm = surface_warm, home = surface_home,
        updates = surface_updates, systemPage = surface_system,
        updateConfirm = surface_update_confirm, installConfirm = surface_install_confirm, inactive = surface_hidden,
-       boostSettings, shiftSettings, codesConfirm, poll_key = 0x4944364cu };
+       boostSettings, shiftSettings, codesConfirm, shiftGasSettings, poll_key = 0x4944364cu };
 enum { live_poll_ms = 16, menu_poll_ms = 40 };
 const unsigned kEntryPage = ID6_ENTRY_PAGE;
-enum { shift_target_min=6000, shift_target_step=100, shift_target_count=21 };
+enum { shift_target_count=ShiftPreferences::GASOLINE_TARGETS };
 #ifdef ID6_EMULATOR
 const char kShiftPreferences[] = "/dev/shmem/ID6FullShiftDeck.prefs";
+const char kShiftProfile[] = "/dev/shmem/ID6FullShiftDeck.diesel.prefs";
 #else
 const char kShiftPreferences[] = "/var/opt/hmi/data/ID5/ID6FullShiftDeck.prefs";
+const char kShiftProfile[] = "/var/opt/hmi/data/ID5/ID6FullShiftDeck.diesel.prefs";
 #endif
 const char kLaunchPreferences[] = "/var/opt/hmi/data/ID5/ID6LibraryLab.launch.prefs";
 const char kBoostPrefs[] = ID6_BOOST_PREFS;
@@ -84,8 +87,9 @@ class ID6LibraryLab : public bmw::PluginApp {
     pid_t tone_;
     uint64_t lastTone_;
     SurfaceSession surface_;
-    unsigned shiftTarget_;
-    bool shiftMph_;
+    FullShiftPreferences shiftPrefs_;
+    FullShiftState shiftState_;
+    const char *shiftPreferences_, *shiftProfile_;
     bool warmFahrenheit_;
     FullWarmState warmState_;
     launch_timer timer_;
@@ -470,7 +474,7 @@ class ID6LibraryLab : public bmw::PluginApp {
         state.road_lane = roadLane_;
         state.road_altitude = roadAltitude_;
         state.road_has_scene = roadHasScene_;
-        state.shift_target = shift_target_min + shiftTarget_ * shift_target_step;
+        state.shift_target = shiftPrefs_.valid() ? shiftPrefs_.targetRpm() : 0;
         state.warm_fahrenheit = warmFahrenheit_;
         state.launch_mode = launchMode_;
         if (page_ < home || usbPage(page_)) {
@@ -489,6 +493,12 @@ class ID6LibraryLab : public bmw::PluginApp {
                 state.boost_signal[i]=static_cast<uint8_t>(warmState_.target(i));
                 state.boost_level[i]=static_cast<uint16_t>(warmState_.level(i));
             }
+        }
+        if (page_ == shift && shiftPrefs_.valid()) {
+            const int rpm=shiftState_.rpm(bd_mono_ms());
+            state.boost_level[0]=static_cast<uint16_t>(shiftPrefs_.scaleRpm());
+            state.boost_level[1]=rpm>=0 ? static_cast<uint16_t>(rpm+1) : 0;
+            state.boost_signal[0]=shiftPrefs_.diesel ? 1 : 0;
         }
         if (page_ == launchPage) state.launch_run_state=timer_.state;
         if (page_==codesConfirm) {
@@ -548,8 +558,25 @@ class ID6LibraryLab : public bmw::PluginApp {
         status(warm,label);
 #endif
     }
+    void refreshShift(uint64_t now) {
+        char value[36];
+        const int rpm=shiftState_.rpm(now), kph=shiftState_.kph(now);
+        if (kph>=0) snprintf(value,sizeof value,"%d %s",
+            shiftPrefs_.metric ? kph : (kph*621371+500000)/1000000,shiftPrefs_.metric ? "km/h" : "mph");
+        else strcpy(value,"--");
+        display(shift,0,value);
+        if (rpm>=0) snprintf(value,sizeof value,"%d rpm",rpm);
+        else strcpy(value,"--");
+        display(shift,1,value);
+    }
     void clear(unsigned page) {
         memset(last_, 0, sizeof last_);
+        if (page==shift) {
+            shiftState_.reset(bd_mono_ms());
+            refreshShift(bd_mono_ms());
+            display(shift,2,"--");
+            return;
+        }
         if (page==warm) {
             warmState_.reset(bd_mono_ms());
             refreshWarm(bd_mono_ms());
@@ -600,6 +627,7 @@ class ID6LibraryLab : public bmw::PluginApp {
     }
     void finishPoll() {
         if (page_==warm) refreshWarm(bd_mono_ms());
+        if (page_==shift) refreshShift(bd_mono_ms());
         syncSurface();
         schedule();
     }
@@ -678,12 +706,18 @@ class ID6LibraryLab : public bmw::PluginApp {
                 display(boost,i,value);
             }
             checkBoostAlerts(frame,now);
-        } else if (page_ == shift || page_ == launchPage) {
+        } else if (page_ == shift) {
+            drive_frame frame;
+            if (size!=sizeof frame) return;
+            memcpy(&frame,bytes,sizeof frame);
+            if (!shiftState_.accept(frame,now)) return;
+            refreshShift(now);
+        } else if (page_ == launchPage) {
             drive_frame frame;
             if (size != sizeof frame) return;
             memcpy(&frame, bytes, sizeof frame);
             if (!fresh(now, frame.sampled_ms, DRIVE_STALE_MS)) return;
-            const bool mph = page_ == shift ? shiftMph_ : launchMode_ < LT_0_100;
+            const bool mph = launchMode_ < LT_0_100;
             if (frame.kph >= 0)
                 snprintf(value,sizeof value,"%d %s",mph ? (int(frame.kph)*621371+500000)/1000000 : int(frame.kph),
                          mph ? "mph" : "km/h");
@@ -710,9 +744,6 @@ class ID6LibraryLab : public bmw::PluginApp {
                 lastPacket_=now;
                 return;
             }
-            if (frame.rpm >= 0) snprintf(value, sizeof value, "%d rpm", int(frame.rpm));
-            else strcpy(value, "--");
-            display(page_, 1, value);
         } else {
             warm_frame frame;
             if (size != sizeof frame) return;
@@ -772,7 +803,7 @@ class ID6LibraryLab : public bmw::PluginApp {
             int length = bd_encode(&frame,packet,sizeof packet);
             if (length > 0) render(packet,unsigned(length),now);
         } else if (page_ == shift || page_ == launchPage) {
-            const drive_frame frame = {sample.sampled_ms,rpm,sample.kph};
+            const drive_frame frame = {sample.sampled_ms,rpm,sample.kph,sample.sampled_ms};
             render(reinterpret_cast<const char*>(&frame),sizeof frame,now);
             if (page_ == shift) {
                 const char gear[] = {"PRND"[sample.gear],0};
@@ -915,7 +946,7 @@ class ID6LibraryLab : public bmw::PluginApp {
         // They must never open pages, start a worker, or take over the display.
         if (!payload.readBool(visible) || !visible) return true;
         if (page_ == boost && Page == boostSettings) controlFocus_ = 214;
-        else if (page_ == shift && Page == shiftSettings) controlFocus_ = 216;
+        else if (page_ == shift && (Page == shiftSettings || Page == shiftGasSettings)) controlFocus_ = 216;
         else if (page_ == updates && Page == updateConfirm) controlFocus_ = 260;
         else if (page_ == updates && Page == installConfirm) controlFocus_ = 261;
         else if (Page >= home && Page <= systemPage && Page != page_ &&
@@ -1010,41 +1041,59 @@ class ID6LibraryLab : public bmw::PluginApp {
         addHandler(state, 11u, action);
     }
 
-    bool saveShiftSettings(unsigned target, bool mph) {
-        const unsigned char value[] = {'G', 1, static_cast<unsigned char>(target), static_cast<unsigned char>(mph)};
-#ifdef ID6_EMULATOR
-        // QNX shared memory does not provide an atomic rename.
-        FILE* file = fopen(kShiftPreferences, "wb");
-        if (!file) return false;
-        const bool saved = fwrite(value, 1, sizeof value, file) == sizeof value;
-        return fclose(file) == 0 && saved;
-#else
-        return savePersistentBytes(kShiftPreferences, value, sizeof value);
-#endif
-    }
-
     template<unsigned Target> bool saveShiftTarget(const bmw::Parcel&) {
-        if (saveShiftSettings(Target, shiftMph_)) shiftTarget_ = Target;
+        FullShiftPreferences next=shiftPrefs_;
+        next.gasoline_target=Target;next.diesel=false;
+        commitShiftSettings(next,true,true);
         return true;
     }
 
-    void showShiftUnits(bool saved) {
-        updateModel(1881u,bmw::BasicString<char>(!saved ? "Could not save speed units" :
-                    shiftMph_ ? "Speed units: mph" : "Speed units: km/h"));
+    void showShiftSettings(bool saved) {
+        updateModel(1881u,bmw::BasicString<char>(shiftPrefs_.metric ? "Speed units: km/h" : "Speed units: mph"));
+        char label[128];
+        snprintf(label,sizeof label,"Engine profile: %s",shiftPrefs_.diesel ? "Diesel" : "Gasoline");
+        updateModel(1883u,bmw::BasicString<char>(label));
+        snprintf(label,sizeof label,"Shift light target: %u RPM",shiftPrefs_.targetRpm());
+        updateModel(1884u,bmw::BasicString<char>(label));
+        snprintf(label,sizeof label,"Diesel: target %u RPM, display %u RPM%s",shiftPrefs_.diesel_target,
+                 4000+shiftPrefs_.diesel_scale*1000,shiftPrefs_.diesel ? "" : " (inactive)");
+        updateModel(1885u,bmw::BasicString<char>(label));
+        updateModel(1886u,bmw::BasicString<char>(saved ? "App choices; follow vehicle guidance" :
+                    "Settings not saved; files may be partially updated"));
+    }
+
+    void commitShiftSettings(const FullShiftPreferences& next,bool gasoline,bool profile) {
+        bool saved=true;
+        if (gasoline) saved=next.saveGasoline(shiftPreferences_);
+        if (profile) saved=next.saveProfile(shiftProfile_) && saved;
+        if (saved) shiftPrefs_=next;
+        showShiftSettings(saved);
+        refreshShift(bd_mono_ms());
+        syncSurface();
     }
 
     bool toggleShiftUnits(const bmw::Parcel&) {
-        const bool saved = saveShiftSettings(shiftTarget_, !shiftMph_);
-        if (saved) {
-            shiftMph_ = !shiftMph_;
-            display(shift,0,"--");
-        }
-        showShiftUnits(saved);
+        FullShiftPreferences next=shiftPrefs_;next.metric=!next.metric;
+        commitShiftSettings(next,true,false);
         return true;
+    }
+
+    template<bool Diesel> bool setShiftProfile(const bmw::Parcel&) {
+        FullShiftPreferences next=shiftPrefs_;next.diesel=Diesel;
+        commitShiftSettings(next,false,true);return true;
+    }
+    template<bool Increase> bool adjustShiftTarget(const bmw::Parcel&) {
+        FullShiftPreferences next=shiftPrefs_;next.adjustDiesel(Increase);
+        commitShiftSettings(next,false,true);return true;
+    }
+    template<unsigned Scale> bool setShiftScale(const bmw::Parcel&) {
+        FullShiftPreferences next=shiftPrefs_;next.setDieselScale(Scale);
+        commitShiftSettings(next,false,true);return true;
     }
 
     void registerShiftMenu() {
         registerPage<shiftSettings>(216);
+        registerPage<shiftGasSettings>(219);
         typedef bmw::Delegate<bool,const bmw::Parcel&> Action;
         typedef bool (*Handler)(void*,const bmw::Parcel&);
         Action action;
@@ -1062,7 +1111,14 @@ class ID6LibraryLab : public bmw::PluginApp {
         }
         action.m_exec=&Action::execImpl<ID6LibraryLab,&ID6LibraryLab::toggleShiftUnits>;
         addHandler(5751u,action);
-        showShiftUnits(true);
+        action.m_exec=&Action::execImpl<ID6LibraryLab,&ID6LibraryLab::setShiftProfile<false> >;addHandler(5800u,action);
+        action.m_exec=&Action::execImpl<ID6LibraryLab,&ID6LibraryLab::setShiftProfile<true> >;addHandler(5801u,action);
+        action.m_exec=&Action::execImpl<ID6LibraryLab,&ID6LibraryLab::setShiftScale<0> >;addHandler(5810u,action);
+        action.m_exec=&Action::execImpl<ID6LibraryLab,&ID6LibraryLab::setShiftScale<1> >;addHandler(5811u,action);
+        action.m_exec=&Action::execImpl<ID6LibraryLab,&ID6LibraryLab::setShiftScale<2> >;addHandler(5812u,action);
+        action.m_exec=&Action::execImpl<ID6LibraryLab,&ID6LibraryLab::adjustShiftTarget<false> >;addHandler(5820u,action);
+        action.m_exec=&Action::execImpl<ID6LibraryLab,&ID6LibraryLab::adjustShiftTarget<true> >;addHandler(5821u,action);
+        showShiftSettings(true);
     }
 
     void registerBoostMenu() {
@@ -1114,7 +1170,8 @@ class ID6LibraryLab : public bmw::PluginApp {
 public:
     ID6LibraryLab(bmw::IDispatcher& dispatcher, bmw::BasicString<char> name,
                   unsigned major, unsigned minor, bmw::RHMIInterfaceVersion version,
-                  const bmw::Bundle& cfg, const bmw::Bundle& res)
+                  const bmw::Bundle& cfg, const bmw::Bundle& res,
+                  const char* shift_preferences=kShiftPreferences,const char* shift_profile=kShiftProfile)
         : bmw::PluginApp(dispatcher, name, major, minor, version, cfg, res),
           page_(inactive), workerPage_(inactive), socket_(-1), child_(-1),
           queued_(false), childStopping_(false), received_(false), telemetryFailed_(false), lastPacket_(0),
@@ -1122,7 +1179,7 @@ public:
           boostFiles_(0),
 #endif
           boostSlot_(9), tone_(-1), lastTone_(0),
-          shiftTarget_(5), shiftMph_(false), warmFahrenheit_(false), launchMode_(LT_0_100), surfaceFailed_(false), codesStarted_(false),
+          shiftPreferences_(shift_preferences), shiftProfile_(shift_profile), warmFahrenheit_(false), launchMode_(LT_0_100), surfaceFailed_(false), codesStarted_(false),
           codeSize_(0), codeOffset_(0), controlFocus_(0), lamps_(0), map_(0),
           controlUsed_(0), cooling_(-1), usbChild_(-1), usbRead_(-1), usbUsed_(0), roadSample_(0), roadMode_(ROAD_JET_WAITING),
           roadDistance_(0), roadLane_(2), roadAltitude_(0), roadHasScene_(false), codesClearPending_(false) {
@@ -1168,7 +1225,7 @@ public:
             }
         }
         if (kEntryPage == shift) {
-            loadGaugePreferences(kShiftPreferences,shift_target_count,shiftTarget_,shiftMph_);
+            shiftPrefs_.load(shiftPreferences_,shiftProfile_);
             registerShiftMenu();
             registerSelection<shift,216>();
         }
@@ -1265,6 +1322,9 @@ public:
                 if (page_==warm && (childStopping_ || senderSize!=sizeof sender ||
                     sender.sin_family!=AF_INET || sender.sin_addr.s_addr!=htonl(INADDR_LOOPBACK) ||
                     ntohs(sender.sin_port)!=WARM_ACTIVE_PORT)) continue;
+                if (page_==shift && (childStopping_ || senderSize!=sizeof sender ||
+                    sender.sin_family!=AF_INET || sender.sin_addr.s_addr!=htonl(INADDR_LOOPBACK) ||
+                    ntohs(sender.sin_port)!=SHIFT_ACTIVE_PORT)) continue;
                 render(packet, static_cast<unsigned>(got), now);
             }
             if (page_ == road) {

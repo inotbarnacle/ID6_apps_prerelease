@@ -11,8 +11,8 @@ enum surface_page {
     surface_update_confirm, surface_install_confirm, surface_hidden
 };
 enum { surface_text_size = 36 };
-// Version 2 adds explicit, measured WarmDeck readiness in the existing fields.
-enum { surface_magic = 0x49443654 };
+// Version 3 retains measured Warm states and adds explicit Shift profile/RPM data.
+enum { surface_magic = 0x49443655 };
 enum { surface_warm_unknown, surface_warm_pending, surface_warm_met };
 enum { surface_bm3=40, surface_mg, surface_xdrive, surface_hybrid };
 
@@ -34,8 +34,8 @@ struct surface_state {
     uint32_t tach_visual; /* RPM plus one, or zero for the current sample. */
     char values[9][surface_text_size];
     char status[96];
-    uint16_t boost_level[9]; /* Warm page: first three are progress in 0..1000. */
-    uint8_t boost_signal[9]; /* Warm page: first three are surface_warm_* states. */
+    uint16_t boost_level[9]; /* Warm: progress. Shift: [0] display RPM, [1] RPM+1 (0 unknown). */
+    uint8_t boost_signal[9]; /* Warm: surface_warm_* states. Shift: [0] 0 gasoline, 1 diesel. */
     uint8_t boost_style, boost_color, launch_run_state, warm_fahrenheit, road_has_scene;
 };
 

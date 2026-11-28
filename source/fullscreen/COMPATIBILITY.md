@@ -35,7 +35,7 @@ Check framework compatibility, the display layout, telemetry and projection sepa
 
 Upstream reported that its baseline plugins were built against the N18032I
 framework pair and registered in an isolated ARM QNX emulator with a
-1280 × 480 IDEmu profile. These results precede the WarmDeck readiness and
-surface-v2 changes. The current contribution has host tests only; a matching
+1280 × 480 IDEmu profile. These results precede the WarmDeck readiness,
+ShiftDeck profiles, 24-byte drive frame and surface-v3 changes. The current contribution has host tests only; a matching
 licensed QNX build, ARM emulator and parked runtime checks remain outstanding.
 No additional firmware or framework pair is approved by these source changes.

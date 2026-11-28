@@ -11,6 +11,14 @@
       <hmiAction id="216" target="216" />
       <raAction id="5751" />
       <raAction id="6216" />
+      <raAction id="5800" />
+      <raAction id="5801" />
+      <raAction id="5820" />
+      <raAction id="5821" />
+      <raAction id="5810" />
+      <raAction id="5811" />
+      <raAction id="5812" />
+      <hmiAction id="219" target="219" />
       <combinedAction id="4700">
         <actions>
           <raAction id="5700" />
@@ -140,6 +148,10 @@
     </actions>
     <models>
       <raDataModel id="1881" modelType="Richtext" />
+      <raDataModel id="1883" modelType="Richtext" />
+      <raDataModel id="1884" modelType="Richtext" />
+      <raDataModel id="1885" modelType="Richtext" />
+      <raDataModel id="1886" modelType="Richtext" />
       <raDataModel id="1420" modelType="Richtext" />
       <raDataModel id="1421" modelType="Richtext" />
       <raDataModel id="601" modelType="Richtext" />
@@ -147,7 +159,7 @@
     <hmiStates>
       <hmiState id="201" text="ShiftDeck">
         <components>
-          <button id="916" text="Shift light target" action="216" selectAction="6216">
+          <button id="916" text="Engine profile and targets" action="216" selectAction="6216">
             <properties>
               <property id="20" value="547" />
               <property id="21" value="8" />
@@ -187,6 +199,30 @@
               <property id="10" value="65" />
             </properties>
           </label>
+          <label id="1894" model="1883">
+            <properties>
+              <property id="20" value="16" />
+              <property id="21" value="180" />
+              <property id="9" value="663" />
+              <property id="10" value="45" />
+            </properties>
+          </label>
+          <label id="1895" model="1884">
+            <properties>
+              <property id="20" value="16" />
+              <property id="21" value="225" />
+              <property id="9" value="663" />
+              <property id="10" value="45" />
+            </properties>
+          </label>
+          <label id="1896" text="App target; follow vehicle guidance">
+            <properties>
+              <property id="20" value="16" />
+              <property id="21" value="275" />
+              <property id="9" value="663" />
+              <property id="10" value="55" />
+            </properties>
+          </label>
           <label id="461" model="601">
             <properties>
               <property id="20" value="17" />
@@ -197,11 +233,27 @@
           </label>
         </components>
         <optionComponents>
-          <button id="917" text="Shift light target" action="216" />
+          <button id="917" text="Engine profile and targets" action="216" />
           <button id="918" text="Speed units" model="1881" action="5751" />
         </optionComponents>
       </hmiState>
-      <hmiState id="216" parentId="201" text="Shift light target">
+      <hmiState id="216" parentId="201" text="ShiftDeck settings">
+        <components>
+          <label id="1890" model="1883" />
+          <label id="1891" model="1884" />
+          <label id="1892" model="1885" />
+          <label id="1893" model="1886" />
+          <button id="3800" text="Gasoline profile" action="5800" />
+          <button id="3801" text="Diesel profile" action="5801" />
+          <button id="3802" text="Diesel target -100 RPM" action="5820" />
+          <button id="3803" text="Diesel target +100 RPM" action="5821" />
+          <button id="3804" text="Diesel display 4,000 RPM" action="5810" />
+          <button id="3805" text="Diesel display 5,000 RPM" action="5811" />
+          <button id="3806" text="Diesel display 6,000 RPM" action="5812" />
+          <button id="3807" text="Gasoline target" action="219" />
+        </components>
+      </hmiState>
+      <hmiState id="219" parentId="216" text="Gasoline target">
         <components>
           <button id="3700" text="6,000 RPM" action="4700" />
           <button id="3701" text="6,100 RPM" action="4701" />

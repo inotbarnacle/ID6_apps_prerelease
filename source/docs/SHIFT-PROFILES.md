@@ -6,7 +6,7 @@ adds a manually selected Diesel profile while preserving the existing Gasoline
 profile and all 21 current presets (6000–8000 RPM in 100-RPM steps). The
 existing Speed menu and its units remain available.
 
-Open **OPTIONS → Engine profile → Use diesel profile**, then **Configure diesel
+In the standard app, open **OPTIONS → Engine profile → Use diesel profile**, then **Configure diesel
 target and display**. Set the advisory target in 100 RPM steps and choose a
 0–4000, 0–5000 or 0–6000 RPM display. The target must be at least 1000 RPM and
 below the selected display ceiling. Reducing that ceiling also reduces a target
@@ -96,6 +96,79 @@ the complete image archive must accompany the new plugin in a maintainer-built
 package. Do not install the new plugin with the old archive. Generated archives
 and native binaries remain ignored/private; published packages are unchanged.
 
+## Full-screen ShiftDeck
+
+The full-screen view uses the same manual profile, diesel target and display
+choices. Open the target button or **OPTIONS → Engine profile and targets**.
+Gasoline retains its 21 presets and 8,000-RPM bar. Diesel has 4,000/5,000/6,000-RPM
+axes; bar colors follow the chosen advisory target, not a fixed BMW redline.
+Its twelve lights approach the target over 1,000 RPM. Numerical RPM and lights
+use the measured sample; only the bar eases over the existing 32 milliseconds.
+The RHMI fallback also shows the active profile, target and advisory label.
+
+Full-screen settings have their own namespace. The existing four-byte
+`/var/opt/hmi/data/ID5/ID6FullShiftDeck.prefs` keeps every gasoline index and its
+**mph flag**. That flag has the opposite polarity from the standard app's metric
+flag. New profile choices use `ID6FullShiftDeck.diesel.prefs`, an S2 sidecar.
+Loads never rewrite files or import the standard app's legacy files. Diesel-only
+changes preserve G1; speed-unit changes preserve S2. A two-file preset change
+applies in memory only when both writes succeed. A failed write shows a warning;
+one file may already have changed, so resolve the error and reselect before
+relying on restart persistence. Each physical-unit file is replaced atomically.
+The existing emulator shared-memory paths retain their direct-write behavior.
+
+The full-screen worker still requests only standard `01 0C` RPM and `01 0D`
+speed. Packets now come from its bound activity socket. Their full-screen frame
+is **24 bytes**, adding a separate speed request-start time to the existing
+16-byte layout. Cached speed keeps its original age while new RPM arrives.
+The Library checks source/size, opening time, future/older samples, domains and
+independent 750-ms expiry. Valid zero remains measurable; unavailable RPM
+suppresses lights. The physical gear remains unknown; IDEmu's P/R/N/D is simulated.
+LaunchDeck's speed-only path uses the same matching frame and source socket.
+The standard app's worker and 16-byte protocol remain unchanged.
+
+The shared renderer protocol is **v3 (`ID6U`), 496 bytes**. It carries explicit
+profile, scale and raw RPM fields; rounded display text cannot trigger a light.
+It retains #209's measured Warm states. This PR depends on
+[WarmDeck #209](https://github.com/inotbarnacle/iDriveDeck/pull/209). Rebuild the
+complete matching full-screen bundle from fresh outputs: Library, Shift/Launch
+worker, renderer, all dashboard/optional companion plugins and emulator parts.
+Surface v1/v2 and older 16-byte worker frames are rejected. Keep the entire
+previous bundle and settings backups for rollback; do not mix revisions.
+No compatibility profile or packaged native binary is added here.
+
+Host checks run production callbacks and local UDP against a fake BMW framework,
+plus the actual worker against a loopback HSFZ server. They cover all gasoline
+presets, independent files, failed/partial saves, raw RPM, zero/invalid/stale/
+future/older/pre-opening data, rejected old frames and resource cleanup.
+Actual rasterizer tests check pixels and bounds on all five panels. Resource
+tests reproduce all generated menus and verify both compact layouts. Run:
+
+```sh
+make -C native test-full-shift
+python3 tools/test_full_shift_resources.py
+make -C native build/full-warm-surface.so
+.venv/bin/python tools/preview_full_shift.py \
+  --renderer native/build/full-warm-surface.so \
+  --models native/build/full-shift-models/diesel-live.bin \
+  --out native/build/full-shift-host-synthetic.png
+```
+
+The preview is rendered from captured production Library updates with synthetic
+data. It is not a QNX, ARM emulator or vehicle capture. Full-Library static
+analysis retains the four existing Boost stream diagnostics documented in
+[WarmDeck](WARM-READINESS.md); these are not claimed clean. Licensed QNX builds,
+firmware/RHMI checks and separately authorized parked validation remain required.
+
+![Full-screen ShiftDeck with synthetic data](images/shift-fullscreen-host-synthetic.png)
+
+The full host suite passes 18 native test programs and 97 Python cases; the
+Shift/Warm resource checks add 20 cases. Focused Shift/Warm checks pass Clang
+ASan/UBSan. Comparing the previous actual renderer with this renderer preserves
+gasoline pixels above the new advisory footer for all 21 targets on all five
+panels (105 comparisons). The old rasterizer fails the raw-RPM control, and a
+worker changed back to reply-time timestamps fails the request-age control.
+
 ## Evidence and limits
 
 Host tests cover all 21 current gasoline target/unit combinations, legacy G1/S1
@@ -122,8 +195,8 @@ head-unit screenshot. Generate it locally with
 `.venv/bin/python tools/preview_shift_profiles.py` after building the resources
 and running `make -C native test-shift-profiles`.
 
-The implementation scope is the standard NBT Evo app. Equivalent full-screen
-and EntryNav2 features remain outstanding. Static host compilation does not establish ARM/QNX loader behavior. No QNX SDK or factory frameworks are
+The implementation covers the standard NBT Evo and full-screen app sources.
+EntryNav2 feature integration remains outstanding. Static host compilation does not establish ARM/QNX loader behavior. No QNX SDK or factory frameworks are
 distributed or obtained by this change. No QNX build, physical N57 validation,
 installation, firmware approval or factory CarPlay regression check is claimed.
 An authorized parked runtime check remains necessary before shipping.

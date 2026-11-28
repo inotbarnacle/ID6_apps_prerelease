@@ -63,8 +63,9 @@ synthetic data and a fake BMW framework, not a QNX or vehicle capture. The
 emulator keeps its simulated-feed label. The measured trend model is shared with
 the standard app in this same source checkout; build from the whole repository.
 
-The surface protocol is version 2 (`ID6T`), still 496 bytes. Version 1 (`ID6S`)
-packets are rejected. Rebuild and deploy the complete matching full-screen
+The surface protocol is version 3 (`ID6U`), still 496 bytes. It retains measured
+Warm states and adds explicit Shift profile/RPM fields. Version 1 (`ID6S`) and
+version 2 (`ID6T`) packets are rejected. Rebuild and deploy the complete matching full-screen
 bundle: Library, renderer, dashboard plugins, optional companion plugins and
 emulator renderer/overlay where used. Start from a fresh build output and keep
 the complete previous bundle for rollback. Firmware, framework-hash and display
@@ -79,7 +80,7 @@ The stand-in child never executes diagnostics. The actual C rasterizer is
 checked on all five panel sizes for explicit states, text/pixel bounds and
 protocol rejection. The original renderer fails the rounded-below-target
 control. Generator checks reproduce all menus and check compact/wide fallback
-bindings. Emulator checks accept v2 and reject v1 or malformed frames.
+bindings. Emulator checks accept v3 and reject v1/v2 or malformed frames.
 
 No QNX build, physical rendering, factory-function or standalone result follows
 from these host checks. Other full-screen diesel features and EntryNav2 ports

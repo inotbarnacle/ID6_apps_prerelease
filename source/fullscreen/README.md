@@ -14,7 +14,7 @@ My Vehicle. **ID6 App Updates** is also available in My Vehicle.
 
 Live dashboards read available telemetry every 16 ms while open and pass the
 new state to the renderer on the same tick. ShiftDeck's numerical RPM and shift
-lights use the latest sample. Its tach bar eases over 32 ms. Select **Target RPM** or the **Shift light target** option to choose 6,000–8,000 RPM in steps of 100. Open **OPTIONS → Speed units** to switch between mph and km/h. The renderer
+lights use the latest sample. Its tach bar eases over 32 ms. Select the target button or **OPTIONS → Engine profile and targets** for Gasoline/Diesel choices. Gasoline retains all 6,000–8,000 RPM targets. Diesel has 100-RPM target steps and 4,000/5,000/6,000 RPM display ranges; these are advisory app choices. Open **OPTIONS → Speed units** to switch between mph and km/h. See [ShiftDeck profiles](../docs/SHIFT-PROFILES.md#full-screen-shiftdeck) for settings and validation limits. The renderer
 skips unchanged frames and the app sends a periodic keepalive at idle.
 
 Turn the iDrive knob to move the blue highlight between buttons. Press the
@@ -43,7 +43,7 @@ Estimates need fresh measurements and rising trends. These targets are app
 choices; follow the vehicle's guidance.
 
 [Behavior, host preview and validation limits](../docs/WARM-READINESS.md#full-screen-warmdeck)
-cover the renderer and RHMI fallback. This revision uses surface protocol v2
+cover the renderer and RHMI fallback. This revision uses surface protocol v3
 with the same 496-byte state size. Rebuild the complete matching bundle,
 including renderer, plugins and optional companions; update the emulator's
 renderer and overlay together. Earlier packets are rejected. Use fresh build
@@ -98,8 +98,8 @@ fault memory and re-reading the result.
   stops the worker. The diagrams reflect acknowledged lamp pulses.
 
 Upstream reported tests of the separate apps and overlay transitions on its
-1280 × 480 IDEmu profile. Those results precede the WarmDeck readiness and
-surface-v2 changes here. This revision has host tests; its QNX build, ARM
+1280 × 480 IDEmu profile. Those results precede the WarmDeck readiness,
+ShiftDeck profiles and surface-v3 changes here. This revision has host tests; its QNX build, ARM
 emulator and parked vehicle checks remain pending, including transitions to
 OEM camera and projection screens.
 

@@ -4,6 +4,7 @@
 #include "gauge_preferences.h"
 #include "shift_assets.h"
 #include <errno.h>
+#include <string.h>
 
 // Display/advisory choices, never ECU limits or a claimed BMW redline.
 struct ShiftPreferences {
@@ -100,13 +101,8 @@ struct ShiftPreferences {
             }
         }
         const int profile_status=record(profile,data,count);
-        if (profile_status==1 && count==5 && data[0]=='S' && data[1]==2 && data[2]<=1) {
-            ShiftPreferences next=candidate;
-            next.diesel=data[2]!=0;
-            next.diesel_target=MIN_TARGET+static_cast<unsigned>(data[3])*STEP;
-            next.diesel_scale=data[4];
-            if (next.valid()) { candidate=next; loaded=true; }
-        } else if (profile_status==0 && legacy_profile) {
+        if (profile_status==1 && decodeProfile(data,count,candidate)) loaded=true;
+        else if (profile_status==0 && legacy_profile) {
             candidate.diesel=previous.diesel;
             candidate.diesel_target=previous.diesel_target;
             candidate.diesel_scale=previous.diesel_scale;
@@ -123,11 +119,26 @@ struct ShiftPreferences {
         return savePersistentBytes(path,data,sizeof data);
     }
     bool saveProfile(const char* path) const {
+        unsigned char data[5];
+        return encodeProfile(data) && savePersistentBytes(path,data,sizeof data);
+    }
+    static bool decodeProfile(const unsigned char* data, size_t count, ShiftPreferences& current) {
+        if (count!=5 || data[0]!='S' || data[1]!=2 || data[2]>1) return false;
+        ShiftPreferences next=current;
+        next.diesel=data[2]!=0;
+        next.diesel_target=MIN_TARGET+static_cast<unsigned>(data[3])*STEP;
+        next.diesel_scale=data[4];
+        if (!next.valid()) return false;
+        current=next;
+        return true;
+    }
+    bool encodeProfile(unsigned char* data) const {
         if (!valid()) return false;
-        const unsigned char data[]={'S',2,static_cast<unsigned char>(diesel),
+        const unsigned char record[]={'S',2,static_cast<unsigned char>(diesel),
             static_cast<unsigned char>((diesel_target-MIN_TARGET)/STEP),
             static_cast<unsigned char>(diesel_scale)};
-        return savePersistentBytes(path,data,sizeof data);
+        memcpy(data,record,sizeof record);
+        return true;
     }
 };
 
