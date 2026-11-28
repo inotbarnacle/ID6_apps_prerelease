@@ -34,6 +34,22 @@ BoostDeck preferences as its initial defaults when available and saves its
 own choices separately. IDEmu keeps the Library's files in its test profile
 across cold boots.
 
+## WarmDeck temperature targets
+
+Oil, coolant and transmission show independent unknown/pending/met states.
+Comparisons use measured Celsius values and hysteresis before display rounding
+or unit conversion. Missing readings do not hide the other fluids' progress.
+Estimates need fresh measurements and rising trends. These targets are app
+choices; follow the vehicle's guidance.
+
+[Behavior, host preview and validation limits](../docs/WARM-READINESS.md#full-screen-warmdeck)
+cover the renderer and RHMI fallback. This revision uses surface protocol v2
+with the same 496-byte state size. Rebuild the complete matching bundle,
+including renderer, plugins and optional companions; update the emulator's
+renderer and overlay together. Earlier packets are rejected. Use fresh build
+outputs and keep the complete previous bundle for rollback. Firmware and
+display checks still apply.
+
 ## USB packages
 
 Place the signed `ID6Apps.update` at the top of the USB drive, then open **My Vehicle → ID6 App Updates**.
@@ -81,10 +97,11 @@ fault memory and re-reading the result.
   each step. Leaving the page
   stops the worker. The diagrams reflect acknowledged lamp pulses.
 
-The separate apps and their overlay transitions were tested on the
-1280 × 480 IDEmu profile. Parked on-car validation of this revision,
-including physical display latency and transitions to the OEM camera and
-projection screens, is pending.
+Upstream reported tests of the separate apps and overlay transitions on its
+1280 × 480 IDEmu profile. Those results precede the WarmDeck readiness and
+surface-v2 changes here. This revision has host tests; its QNX build, ARM
+emulator and parked vehicle checks remain pending, including transitions to
+OEM camera and projection screens.
 
 ## Compatibility and staging
 

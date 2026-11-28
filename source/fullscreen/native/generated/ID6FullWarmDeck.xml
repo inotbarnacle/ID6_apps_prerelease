@@ -16,6 +16,9 @@
       <raDataModel id="1540" modelType="Richtext" />
       <raDataModel id="1541" modelType="Richtext" />
       <raDataModel id="1542" modelType="Richtext" />
+      <raDataModel id="1543" modelType="Richtext" />
+      <raDataModel id="1544" modelType="Richtext" />
+      <raDataModel id="1545" modelType="Richtext" />
       <raDataModel id="607" modelType="Richtext" />
       <raDataModel id="1880" modelType="Richtext" />
     </models>
@@ -68,6 +71,38 @@
               <property id="21" value="95" />
               <property id="9" value="365" />
               <property id="10" value="65" />
+            </properties>
+          </label>
+          <label id="1320" model="1543">
+            <properties>
+              <property id="20" value="28" />
+              <property id="21" value="180" />
+              <property id="9" value="365" />
+              <property id="10" value="55" />
+            </properties>
+          </label>
+          <label id="1321" model="1544">
+            <properties>
+              <property id="20" value="431" />
+              <property id="21" value="180" />
+              <property id="9" value="365" />
+              <property id="10" value="55" />
+            </properties>
+          </label>
+          <label id="1322" model="1545">
+            <properties>
+              <property id="20" value="834" />
+              <property id="21" value="180" />
+              <property id="9" value="365" />
+              <property id="10" value="55" />
+            </properties>
+          </label>
+          <label id="8007" text="App targets are advisory; follow vehicle guidance">
+            <properties>
+              <property id="20" value="28" />
+              <property id="21" value="265" />
+              <property id="9" value="1160" />
+              <property id="10" value="55" />
             </properties>
           </label>
           <label id="467" model="607">

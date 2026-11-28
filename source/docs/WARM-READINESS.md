@@ -41,11 +41,61 @@ PID support still depends on the ECU; capability gating is a separate telemetry
 change. The existing transmission DID is not newly validated for any N57 variant.
 No vehicle compatibility or QNX runtime result follows from the host tests.
 
+## Full-screen WarmDeck
+
+The separate full-screen Library retains raw Celsius samples and computes each
+fluid's target state before formatting temperatures. An oil reading of 84.96 °C
+can display as 85.0 °C while remaining pending. The renderer receives explicit
+unknown/pending/met states and progress; it does not reparse the displayed number
+to decide readiness. The RHMI fallback has matching target labels and advisory.
+Unit changes refresh measurements and targets together.
+
+The worker's 48-byte temperature frame and diagnostic requests are unchanged.
+The Library filters the loopback sender port, rejects malformed, pre-opening,
+future and older positive samples, and expires each fluid independently on every
+poll. Opening the app or changing the DCT source resets the cache and trend.
+The timestamp-free invalidation limitation described above still applies.
+
+![Full-screen WarmDeck host rendering with synthetic missing oil](images/warm-fullscreen-host-synthetic.png)
+
+This is an actual host rendering of captured production Library updates with
+synthetic data and a fake BMW framework, not a QNX or vehicle capture. The
+emulator keeps its simulated-feed label. The measured trend model is shared with
+the standard app in this same source checkout; build from the whole repository.
+
+The surface protocol is version 2 (`ID6T`), still 496 bytes. Version 1 (`ID6S`)
+packets are rejected. Rebuild and deploy the complete matching full-screen
+bundle: Library, renderer, dashboard plugins, optional companion plugins and
+emulator renderer/overlay where used. Start from a fresh build output and keep
+the complete previous bundle for rollback. Firmware, framework-hash and display
+checks still apply; this does not supply rebuilt QNX binaries or authorize an
+installation.
+
+Host checks run production Library callbacks with controlled local UDP,
+intercepted launches/unit saves and a captured surface channel. They cover
+rounding, independent hysteresis, missing/stale/zero/invalid readings, sender
+filtering, reordering, unit-save failure, trends, source changes and reopening.
+The stand-in child never executes diagnostics. The actual C rasterizer is
+checked on all five panel sizes for explicit states, text/pixel bounds and
+protocol rejection. The original renderer fails the rounded-below-target
+control. Generator checks reproduce all menus and check compact/wide fallback
+bindings. Emulator checks accept v2 and reject v1 or malformed frames.
+
+No QNX build, physical rendering, factory-function or standalone result follows
+from these host checks. Other full-screen diesel features and EntryNav2 ports
+remain separate work.
+
+The full-Library analyzer reports the same four existing Boost stream-read
+diagnostics as the upstream source, in `boost_preferences.h` and
+`boost_layout.h`. This port adds no diagnostics under the same full-screen SDK
+include flags. Those unrelated readers are unchanged.
+
 From `source/`, run:
 
 ```sh
 make -C native test-warm-readiness
 python3 -B tools/test_warm_readiness_resources.py
+python3 -B tools/test_full_warm_resources.py
 ```
 
 The production plugin runs against fake BMW framework methods and a controlled
